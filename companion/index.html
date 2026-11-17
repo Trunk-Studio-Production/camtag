@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CamTag Cards</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<!-- Inter (font delle schermate) è incluso nel repo: funziona offline e uguale su ogni computer.
+     Licenza: fonts/Inter-LICENSE.txt (SIL OFL 1.1). Gli altri font del menu vengono da Google Fonts. -->
+<style>
+  @font-face { font-family: "Inter"; src: url("fonts/InterVariable.woff2") format("woff2");
+               font-weight: 100 900; font-style: normal; font-display: block; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #f4f3ef; --panel: #ffffff; --ink: #161616; --muted: #6b6b66; --line: #dcdad3;
@@ -105,7 +114,9 @@
   .kit-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 13px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .chip { padding: 4px 10px; border-radius: 999px; font-size: 13px; font-variant-numeric: tabular-nums; }
-  .chip.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); }
+  .chip-x { border: 0; background: none; padding: 0 2px; font-size: 11px; line-height: 1; color: inherit; opacity: .55; cursor: pointer; }
+  .chip-x:hover { opacity: 1; }
   .chips input { width: 56px; padding: 4px 6px; font-size: 12px; }
 </style>
 </head>
@@ -118,6 +129,8 @@
     <option value=",">Decimali: 0,9</option>
     <option value=".">Decimali: 0.9</option>
   </select>
+  <select id="typoFont" title="Font delle schermate"></select>
+  <select id="typoT" title="Soglia del testo: più scura = tratti più pieni"></select>
   <select id="device" title="Dispositivo">
     <option value="x3">Xteink X3 · 528×792 (verticale)</option>
   </select>
@@ -178,7 +191,7 @@
         </div>
       </div>
       <p class="sim-status" id="simStatus"></p>
-      <p class="hint">Clic sui tasti come sul dispositivo. E tenuto premuto (o Maiusc+clic su E) blocca la rotazione.
+      <p class="hint">Clic sui tasti come sul dispositivo. Tenuto premuto (o Maiusc+clic): E blocca la rotazione, A o B nei filtri apre la modifica degli stadi (E o F la chiudono).
         Da tastiera: A B C D E F, P = power. Le funzioni seguono il comportamento previsto per il firmware.</p>
     </div>
   </section>
@@ -191,7 +204,17 @@
 // Costanti e stato
 // ============================================================================
 const DEVICES = { x3: { w: 792, h: 528 } };
-const FONT = '-apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif';
+// Tipografia delle schermate: font e soglia del testo (più alta = tratti più pieni).
+const FONTS = {
+  system: { label: 'Font di sistema', css: '-apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif' },
+  atkinson: { label: 'Atkinson Hyperlegible', css: '"Atkinson Hyperlegible", sans-serif' },
+  inter: { label: 'Inter', css: '"Inter", sans-serif' },
+  plex: { label: 'IBM Plex Sans', css: '"IBM Plex Sans", sans-serif' },
+};
+const TEXT_THRESHOLDS = { 128: 'normale', 170: 'più scura' };
+let FONT = FONTS.inter.css;
+let TEXT_T = 128;
+function applyTypo() { FONT = (FONTS[state.typo.font] || FONTS.system).css; TEXT_T = state.typo.threshold || 128; }
 const STORE_KEY = 'camtag.project.v1';
 const LENS_ROWS_PER_PAGE = 11;
 // Fasce libere sui lati corti (dove stanno i tasti) per le indicazioni del firmware.
@@ -214,10 +237,10 @@ const TYPE_LABEL = { lens: 'Lente', crew: 'Crew', notes: 'Note', patch: 'Patch' 
 
 function freshState() {
   return {
-    version: 2, device: 'x3', decimal: ',', production: '',
+    version: 4, device: 'x3', decimal: ',', production: '', typo: { font: 'inter', threshold: 128 },
     auto: { lenschart: true, filters: true },
     lenses: [],
-    filters: { ndFormat: 'density', ndType: 'ND', nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], dio: [], effects: [], previewNd: 0, previewDio: 0 },
+    filters: { ndFormat: 'density', ndType: 'ND', nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], dio: [], effects: [], stages: [null, null, null], previewNd: 0, previewDio: 0 },
     cards: [DEFAULTS.crew()],
   };
 }
@@ -225,8 +248,8 @@ function freshState() {
 function migrate(s) {
   if (!s || !Array.isArray(s.cards)) return s;
   for (const c of s.cards) { if (!c.formats) c.formats = 'both'; delete c.orient; delete c.mount; }
-  const f = freshState();
-  for (const k of ['decimal', 'production', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
+  const f = freshState(), hadStages = Array.isArray(s.filters?.stages);
+  for (const k of ['decimal', 'production', 'typo', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
   s.filters = Object.assign(f.filters, s.filters);
   if ('ir' in s.filters) { if (s.filters.ir) s.filters.ndType = 'IRND'; delete s.filters.ir; }  // vecchia casella IRND
   // Vecchi "filtri di stile" (un elemento per filtro montato) -> kit con gradazioni montate.
@@ -234,23 +257,73 @@ function migrate(s) {
     for (const o of s.filters.style) addToKit(s.filters, null, o.name, [o.strength || ''], [o.strength || '']);
     delete s.filters.style;
   }
-  s.device = 'x3'; s.version = 2;
+  // v4: i vetri non sono più "montati" nel kit, stanno negli stadi del mattebox.
+  if (!hadStages) {
+    const on = s.filters.effects.flatMap(e => e.strengths.filter(x => x.on).map(x => glassKey(e, x.s)));
+    const st = [...(s.filters.previewNd > 0 && s.filters.nd.length ? [null] : []), ...on].slice(0, MAX_STAGES);  // lo stadio 1 è dell'ND
+    s.filters.stages = [...st, ...Array(Math.max(0, 3 - st.length)).fill(null)];
+  }
+  for (const e of s.filters.effects) for (const x of e.strengths) delete x.on;
+  normalizeStages(s.filters);
+  if (s.filters.previewNd > 0 && s.filters.nd.length) makeRoomForNd(s.filters.stages);
+  // v3: Inter con soglia normale è la tipografia scelta (prima: font di sistema).
+  if ((s.version || 0) < 3) s.typo = { font: 'inter', threshold: 128 };
+  s.device = 'x3'; s.version = 4;
   return s;
 }
 
-// Kit filtri d'effetto: una voce per famiglia, ogni gradazione può essere montata o no.
-// { id, name, strengths: [{ s: '1/4', on: true }] }  — s '' = filtro senza gradazione.
+// Kit dei vetri (esclusi gli ND pieni): una voce per famiglia con le sue gradazioni.
+// { id, name, strengths: [{ s: '1/4' }] }  — s '' = vetro senza gradazione.
+// `mounted` serve solo a convertire i progetti vecchi (vedi migrate).
 function addToKit(f, id, name, strengths, mounted = []) {
   let e = f.effects.find(x => (id && x.id === id) || (!id && !x.id && x.name === name));
   if (!e) { e = { id, name, strengths: [] }; f.effects.push(e); }
   for (const s of strengths.length ? strengths : ['']) {
-    const ex = e.strengths.find(x => x.s === s);
-    if (ex) ex.on = ex.on || mounted.includes(s); else e.strengths.push({ s, on: mounted.includes(s) });
+    let x = e.strengths.find(y => y.s === s);
+    if (!x) e.strengths.push(x = { s });
+    if (mounted.includes(s)) x.on = true;
   }
   return e;
 }
-function mountedEffects() {
-  return state.filters.effects.flatMap(e => e.strengths.filter(x => x.on).map(x => `${e.name}${x.s ? ' ' + x.s : ''}`));
+// Stadi del mattebox: filters.stages[i] = chiave del vetro nello stadio i+1
+// (1 = lato lente) oppure null = vuoto. Un vetro sta in un solo stadio.
+// L'ND, quando c'è, occupa lo stadio 1: lì stages[0] resta null e la riga mostra
+// l'ND. Qui ci sono i valori di partenza; il simulatore ne tiene una copia sua
+// (sim.stages, sim.nd), come farà il dispositivo.
+const MAX_STAGES = 4;
+function glassKey(e, s) { return `${e.id || 'c:' + e.name}|${s}`; }
+// I vetri nell'ordine in cui si scorrono sul dispositivo (per famiglia).
+function kitGlasses(f = state.filters) {
+  return f.effects.flatMap(e => e.strengths.map(x => ({ key: glassKey(e, x.s), label: `${e.name}${x.s ? ' ' + x.s : ''}` })));
+}
+// Svuota gli stadi che puntano a un vetro tolto dal kit o già usato in un altro stadio.
+function normalizeStages(f) {
+  const keys = new Set(kitGlasses(f).map(g => g.key)), seen = new Set();
+  f.stages = f.stages.slice(0, MAX_STAGES).map(k => (k && keys.has(k) && !seen.has(k) ? (seen.add(k), k) : null));
+  if (!f.stages.length) f.stages = [null];
+}
+// Senza vetri nel kit la lista degli stadi non compare.
+function stageCount() { return state.filters.effects.length ? state.filters.stages.length : 0; }
+// L'ND è montato? (il passo 0 è "nessuno")
+function ndOn(ndIdx = state.filters.previewNd) { return ndIdx > 0 && ndIdx < ndSteps().length; }
+// L'ND entra nello stadio 1: il vetro che c'era scala di uno stadio verso il
+// fronte, e così i successivi finché non trovano uno stadio vuoto; se non c'è
+// posto l'ultimo esce dal mattebox. Restituisce il vetro uscito (o null).
+function makeRoomForNd(stages) {
+  let carry = stages[0]; stages[0] = null;
+  for (let i = 1; i < stages.length && carry; i++) [stages[i], carry] = [carry, stages[i]];
+  return carry;
+}
+// Testo dell'ND nella riga dello stadio 1 (il fattore porta già il tipo: "IRND8").
+function ndStageLabel(v) { const f = state.filters; return f.ndFormat === 'factor' ? ndLabel(v) : `${f.ndType} ${ndLabel(v)}`; }
+function stageLabels(stages = state.filters.stages, ndIdx = state.filters.previewNd) {
+  const g = new Map(kitGlasses().map(x => [x.key, x.label]));
+  return stages.map((k, i) => (i === 0 && ndOn(ndIdx) ? ndStageLabel(ndSteps()[ndIdx]) : (k && g.get(k)) || '—'));
+}
+// Scelte per uno stadio: vuoto, poi i vetri del kit non usati negli altri stadi.
+function stageOptions(i, stages = state.filters.stages) {
+  const used = new Set(stages.filter((k, j) => k && j !== i));
+  return [null, ...kitGlasses().map(g => g.key).filter(k => !used.has(k))];
 }
 
 function load() { try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch { return null; } }
@@ -530,8 +603,45 @@ function filtersLayout(W, H) {
     L.list = { x: area.x + colW + pad * 0.5, y: area.y + barH + 16, w: area.w - colW - pad * 1.5, h: area.h - barH - 32 };
     L.divider = { x: area.x + colW - 2, y: area.y + barH + 16, h: area.h - barH - 32 };
   }
-  for (const k of ['nd', 'dio']) if (L[k]) for (const p of ['x', 'y', 'w', 'h']) L[k][p] = Math.round(L[k][p]);
+  for (const k of ['nd', 'dio', 'list']) if (L[k]) for (const p of ['x', 'y', 'w', 'h']) L[k][p] = Math.round(L[k][p]);
+  // Una riga per stadio, ad altezza fissa: entrano sempre tutte. Il firmware
+  // compone ogni riga con due pezzi: colonna del numero (listNum) + vetro.
+  const n = stageCount();
+  L.listRow = n ? Math.min(80, Math.floor(L.list.h / n)) : 0;
+  L.listNum = Math.round(L.listRow * 0.8);
   return L;
+}
+
+// Colonna del numero dello stadio, con un filo che la separa dal vetro.
+function drawStageNum(ctx, x, y, w, h, n, selected) {
+  ctx.fillStyle = selected ? '#000' : '#fff'; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = selected ? '#fff' : '#000'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+  ctx.font = `800 ${Math.round(h * 0.5)}px ${FONT}`; ctx.fillText(String(n), x + Math.round((w - 2) / 2), y + Math.round(h / 2) + 1);
+  const m = Math.round(h * 0.22); ctx.fillRect(x + w - 2, y + m, 2, h - 2 * m);
+}
+// Il vetro di uno stadio ("—" = vuoto); selezionato = in negativo.
+// Una sola misura del testo per tutti i vetri del kit (e per l'ND nello stadio 1):
+// la più grande che entra ovunque.
+function stageFontSize(w, h) {
+  const [, c] = newCanvas(1, 1);
+  const labels = [...kitGlasses().map(g => g.label), ...ndSteps().slice(1).map(ndStageLabel)];
+  return Math.min(...labels.map(t => fitFont(c, t, 800, w - 16, h * 0.55)));
+}
+function drawStageGlass(ctx, x, y, w, h, label, selected, size) {
+  ctx.fillStyle = selected ? '#000' : '#fff'; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = selected ? '#fff' : '#000'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  ctx.font = `800 ${size}px ${FONT}`; ctx.fillText(label, x + 12, y + Math.round(h / 2) + 1);
+}
+// Gli stadi come li compone il firmware: pezzi affiancati, poi un separatore
+// da 2 px in cima a ogni riga dopo la prima. sel = stadio selezionato in modifica.
+function drawStages(ctx, L, labels, sel = -1) {
+  const gw = L.list.w - L.listNum, fs = stageFontSize(gw, L.listRow);
+  labels.forEach((t, i) => {
+    const y = L.list.y + i * L.listRow;
+    drawStageNum(ctx, L.list.x, y, L.listNum, L.listRow, i + 1, i === sel);
+    drawStageGlass(ctx, L.list.x + L.listNum, y, gw, L.listRow, t, i === sel, fs);
+    if (i > 0) { ctx.fillStyle = '#000'; ctx.fillRect(L.list.x, y, L.list.w, 2); }
+  });
 }
 
 function drawFiltersBackground(ctx, W, H) {
@@ -545,21 +655,8 @@ function drawFiltersBackground(ctx, W, H) {
   if (L.dio) ctx.fillText('DIOTTRIA', L.dioLabel.x, L.dioLabel.y + 20);
   if (L.divider) ctx.fillRect(L.divider.x, L.divider.y, 3, L.divider.h);
   else ctx.fillRect(L.list.x, L.list.y - 10, L.list.w, 3);
-
-  // Filtri d'effetto: solo quelli montati.
-  const items = mountedEffects();
-  if (!items.length) {
-    ctx.font = `600 20px ${FONT}`; ctx.fillStyle = '#000';
-    ctx.fillText('Nessun filtro d\'effetto', L.list.x, L.list.y + 30);
-    return L;
-  }
-  const rowH = Math.min(52, L.list.h / items.length);
-  items.forEach((t, i) => {
-    const y = L.list.y + i * rowH;
-    if (i > 0) ctx.fillRect(Math.round(L.list.x), Math.round(y), Math.round(L.list.w), 2);  // vedi rule() nella lens chart
-    ctx.textBaseline = 'middle';
-    fitFont(ctx, t, 800, L.list.w, rowH * 0.55); ctx.fillText(t, L.list.x, y + rowH / 2 + 1);
-  });
+  // Gli stadi non sono nello sfondo: cambiano sul dispositivo, li compone il
+  // firmware con i pezzi esportati (drawStages).
   return L;
 }
 
@@ -780,26 +877,27 @@ function renderScreen(s, layout, opts = {}) {
       const f = state.filters;
       drawTile(ctx, L.nd.x, L.nd.y, L.nd.w, L.nd.h, ndLabel(ndSteps()[opts.nd ?? f.previewNd] || 0));
       if (L.dio) drawTile(ctx, L.dio.x, L.dio.y, L.dio.w, L.dio.h, dioLabel(dioSteps()[opts.dio ?? f.previewDio] || null));
+      if (stageCount()) drawStages(ctx, L, stageLabels(opts.stages ?? f.stages, opts.nd ?? f.previewNd), opts.sel ?? -1);
       if (!opts.noHints) drawHintsPreview(ctx, W, H);
     }
   } else {
     const c = s.card;
     ({ lens: drawLens, crew: drawCrew, notes: drawNotes, patch: drawPatch })[c.type](ctx, W, H, c);
     const photo = c.type === 'patch' && c.img && c.dither !== 'none';
-    const bits = toBits(ctx, W, H, photo ? c.dither : 'threshold', c.type === 'patch' ? c.threshold : 128);
+    const bits = toBits(ctx, W, H, photo ? c.dither : 'threshold', c.type === 'patch' ? c.threshold : TEXT_T);
     if (c.type === 'patch' && c.invert) {
       const end = c.caption ? (H - Math.round(H * 0.14)) * W : W * H;
       for (let i = 0; i < end; i++) bits[i] ^= 1;
     }
     return { bits, w: W, h: H };
   }
-  return { bits: toBits(ctx, W, H), w: W, h: H };
+  return { bits: toBits(ctx, W, H, 'threshold', TEXT_T), w: W, h: H };
 }
 
 function renderTileBits(text, w, h) {
   const [, ctx] = newCanvas(w, h);
   drawTile(ctx, 0, 0, w, h, text);
-  return toBits(ctx, w, h);
+  return toBits(ctx, w, h, 'threshold', TEXT_T);
 }
 
 function layoutsOf(c) { return c.formats === 'land' ? ['land'] : c.formats === 'port' ? ['port'] : ['land', 'port']; }
@@ -820,7 +918,7 @@ function exportPlan() {
 
 // Descrive al firmware dove comporre i valori e quali tasti li cambiano.
 function filtersIni() {
-  const out = ['# camtag screen v1', 'type=filters'];
+  const out = ['# camtag screen v2', 'type=filters'];
   const nd = ndSteps(), dio = dioSteps();
   out.push(`nd.count=${nd.length}`, `nd.labels=${nd.map(ndLabel).join('|')}`);
   out.push(`dio.count=${state.filters.dio.length ? dio.length : 0}`);
@@ -837,6 +935,26 @@ function filtersIni() {
     out.push(`hints.${rot}=${['A', 'B', 'C', 'D'].map(k => [k, rockerHint(k, rot)]).filter(([, t]) => t).map(([k, t]) => `${k}:${t}`).join('|')}`);
   }
   out.push(`nd.start=${state.filters.previewNd}`, `dio.start=${state.filters.previewDio}`);
+
+  // Stadi del mattebox: i vetri del kit nell'ordine in cui si scorrono, e il vetro
+  // di partenza di ogni stadio (indice nel kit, "-" = vuoto). Pezzi: stN / stsN =
+  // colonna del numero dello stadio N (normale / selezionata); fxG / fxsG = vetro G
+  // (indice nel kit, n = vuoto); fxdI = l'ND al passo I, per lo stadio dell'ND
+  // (stages.nd), che lo mostra finché l'ND non è "nessuno". Tutti con .p per il verticale.
+  const kit = kitGlasses(), stages = stageCount() ? state.filters.stages : [];
+  out.push(`kit.count=${kit.length}`, `kit.labels=${kit.map(g => g.label).join('|')}`);
+  out.push(`stages.count=${stages.length}`, `stages.nd=1`, `stages.start=${stages.map(k => (k ? kit.findIndex(g => g.key === k) : '-')).join('|')}`);
+  for (const layout of ['land', 'port']) {
+    const [W, H] = dims(layout), L = filtersLayout(W, H);
+    out.push(`${layout}.list=${L.list.x},${L.list.y},${L.list.w},${L.list.h}`, `${layout}.listRow=${L.listRow}`, `${layout}.listNum=${L.listNum}`);
+  }
+  // Modifica degli stadi (tieni A o B per entrare; E, F o tieni A o B per uscire), per verso: passo delle
+  // righe per A/B (+1 = stadio successivo), verso del vetro per C/D, indicazioni.
+  for (const rot of [0, 90, 180, 270]) {
+    out.push(`edit.keys.${rot}=A:row${editNavStep('A', rot) > 0 ? '+' : '-'}|B:row${editNavStep('B', rot) > 0 ? '+' : '-'}|C:val${keyDir('C', rot) > 0 ? '+' : '-'}|D:val${keyDir('D', rot) > 0 ? '+' : '-'}`);
+    out.push(`edit.hints.${rot}=${['A', 'B', 'C', 'D'].map(k => `${k}:${editHint(k, rot)}`).join('|')}`);
+  }
+  out.push(`edit.timeout=${EDIT_TIMEOUT_S}`);
   return out.join('\n') + '\n';
 }
 
@@ -855,6 +973,17 @@ async function buildZip() {
         const [W, H] = dims(l), L = filtersLayout(W, H), ext = l === 'port' ? '.p.bmp' : '.bmp';
         ndSteps().forEach((v, i) => sub.file(`nd${i}${ext}`, encodeBmp(renderTileBits(ndLabel(v), L.nd.w, L.nd.h), L.nd.w, L.nd.h)));
         if (L.dio) dioSteps().forEach((v, i) => sub.file(`dio${i}${ext}`, encodeBmp(renderTileBits(dioLabel(v), L.dio.w, L.dio.h), L.dio.w, L.dio.h)));
+        // Stadi: colonna del numero e vetri, normali e selezionati (vedi filtersIni).
+        const bits = (w, h, draw) => { const [, c] = newCanvas(w, h); draw(c); return encodeBmp(toBits(c, w, h, 'threshold', TEXT_T), w, h); };
+        const gw = L.list.w - L.listNum, fs = stageCount() ? stageFontSize(gw, L.listRow) : 0;
+        for (const sel of [false, true]) {
+          for (let n = 1; n <= stageCount(); n++)
+            sub.file(`${sel ? 'sts' : 'st'}${n}${ext}`, bits(L.listNum, L.listRow, c => drawStageNum(c, 0, 0, L.listNum, L.listRow, n, sel)));
+          if (stageCount()) [['n', '—'], ...kitGlasses().map((g, i) => [i, g.label])].forEach(([i, label]) =>
+            sub.file(`${sel ? 'fxs' : 'fx'}${i}${ext}`, bits(gw, L.listRow, c => drawStageGlass(c, 0, 0, gw, L.listRow, label, sel, fs))));
+        }
+        // L'ND nello stadio 1: mai selezionato, quindi solo la versione normale.
+        if (stageCount()) ndSteps().forEach((v, i) => { if (i) sub.file(`fxd${i}${ext}`, bits(gw, L.listRow, c => drawStageGlass(c, 0, 0, gw, L.listRow, ndStageLabel(v), false, fs))); });
       }
     }
   }
@@ -923,7 +1052,7 @@ function renderList() {
     ul.append(li);
   };
   item('lc', '◆', `Lens chart · ${state.lenses.length} lenti${pages > 1 ? ` · ${pages} pag.` : ''}`, 'auto', sel.kind === 'lenschart', () => { sel = { kind: 'lenschart' }; refresh(); }, !state.auto.lenschart || !state.lenses.length);
-  item('fl', '◆', 'Filtri · ND e diottrie', 'auto', sel.kind === 'filters', () => { sel = { kind: 'filters' }; refresh(); }, !state.auto.filters);
+  item('fl', '◆', 'Filtri · ND, diottrie, stadi', 'auto', sel.kind === 'filters', () => { sel = { kind: 'filters' }; refresh(); }, !state.auto.filters);
   state.cards.forEach((c, i) => item(i, String(i + 1).padStart(2, '0'), cardTitle(c), TYPE_LABEL[c.type], sel.kind === 'card' && sel.i === i, () => { sel = { kind: 'card', i }; refresh(); }));
 }
 
@@ -1090,7 +1219,7 @@ function renderDbResults(box, query, brand, type) {
 // ---------- editor: filtri ----------
 function filtersEditor(ed) {
   const f = state.filters;
-  const clampPreview = () => { f.previewNd = Math.min(f.previewNd, ndSteps().length - 1); f.previewDio = Math.min(f.previewDio, dioSteps().length - 1); };
+  const clampPreview = () => { f.previewNd = Math.min(f.previewNd, ndSteps().length - 1); f.previewDio = Math.min(f.previewDio, dioSteps().length - 1); if (ndOn()) makeRoomForNd(f.stages); };
   ed.append(h('h2', {}, 'Filtri'),
     h('label', { class: 'inline' }, h('input', { type: 'checkbox', checked: state.auto.filters, onchange: e => { state.auto.filters = e.target.checked; changed(); } }), 'Includi nell\'esportazione'));
 
@@ -1121,30 +1250,54 @@ function filtersEditor(ed) {
   // Valori iniziali / anteprima
   ed.append(h('h3', {}, 'Valori iniziali'),
     h('div', { class: 'two' },
-      h('div', {}, h('label', {}, 'ND'), h('select', { onchange: e => { f.previewNd = +e.target.value; changed(); } },
+      h('div', {}, h('label', {}, 'ND'), h('select', { onchange: e => { f.previewNd = +e.target.value; if (ndOn()) makeRoomForNd(f.stages); changed(true); } },
         ...ndSteps().map((v, i) => h('option', { value: i, selected: f.previewNd === i }, ndLabel(v))))),
       h('div', {}, h('label', {}, 'Diottria'), h('select', { disabled: !f.dio.length, onchange: e => { f.previewDio = +e.target.value; changed(); } },
         ...dioSteps().map((v, i) => h('option', { value: i, selected: f.previewDio === i }, dioLabel(v)))))),
     h('p', { class: 'hint' }, 'Il dispositivo parte da qui, poi ricorda l\'ultimo valore impostato con i tasti.'));
 
-  // Filtri d'effetto: kit sul set, con le gradazioni montate evidenziate.
-  ed.append(h('h3', {}, 'Filtri d\'effetto'),
-    h('p', { class: 'hint', style: 'margin-top:0' }, 'Il kit è quello che hai sul set. Tocca una gradazione per segnarla come montata: sul dispositivo compaiono solo quelle montate.'));
+  // Mattebox: quanti stadi e cosa c'è in ognuno all'avvio.
+  const kit = kitGlasses();
+  const setStages = n => { f.stages = Array.from({ length: n }, (_, i) => f.stages[i] ?? null); changed(true); };
+  const ndRow = ndOn();  // l'ND di partenza occupa lo stadio 1
+  ed.append(h('h3', {}, 'Mattebox'),
+    h('div', {}, h('label', {}, 'Stadi'),
+      h('select', { onchange: e => setStages(+e.target.value) },
+        ...Array.from({ length: MAX_STAGES }, (_, i) => h('option', { value: i + 1, selected: f.stages.length === i + 1 }, String(i + 1))))),
+    h('table', { class: 't' }, ...f.stages.map((k, i) => {
+      const opts = stageOptions(i);
+      const name = h('td', { class: 'num' }, `${i + 1}${i === 0 ? ' · lato lente' : ''}`);
+      if (i === 0 && ndRow) return h('tr', {}, name, h('td', {}, h('select', { disabled: true }, h('option', {}, `${ndStageLabel(ndSteps()[f.previewNd])} · l'ND di partenza`))));
+      return h('tr', {}, name,
+        h('td', {}, h('select', { disabled: !kit.length, onchange: e => { f.stages[i] = e.target.value || null; changed(true); } },
+          h('option', { value: '', selected: !k }, '— vuoto'),
+          ...kit.map(g => h('option', { value: g.key, selected: g.key === k, disabled: !opts.includes(g.key) }, g.label)))));
+    })),
+    h('p', { class: 'hint' }, 'L\'ND, quando c\'è, sta nello stadio 1. Senza ND lo stadio 1 è libero per un altro vetro; quando l\'ND rientra, i vetri scalano di uno stadio verso il fronte e, se non c\'è posto, l\'ultimo esce.'),
+    h('p', { class: 'hint' }, kit.length
+      ? 'Il dispositivo parte da qui. Per cambiare i vetri sul dispositivo: nella schermata filtri tieni A o B, scegli lo stadio con A/B e il vetro con C/D, poi premi E o F per uscire.'
+      : 'Aggiungi dei vetri al kit qui sotto per riempire gli stadi.'));
+
+  // Kit: i vetri che hai nella valigetta (gli ND pieni stanno nel kit ND qui sopra).
+  ed.append(h('h3', {}, 'Vetri nel kit'),
+    h('p', { class: 'hint', style: 'margin-top:0' }, 'Quello che hai nella valigetta, ND pieni esclusi: diffusione, polarizzatori, degradanti, colore… Sono i vetri che puoi mettere negli stadi.'));
   if (!f.effects.length) ed.append(h('p', { class: 'hint' }, 'Kit vuoto.'));
+  const dropStrength = (e, st) => {
+    e.strengths = e.strengths.filter(x => x !== st); if (!e.strengths.length) f.effects = f.effects.filter(x => x !== e);
+    normalizeStages(f); changed(true);
+  };
   for (const e of f.effects) {
     const extra = h('input', { type: 'text', placeholder: '+', size: 4, title: 'Aggiungi una gradazione', onchange: ev => {
       const v = ev.target.value.trim(); if (v) { addToKit(f, e.id, e.name, [v]); changed(true); }
     } });
     ed.append(h('div', { class: 'kit' },
       h('div', { class: 'kit-head' }, h('strong', {}, e.name),
-        h('button', { class: 'small danger', title: 'Togli dal kit', onclick: () => { f.effects = f.effects.filter(x => x !== e); changed(true); } }, '✕')),
+        h('button', { class: 'small danger', title: 'Togli la famiglia dal kit', onclick: () => { f.effects = f.effects.filter(x => x !== e); normalizeStages(f); changed(true); } }, '✕')),
       h('div', { class: 'chips' },
-        ...e.strengths.map(st => h('button', { class: 'chip' + (st.on ? ' on' : ''), title: st.on ? 'Montato: tocca per smontare' : 'Tocca per segnarlo montato',
-          oncontextmenu: ev => { ev.preventDefault(); e.strengths = e.strengths.filter(x => x !== st); if (!e.strengths.length) f.effects = f.effects.filter(x => x !== e); changed(true); },
-          onclick: () => { st.on = !st.on; changed(true); } }, st.s || 'montato')),
+        ...e.strengths.map(st => h('span', { class: 'chip' }, st.s || 'senza gradazione',
+          h('button', { class: 'chip-x', title: 'Togli dal kit', onclick: () => dropStrength(e, st) }, '✕'))),
         extra)));
   }
-  if (f.effects.some(e => e.strengths.length > 1)) ed.append(h('p', { class: 'hint' }, 'Clic destro su una gradazione per toglierla dal kit.'));
 
   // Aggiunta dal catalogo: tutte le gradazioni scelte in un colpo.
   const cats = [...new Set(filterDb.map(x => x.category))];
@@ -1241,9 +1394,14 @@ function ensureImg(url) {
 }
 
 function refresh() {
+  applyTypo();
   $('#decimal').value = state.decimal;
-  const d = DEVICES[state.device]; $('#dims').textContent = `${d.h}×${d.w} · 259 ppi · 1 bit`;
+  $('#typoFont').value = state.typo.font; $('#typoT').value = String(state.typo.threshold);
+  const d = DEVICES[state.device];
+  $('#dims').textContent = `${d.h}×${d.w} · 259 ppi · 1 bit · ${FONTS[state.typo.font].label}, soglia ${TEXT_THRESHOLDS[state.typo.threshold]}`;
   renderList(); renderEditor(); drawPreview();
+  if (simOn) renderSim();
+ 
 }
 
 function download(blob, name) {
@@ -1256,6 +1414,10 @@ document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
 });
 document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => { view = b.dataset.view; drawPreview(); });
 $('#decimal').onchange = e => { state.decimal = e.target.value; save(); refresh(); };
+$('#typoFont').append(...Object.entries(FONTS).map(([k, f]) => h('option', { value: k }, `Font: ${f.label}`)));
+$('#typoT').append(...Object.entries(TEXT_THRESHOLDS).map(([k, t]) => h('option', { value: k }, `Soglia: ${t}`)));
+$('#typoFont').onchange = e => { state.typo.font = e.target.value; save(); refresh(); };
+$('#typoT').onchange = e => { state.typo.threshold = Number(e.target.value); save(); refresh(); };
 const moveCard = d => {
   if (sel.kind !== 'card') return; const i = sel.i, j = i + d;
   if (j < 0 || j >= state.cards.length) return;
@@ -1294,7 +1456,7 @@ $('#importFile').onchange = e => {
 // Simulatore: dispositivo con i tasti, comportamento previsto per il firmware
 // ============================================================================
 // rot = rotazione fisica del dispositivo in gradi, in senso orario (0 = verticale, tasti in basso).
-const sim = { i: 0, rot: 0, locked: false, lockRot: 0, asleep: false, nd: null, dio: null, msg: '' };
+const sim = { i: 0, rot: 0, locked: false, lockRot: 0, asleep: false, nd: null, dio: null, stages: [], sig: '', msg: '' };
 let simOn = false;
 
 function simPlan() { return exportPlan(); }
@@ -1325,13 +1487,54 @@ function rockerHint(k, rot) {
 }
 function simGoto(pred) { const p = simPlan(), j = p.findIndex(pred); if (j >= 0) sim.i = j; return j >= 0; }
 
+// ---------- Modifica degli stadi del mattebox ----------
+// Si entra tenendo A o B nella schermata filtri; si esce con E o F, o tenendo
+// di nuovo A o B (o da soli dopo EDIT_TIMEOUT_S). Lo stadio selezionato
+// è in negativo sulla stessa schermata: A/B cambiano stadio, C/D cambiano vetro.
+// Con l'ND montato lo stadio 1 è suo e non si seleziona.
+const EDIT_TIMEOUT_S = 30;  // senza tocchi si esce da soli
+let simEditTimer = 0;
+// Direzione "+" del tasto (in alto o a destra per chi guarda), come in rockerAction.
+function keyDir(k, rot) { const first = k === 'A' || k === 'C'; return first === (rot === 90 || rot === 180) ? 1 : -1; }
+// A|B scorrono gli stadi: col bilanciere orizzontale "+" (destra) = stadio successivo,
+// col bilanciere verticale "+" (in alto) = stadio precedente.
+function editNavStep(k, rot) { return (rot % 180 === 0 ? 1 : -1) * keyDir(k, rot); }
+function editHint(k, rot) {
+  if (k === 'A' || k === 'B') return editNavStep(k, rot) > 0 ? '▼' : '▲';
+  return keyDir(k, rot) > 0 ? '+' : '−';
+}
+
+function simEditPress(k, long) {
+  const ed = sim.edit, st = sim.stages;
+  if (k === 'E' || k === 'F' || (long && (k === 'A' || k === 'B'))) { sim.edit = null; sim.msg = 'Stadi salvati.'; return; }
+  if (k === 'A' || k === 'B') {
+    ed.i = Math.max(ndOn(sim.nd) ? 1 : 0, Math.min(st.length - 1, ed.i + editNavStep(k, sim.rot)));
+  } else if (k === 'C' || k === 'D') {
+    // Vuoto, poi i vetri liberi del kit; in fondo si ricomincia.
+    const opts = stageOptions(ed.i, st), j = opts.indexOf(st[ed.i]);
+    st[ed.i] = opts[(j + keyDir(k, sim.rot) + opts.length) % opts.length];
+  }
+}
+function simEditArm() {
+  clearTimeout(simEditTimer);
+  if (sim.edit) simEditTimer = setTimeout(() => { sim.edit = null; sim.msg = `Modifica chiusa: ${EDIT_TIMEOUT_S} secondi senza tocchi.`; renderSim(); }, EDIT_TIMEOUT_S * 1000);
+}
+
 function simPress(k, long) {
   const plan = simPlan();
-  if (k === 'P') { sim.asleep = !sim.asleep; sim.msg = sim.asleep ? 'Spento: l\'e-paper resta visibile. Power per riaccendere.' : 'Acceso.'; return renderSim(); }
+  if (k === 'P') { sim.asleep = !sim.asleep; sim.edit = null; sim.msg = sim.asleep ? 'Spento: l\'e-paper resta visibile. Power per riaccendere.' : 'Acceso.'; return renderSim(); }
   if (sim.asleep) { sim.msg = 'È spento: solo il power lo riaccende.'; return renderSim(); }
   if (!plan.length) return;
+  if (sim.edit) { sim.msg = ''; simEditPress(k, long); simEditArm(); return renderSim(); }
   const cur = plan[sim.i] || plan[0], f = state.filters;
   const isFilters = cur.kind === 'filters';
+  if (isFilters && long && (k === 'A' || k === 'B')) {
+    if (!stageCount()) { sim.msg = 'Nessun vetro nel kit: aggiungili nello strumento web.'; return renderSim(); }
+    const first = ndOn(sim.nd) ? 1 : 0;
+    if (first >= sim.stages.length) { sim.msg = 'L\'unico stadio è occupato dall\'ND.'; return renderSim(); }
+    sim.edit = { i: first }; sim.msg = 'Modifica stadi: A/B stadio, C/D vetro, E o F per uscire.'; simEditArm();
+    return renderSim();
+  }
   const act = rockerAction(k, isFilters, sim.rot);
   const step = d => { sim.i = (sim.i + d + plan.length) % plan.length; };
   sim.msg = '';
@@ -1341,7 +1544,13 @@ function simPress(k, long) {
   } else if (act.role === 'dio') {
     sim.dio = Math.max(0, Math.min(dioSteps().length - 1, sim.dio + act.dir));
   } else if (act.role === 'nd') {
+    const was = ndOn(sim.nd);
     sim.nd = Math.max(0, Math.min(ndSteps().length - 1, sim.nd + act.dir));
+    // L'ND rientra nello stadio 1: i vetri scalano verso il fronte.
+    if (!was && ndOn(sim.nd) && stageCount() && sim.stages[0]) {
+      const out = makeRoomForNd(sim.stages);
+      sim.msg = 'ND nello stadio 1: i vetri scalano di uno stadio.' + (out ? ` Tolto: ${kitGlasses().find(g => g.key === out)?.label}.` : '');
+    }
   } else if (act.role === 'nav') step(act.dir);
   else if (k === 'E') { if (isFilters) step(1); else if (!simGoto(p => p.kind === 'filters')) sim.msg = 'Nessuna schermata filtri.'; }
   else if (k === 'F') {
@@ -1353,14 +1562,19 @@ function simPress(k, long) {
 
 function renderSim() {
   const plan = simPlan(), f = state.filters;
-  if (sim.nd === null || sim.nd >= ndSteps().length) sim.nd = Math.min(f.previewNd, ndSteps().length - 1);
-  if (sim.dio === null || sim.dio >= dioSteps().length) sim.dio = Math.min(f.previewDio, dioSteps().length - 1);
+  // Se cambiano i filtri nello strumento, il dispositivo riparte dai valori iniziali.
+  const sig = JSON.stringify(f);
+  if (sig !== sim.sig) { sim.sig = sig; sim.nd = Math.min(f.previewNd, ndSteps().length - 1); sim.dio = Math.min(f.previewDio, dioSteps().length - 1); sim.stages = [...f.stages]; }
   if (sim.i >= plan.length) sim.i = 0;
   const dev = $("#simDevice"), cv = $('#simScreen'), ctx = cv.getContext('2d');
   dev.style.transform = `rotate(${sim.rot}deg)`;
   dev.classList.toggle('asleep', sim.asleep);
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
   const item = plan[sim.i];
+  if (sim.edit && (item?.kind !== 'filters' || !stageCount())) sim.edit = null;
+  const first = ndOn(sim.nd) ? 1 : 0;
+  if (sim.edit && first >= sim.stages.length) sim.edit = null;
+  if (sim.edit) sim.edit.i = Math.max(first, Math.min(sim.edit.i, sim.stages.length - 1));
   if (!item) {
     ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.font = `700 28px ${FONT}`;
     ctx.fillText('NESSUNA CARD', cv.width / 2, cv.height / 2);
@@ -1370,7 +1584,7 @@ function renderSim() {
     let layout = angle % 180 === 90 ? 'land' : 'port';
     const avail = item.kind === 'card' ? layoutsOf(item.card) : ['land', 'port'];
     if (!avail.includes(layout)) { layout = layout === 'land' ? 'port' : 'land'; angle = (angle + 270) % 360; }
-    const r = renderScreen(item, layout, { preview: true, noHints: true, nd: sim.nd, dio: sim.dio });
+    const r = renderScreen(item, layout, { preview: true, noHints: true, nd: sim.nd, dio: sim.dio, stages: sim.stages, sel: sim.edit ? sim.edit.i : -1 });
     const [tmp, tctx] = newCanvas(r.w, r.h), img = tctx.createImageData(r.w, r.h);
     for (let i = 0; i < r.w * r.h; i++) { const c = r.bits[i] ? 255 : 0; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = c; img.data[i * 4 + 3] = 255; }
     tctx.putImageData(img, 0, 0);
@@ -1379,7 +1593,7 @@ function renderSim() {
     // Indicazioni sul bordo dei tasti (fisso), con il testo dritto per chi guarda.
     if (item.kind === 'filters') {
       for (const k of ['A', 'B', 'C', 'D']) {
-        const t = rockerHint(k, sim.rot); if (!t) continue;
+        const t = sim.edit ? editHint(k, sim.rot) : rockerHint(k, sim.rot); if (!t) continue;
         ctx.save(); ctx.translate(KEY_POS[k] * cv.width, cv.height - STRIP.port / 2); ctx.rotate(-sim.rot * Math.PI / 180);
         ctx.font = `700 15px ui-monospace, Menlo, monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         const w = ctx.measureText(t).width + 10;
@@ -1388,14 +1602,15 @@ function renderSim() {
       }
     }
   }
-  const name = item ? (item.kind === 'lenschart' ? `Lens chart${plan.filter(p => p.kind === 'lenschart').length > 1 ? ` ${item.page + 1}` : ''}` : item.kind === 'filters' ? 'Filtri' : cardTitle(item.card)) : '—';
+  const name = sim.edit ? 'Filtri · modifica stadi' : item ? (item.kind === 'lenschart' ? `Lens chart${plan.filter(p => p.kind === 'lenschart').length > 1 ? ` ${item.page + 1}` : ''}` : item.kind === 'filters' ? 'Filtri' : cardTitle(item.card)) : '—';
   $('#simStatus').textContent = [`${sim.i + 1}/${plan.length} · ${name}`, sim.locked ? 'rotazione bloccata' : '', sim.asleep ? 'spento' : '', sim.msg].filter(Boolean).join(' · ');
 }
 
 document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
-  simOn = b.dataset.mode === 'sim';
+  const mode = b.dataset.mode;
+  simOn = mode === 'sim';
   document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === b));
-  $('#previewMode').hidden = simOn; $('#simMode').hidden = !simOn;
+  $('#previewMode').hidden = mode !== 'preview'; $('#simMode').hidden = !simOn;
   if (simOn) renderSim(); else drawPreview();
 });
 $('#rotL').onclick = () => { sim.rot = (sim.rot + 270) % 360; sim.msg = ''; renderSim(); };
@@ -1418,6 +1633,9 @@ Promise.all([
     .then(d => { lensDb = d.lenses; lensById = new Map(lensDb.map(l => [l.id, l])); }).catch(() => { lensDbError = 'Database lenti non trovato. Avvia il server dalla radice del progetto: python3 -m http.server 8765, poi apri /companion/.'; }),
   fetch('../data/filters.json').then(r => r.json()).then(d => { filterDb = d.filters; }).catch(() => {}),
   ...state.cards.map(c => ensureImg(c.img)),
+  // Il canvas non aspetta i web font: vanno caricati prima di disegnare, altrimenti
+  // esce il font di riserva. Tutti i pesi usati dai disegni.
+  ...['Atkinson Hyperlegible', 'Inter', 'IBM Plex Sans'].flatMap(f => [400, 600, 700, 800, 900].map(w => document.fonts.load(`${w} 40px "${f}"`).catch(() => {}))),
 ]).then(refresh);
 refresh();
 </script>

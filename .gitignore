@@ -15,3 +15,6 @@ reference/
 
 # Impostazioni locali di Claude Code
 .claude/settings.local.json
+
+# Immagini di confronto font: materiale di lavoro, si rigenerano
+confronto-font/

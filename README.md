@@ -63,6 +63,9 @@ rotazione resta fissa.
 
 ## Strumento web
 
+Le schermate usano il font **Inter** (© The Inter Project Authors, licenza SIL
+Open Font License 1.1), incluso in `companion/fonts/` insieme alla sua licenza.
+
 Dalla radice del progetto (serve anche `data/`, con il database lenti):
 
 ```bash

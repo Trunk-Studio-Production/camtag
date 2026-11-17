@@ -15,7 +15,8 @@ costruttori di lenti e filtri nei dati vanno bene.
 - `device/` — firmware PlatformIO (C++/Arduino, ESP32-C3). È il nostro codice.
 - `companion/index.html` — strumento web a file singolo: lens chart e filtri
   generati in automatico più schede manuali (crew, note, lente singola, patch);
-  esporta uno zip di BMP 1 bit. Unica dipendenza: JSZip da cdnjs. Legge
+  esporta uno zip di BMP 1 bit. Dipendenze esterne: JSZip da cdnjs (i font
+  Inter sono nel repo). Legge
   `../data/*.json`, quindi va servito dalla radice del repo. Ha un
   **simulatore** (`simPress`/`renderSim`) con tasti, rotazione, blocco e power:
   è la specifica di comportamento per il firmware, e i due devono restare allineati.
@@ -25,7 +26,7 @@ costruttori di lenti e filtri nei dati vanno bene.
   locali per `id` nello strumento web (localStorage `camtag.lensOverrides.v1`,
   esportabili), applicate sopra il database quando si disegna. Un valore
   modificato porta un `*` accanto, sulla lens chart e nello strumento.
-- `data/filters.json` — catalogo filtri d'effetto **provvisorio, non verificato**.
+- `data/filters.json` — catalogo dei vetri (famiglie e gradazioni) **provvisorio, non verificato**.
 - `third_party/freeink-sdk/` — sottomodulo git bloccato su `77ae8c7`. **Non
   modificarlo**: se serve un cambiamento, aggira nel nostro codice o chiedi.
 - `reference/crosspoint/` — solo consultazione, escluso da git (come CrossPoint
@@ -64,6 +65,14 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   `pixelated` (che butta via righe); i pixel veri si vedono con "Pixel 1:1".
 - Disegnando per l'e-paper, righe sottili su pixel interi e spesse almeno 2 px:
   una riga da 1 px a mezzo pixel diventa grigia e la soglia a 1 bit la cancella.
+- Tipografia (`state.typo`): font tra sistema, Atkinson Hyperlegible, Inter,
+  IBM Plex Sans e soglia del testo 128 o 170, scelti dai menu nell'intestazione.
+  **Scelta dell'utente: Inter, soglia normale (128)**, che è il predefinito.
+  Inter 4.1 è incluso in `companion/fonts/` (variabile, licenza SIL OFL nel
+  file accanto) e funziona offline; gli altri due vengono da Google Fonts. I
+  font vanno caricati (`document.fonts.load`) prima di disegnare, altrimenti il
+  canvas usa il font di riserva. Le immagini di confronto stanno in
+  `confronto-font/` (fuori da git, si rigenerano).
 - microSD su SPI condiviso con il display; batteria 650 mAh con fuel gauge
   BQ27220; RTC DS3231; IMU QMI8658 (accelerometro + giroscopio).
 - Niente touch. Posizione naturale **verticale**: in basso due bilancieri,
@@ -77,11 +86,19 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 - `/camtag/NN_nome.bmp` orizzontale 792×528, `/camtag/NN_nome.p.bmp` verticale
   528×792. BMP 1 bit non compresso, palette 0 = nero, 1 = bianco. Ordine = nome.
 - Nomi riservati: `NN_lenschart[-2…]` (pagine da 11 righe) e `NN_filters`.
-- Schermata filtri: lo sfondo ha i riquadri dei valori vuoti; la cartella
-  `NN_filters/` contiene `screen.ini` (riquadri per orientamento, tasti e
-  indicazioni per ogni verso `keys.<gradi>`/`hints.<gradi>`, valori iniziali)
-  e i riquadri `ndI[.p].bmp`,
-  `dioI[.p].bmp` (I = passo; 0 = nessuno). Il firmware compone sfondo + riquadri.
+- Schermata filtri (specifica completa in `docs/filtri.md`): lo sfondo ha vuoti
+  i riquadri dei valori e l'area degli stadi. La cartella `NN_filters/` contiene
+  `screen.ini` v2 (riquadri e area stadi per orientamento, tasti e indicazioni
+  per verso `keys.<gradi>`, `hints.<gradi>`, `edit.keys.<gradi>`,
+  `edit.hints.<gradi>`, `edit.timeout`, vetri `kit.*`, `stages.count`,
+  `stages.nd` e `stages.start`) e i pezzi: `ndI`, `dioI` (I = passo, 0 =
+  nessuno); `stN`/`stsN` colonna del numero dello stadio N, normale e
+  selezionata; `fxG`/`fxsG` vetro G (indice nel kit, `n` = vuoto), normale e
+  selezionato; `fxdI` l'ND al passo I nella riga dello stadio 1. Tutti `.bmp`, con
+  `.p.bmp` per il verticale. Una riga = `stN` + `fxG` affiancati (`listNum` =
+  larghezza del numero), altezza fissa `listRow`; in cima a ogni riga dopo la
+  prima il firmware disegna un separatore da 2 px. Comporre i pezzi deve dare
+  l'anteprima pixel per pixel (verificato, anche con una riga selezionata).
 - Sulla schermata filtri il contenuto lascia libere le fasce sui lati corti
   (40 px in verticale, 64 in orizzontale) per le indicazioni dei tasti; la barra
   del titolo invece arriva ai bordi, e le indicazioni vi si disegnano sopra in
@@ -108,8 +125,20 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 - ND e diottrie: +/− sul dispositivo, scorrendo solo i valori del kit scelto
   nello strumento web; si mostra solo il formato ND scelto (0,9 / 3 stop / ND8).
   Tipo ND: ND, IRND o FSND (full spectrum).
-- Filtri d'effetto (diffusione, contrasto, colore…): kit per famiglia con più
-  gradazioni; ognuna è "montata" o no, e la schermata mostra solo le montate.
+- Gli altri vetri (diffusione, polarizzatori, colore…) seguono il mattebox
+  (`docs/filtri.md`): un **kit** di vetri, uno per tipo, e da 1 a 4 **stadi**
+  numerati da 1 = lato lente; ogni stadio ha un vetro o è vuoto (`—`), e un
+  vetro sta in un solo stadio. Non esiste "montato": la schermata mostra sempre
+  tutti gli stadi sotto ND e diottria. **L'ND, quando c'è, occupa lo stadio 1**
+  (la riga 1 lo mostra e non si seleziona); senza ND lo stadio 1 è libero, e
+  quando l'ND rientra i vetri scalano di uno stadio verso il fronte
+  (`makeRoomForNd`; se non c'è posto l'ultimo esce). Il simulatore tiene il suo
+  stato (`sim.nd`, `sim.dio`, `sim.stages`) separato dai valori di partenza. Sul dispositivo si cambiano in
+  **modifica** (`simEditPress`), sulla stessa schermata: tieni A o B per
+  entrare; E o F per uscire (anche tieni A o B, o da soli dopo 30 s), A/B scelgono lo stadio, C/D
+  scorrono vuoto + i vetri liberi del kit, ricominciando in fondo. Selezione =
+  riga in negativo, niente cursore lampeggiante; aggiornamenti parziali,
+  completo all'uscita. Diottrie e ND restano su A|B e C|D fuori dalla modifica.
 - Tasti: schermata filtri A/B = diottria −/+, C/D = ND −/+; altrove A/B =
   schermata precedente/successiva. E = salto ai filtri (dai filtri: schermata
   successiva), F = lens chart (pagina successiva), E tenuto = blocco rotazione.
