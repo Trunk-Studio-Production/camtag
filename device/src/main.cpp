@@ -4,9 +4,11 @@
 //                                NOME.p.bmp (verticale,   528x792)
 // L'accelerometro (solo X3) sceglie orientamento e variante.
 //
-// Tasti:  destra/giù/conferma breve = card successiva
-//         sinistra/su/indietro      = card precedente
-//         conferma tenuto premuto   = blocca/sblocca la rotazione
+// Tasti (come nel simulatore dello strumento web):
+//         E (lato destro)           = card successiva, in ciclo
+//         F (lato sinistro)         = card precedente, in ciclo
+//         E tenuto premuto          = blocca/sblocca la rotazione
+//         A B C D (bilancieri)      = nessuna funzione qui: mai cambio pagina
 //         power                     = spegni subito
 // Dopo IDLE_SLEEP_MS senza input si spegne da solo: l'e-paper resta visibile.
 
@@ -38,6 +40,14 @@ constexpr int LOW_BATTERY_PERCENT = 20;
 constexpr uint8_t FULL_REFRESH_EVERY = 6;
 constexpr uint32_t LONG_PRESS_MS = 800;
 constexpr uint32_t BANNER_MS = 1500;
+
+// --- Tasti fisici -> tasti logici dell'SDK ------------------------------------
+// I quattro tasti in basso (A|B, C|D) stanno sull'ingresso analogico 1, che
+// l'SDK chiama BACK/CONFIRM/LEFT/RIGHT; i due laterali (E, F) sull'ingresso 2,
+// UP/DOWN. Quale dei due laterali è E è DA TARARE sull'X3: con CAMTAG_DEBUG il
+// monitor seriale stampa il tasto logico di ogni pressione.
+constexpr uint8_t kKeyE = InputManager::BTN_DOWN;
+constexpr uint8_t kKeyF = InputManager::BTN_UP;
 
 // --- Orientamento -----------------------------------------------------------
 // Mappatura assi IMU -> pannello. DA TARARE sull'X3: con CAMTAG_DEBUG il monitor
@@ -319,12 +329,9 @@ void loop() {
 
   if (!cards.empty()) {
     int step = 0;
-    if (input.wasPressed(InputManager::BTN_RIGHT) || input.wasPressed(InputManager::BTN_DOWN))
-      step = 1;
-    else if (input.wasPressed(InputManager::BTN_LEFT) || input.wasPressed(InputManager::BTN_UP) ||
-             input.wasPressed(InputManager::BTN_BACK))
+    if (input.wasPressed(kKeyF))
       step = -1;
-    else if (input.wasReleased(InputManager::BTN_CONFIRM)) {
+    else if (input.wasReleased(kKeyE)) {
       if (input.getHeldTime() >= LONG_PRESS_MS)
         toggleRotationLock();
       else
@@ -336,6 +343,10 @@ void loop() {
     }
   }
   if (input.wasAnyPressed() || input.wasAnyReleased()) lastActivityMs = millis();
+#ifdef CAMTAG_DEBUG
+  for (uint8_t b = 0; b <= InputManager::BTN_POWER; b++)
+    if (input.wasPressed(b)) LOGF("[camtag] tasto logico %u\n", b);
+#endif
 
   if (bannerUntilMs && millis() > bannerUntilMs) {
     bannerUntilMs = 0;

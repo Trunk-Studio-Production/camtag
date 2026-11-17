@@ -174,5 +174,6 @@ non è più vero invece di aggiungere note.
 ## Da tarare sull'hardware (aperto)
 
 - Assi IMU: `kImuSwapXY`, `kImuSignX`, `kImuSignY` in `device/src/main.cpp`.
-- Quale tasto logico dell'SDK (BACK/CONFIRM/LEFT/RIGHT/UP/DOWN) è A–F.
+- Tasti: A–D sono BACK/CONFIRM/LEFT/RIGHT (ingresso analogico 1), E/F sono
+  UP/DOWN (ingresso 2); da verificare quale è quale (`kKeyE`, `kKeyF`).
 - Ghosting (`FULL_REFRESH_EVERY`) e consumo da spento.

@@ -29,9 +29,10 @@ git clone --depth 1 https://github.com/crosspoint-reader/crosspoint-reader refer
 1. Nello strumento web crei le card e scarichi lo zip.
 2. Copi la cartella `camtag/` dello zip nella radice della microSD dell'X3.
 3. Sul dispositivo:
-   - **destra / giù / conferma (breve)**: card successiva
-   - **sinistra / su / indietro**: card precedente
-   - **conferma tenuto premuto (0,8 s)**: blocca/sblocca la rotazione
+   - **E** (lato destro): card successiva; **F** (lato sinistro): precedente,
+     in ciclo
+   - **E tenuto premuto (0,8 s)**: blocca/sblocca la rotazione
+   - A, B, C, D non cambiano card
    - **power**: spegne subito
    - dopo 20 s senza tasti si spegne da solo; l'e-paper continua a mostrare la card
    - il power lo riaccende sull'ultima card; ridisegna solo se nel frattempo
@@ -130,7 +131,9 @@ ripristino restano compatibili.
 ## Da verificare sull'hardware
 
 - [ ] Rilevamento X3 e controller del display (UC8253 o UC8279)
-- [ ] Mappatura dei tasti (quale fisico corrisponde a "destra", "su"…)
+- [ ] Mappatura dei tasti: E ed F sono i tasti logici UP/DOWN dell'SDK, ma
+      quale sia quale va verificato (`kKeyE`, `kKeyF` in `device/src/main.cpp`;
+      con il monitor seriale aperto ogni pressione stampa il tasto logico)
 - [ ] **Taratura assi IMU**: con il monitor seriale aperto stampa `ax/ay/az`
       ogni secondo. Regola `kImuSwapXY`, `kImuSignX` e `kImuSignY` in
       `device/src/main.cpp` finché i 4 versi corrispondono
