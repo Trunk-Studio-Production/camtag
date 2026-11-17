@@ -1,0 +1,17 @@
+# Ambiente locale
+.venv/
+.DS_Store
+
+# Build PlatformIO
+device/.pio/
+device/.cache/
+device/build.log
+
+# Solo consultazione: si riclona da https://github.com/crosspoint-reader/crosspoint-reader
+reference/
+
+# Backup della flash del dispositivo (contengono dati di fabbrica)
+*.bin
+
+# Impostazioni locali di Claude Code
+.claude/settings.local.json
