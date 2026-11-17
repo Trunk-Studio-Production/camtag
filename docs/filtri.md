@@ -6,8 +6,8 @@ il simulatore e per il firmware (`device/`), che devono restare allineati.
 ## Concetti
 
 - **ND**: un valore solo, quello totale davanti alla lente. Si scorre fra i
-  valori del kit ND, nel formato scelto (densità, stop o fattore) e con il tipo
-  scelto (ND, IRND, FSND).
+  valori del kit ND e le coppie scelte (vedi sotto), nel formato scelto
+  (densità, stop o fattore) e con il tipo scelto (ND, IRND, FSND).
 - **Diottria**: un valore solo, fra quelli del kit diottrie (intere o split).
 - **Kit dei vetri**: i vetri che ci sono nella valigetta, esclusi gli ND pieni.
   Ogni voce è una famiglia con una gradazione (es. "Black Pro-Mist 1/4"), o un
@@ -27,7 +27,29 @@ Un vetro può stare in un solo stadio alla volta.
 - Quando l'ND rientra e lo stadio 1 è occupato, i vetri **scalano di uno stadio
   verso il fronte**: il vetro dello stadio 1 passa al 2, e così via finché uno
   trova uno stadio vuoto. Se non c'è posto, l'ultimo vetro esce dal mattebox.
-- Togliere l'ND non sposta gli altri vetri.
+- Quando l'ND è tolto, gli altri vetri **tornano indietro verso la lente** di
+  tanti stadi quanti ne occupava l'ND (es. `ND 0,6 / BPM / Pola` diventa
+  `BPM / Pola / —`).
+
+### Due ND insieme
+
+- Un totale che il kit non ha come vetro singolo si può fare con **due vetri**
+  (es. kit 0,3 · 0,6 · 0,9 · 1,2 · 1,8: 1,5 = 1,2 + 0,3 e 2,1 = 1,8 + 0,3).
+  Nello strumento web si spuntano i totali voluti; solo quelli entrano nella
+  scala, in ordine di densità insieme ai vetri singoli.
+- Se il kit ha già quel valore come vetro singolo, la coppia non si propone.
+  Se un totale si fa in più modi vale la coppia con il vetro più denso. Mai
+  più di due vetri.
+- Una coppia occupa gli **stadi 1 e 2**: il vetro più denso nello stadio 1.
+  Gli altri vetri scalano verso il fronte con la stessa regola di sopra.
+- Passando **da due ND a uno**, gli altri vetri tornano indietro di uno stadio,
+  così restano accanto all'ND (es. `ND 1,2 / ND 0,3 / BPM` diventa
+  `ND 1,2 / BPM / —`). È la stessa regola di quando l'ND è tolto: i vetri
+  tornano indietro di tanti stadi quanti l'ND ne libera, tutti insieme, quindi
+  uno stadio lasciato vuoto fra due vetri resta vuoto.
+- Il riquadro grande dell'ND cambia a ogni tocco. Gli stadi si riordinano solo
+  quando il valore resta **fermo per 2 secondi** (o al primo tasto che non è
+  ±ND): passare da una coppia mentre si scorre non sposta e non toglie nulla.
 
 ## Schermata sul dispositivo
 
@@ -52,14 +74,16 @@ Un vetro può stare in un solo stadio alla volta.
   sulla stessa schermata (ND e diottria restano visibili). Si parte dal primo
   stadio selezionabile. Niente cursori lampeggianti.
 - **A/B** spostano la selezione fra gli stadi (si ferma al primo e all'ultimo).
-  Con l'ND montato lo stadio 1 non si seleziona: si parte dal 2. Se il mattebox
-  ha un solo stadio ed è dell'ND, la modifica non si apre.
+  Gli stadi occupati dall'ND non si selezionano: si parte dal primo libero. Se
+  l'ND li occupa tutti, la modifica non si apre.
 - **C/D** cambiano il vetro dello stadio selezionato. L'ordine è: vuoto, poi
   tutti i vetri del kit nell'ordine del kit (per famiglia), saltando quelli già
   in un altro stadio. Arrivati in fondo si ricomincia dall'inizio.
 - **E o F** per uscire, con un tocco solo; vale anche tenere di nuovo A o B.
   In modifica E e F fanno soltanto questo: non cambiano schermata e non
-  bloccano la rotazione. Si esce da soli dopo **30 secondi** senza tocchi.
+  bloccano la rotazione.
+- Dopo **5 secondi** senza tocchi la modifica è accettata e si esce da soli:
+  uscire a mano non è necessario.
 - In modifica ND e diottria non si cambiano.
 - Le indicazioni dei tasti diventano ▲ ▼ per A|B e − + per C|D ("+" in alto o
   a destra, come fuori dalla modifica).
@@ -68,13 +92,14 @@ Un vetro può stare in un solo stadio alla volta.
 
 ## Strumento web
 
-- **ND** e **Diottrie**: kit, formato, tipo e valori iniziali.
+- **ND** e **Diottrie**: kit, formato, tipo e valori iniziali. Sotto il kit ND,
+  "Combinazioni di due ND": i totali possibili con i loro due vetri, da spuntare.
 - **Vetri nel kit**: famiglie dal catalogo (`data/filters.json`) o
   personalizzate, con le loro gradazioni. Ogni gradazione e ogni famiglia ha
   una ✕ per toglierla. Togliere un vetro che sta in uno stadio svuota lo stadio.
 - **Mattebox**: numero di stadi e, per ogni stadio, il vetro di partenza scelto
-  da un menu (i vetri già in un altro stadio non sono selezionabili). Se l'ND
-  di partenza non è "nessuno", lo stadio 1 è suo e non si sceglie.
+  da un menu (i vetri già in un altro stadio non sono selezionabili). Gli stadi
+  occupati dall'ND di partenza (uno, o due per una coppia) non si scelgono.
 - Il simulatore tiene il suo stato (ND, diottria, stadi), come il dispositivo:
   quello che cambi con i tasti non tocca i valori di partenza. Riparte da
   quelli quando cambi i filtri nello strumento.
@@ -89,11 +114,15 @@ sfondo ha vuoti i riquadri di ND e diottria e l'area degli stadi.
 `screen.ini` (versione 2):
 
 - `nd.*`, `dio.*`, `keys.<gradi>`, `hints.<gradi>`: ND, diottria e tasti fuori
-  dalla modifica.
+  dalla modifica. `nd.labels` è la scala (passo 0 = nessuno), coppie comprese.
+  `nd.glasses` sono i vetri ND del kit; `nd.parts` dice per ogni passo quali
+  vetri lo fanno (indici da 1 in `nd.glasses`, `4+1` per una coppia con il
+  primo nello stadio 1, `-` = nessuno). `nd.settle`: secondi di valore fermo
+  prima di riordinare gli stadi.
 - `kit.count`, `kit.labels`: i vetri, nell'ordine in cui si scorrono.
 - `stages.count`, `stages.start`: numero di stadi e vetro di partenza di ognuno
-  (indice nel kit, `-` = vuoto). `stages.nd`: lo stadio dell'ND (1); se
-  `nd.start` non è 0 quello stadio parte vuoto in `stages.start`.
+  (indice nel kit, `-` = vuoto). `stages.nd`: il primo stadio dell'ND (1); gli
+  stadi occupati dall'ND di partenza sono vuoti in `stages.start`.
 - `<verso>.list` (x, y, larghezza, altezza dell'area), `<verso>.listRow`
   (altezza di una riga), `<verso>.listNum` (larghezza della colonna del numero).
 - `edit.keys.<gradi>`, `edit.hints.<gradi>`, `edit.timeout` (secondi).
@@ -103,9 +132,9 @@ Pezzi, tutti `.bmp` con `.p.bmp` per il verticale:
 - `ndI`, `dioI`: riquadri dei valori (I = passo).
 - `stN`, `stsN`: colonna del numero dello stadio N (da 1), normale e selezionata.
 - `fxG`, `fxsG`: vetro G (indice nel kit, `n` = vuoto), normale e selezionato.
-- `fxdI`: l'ND al passo I (da 1) per la riga dello stadio 1; solo normale,
-  perché quella riga non si seleziona mentre c'è l'ND.
+- `fxdK`: il vetro ND K (da 1, come in `nd.glasses`) per le righe degli stadi
+  dell'ND; solo normale, perché quelle righe non si selezionano.
 
-Una riga si compone con `stN` a sinistra e `fxG` (o `fxdI`) subito a destra; fra una riga
+Una riga si compone con `stN` a sinistra e `fxG` (o `fxdK`) subito a destra; fra una riga
 e la successiva il firmware disegna un separatore nero da 2 px, in cima alla
 riga. Comporre i pezzi deve dare l'anteprima dello strumento web pixel per pixel.

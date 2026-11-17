@@ -240,7 +240,7 @@ function freshState() {
     version: 4, device: 'x3', decimal: ',', production: '', typo: { font: 'inter', threshold: 128 },
     auto: { lenschart: true, filters: true },
     lenses: [],
-    filters: { ndFormat: 'density', ndType: 'ND', nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], dio: [], effects: [], stages: [null, null, null], previewNd: 0, previewDio: 0 },
+    filters: { ndFormat: 'density', ndType: 'ND', nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], ndCombos: [], dio: [], effects: [], stages: [null, null, null], previewNd: 0, previewDio: 0 },
     cards: [DEFAULTS.crew()],
   };
 }
@@ -287,8 +287,8 @@ function addToKit(f, id, name, strengths, mounted = []) {
 }
 // Stadi del mattebox: filters.stages[i] = chiave del vetro nello stadio i+1
 // (1 = lato lente) oppure null = vuoto. Un vetro sta in un solo stadio.
-// L'ND, quando c'è, occupa lo stadio 1: lì stages[0] resta null e la riga mostra
-// l'ND. Qui ci sono i valori di partenza; il simulatore ne tiene una copia sua
+// L'ND, quando c'è, occupa lo stadio 1 (due ND insieme: stadi 1 e 2): lì stages[i]
+// resta null e la riga mostra l'ND. Qui ci sono i valori di partenza; il simulatore ne tiene una copia sua
 // (sim.stages, sim.nd), come farà il dispositivo.
 const MAX_STAGES = 4;
 function glassKey(e, s) { return `${e.id || 'c:' + e.name}|${s}`; }
@@ -304,21 +304,37 @@ function normalizeStages(f) {
 }
 // Senza vetri nel kit la lista degli stadi non compare.
 function stageCount() { return state.filters.effects.length ? state.filters.stages.length : 0; }
-// L'ND è montato? (il passo 0 è "nessuno")
-function ndOn(ndIdx = state.filters.previewNd) { return ndIdx > 0 && ndIdx < ndSteps().length; }
-// L'ND entra nello stadio 1: il vetro che c'era scala di uno stadio verso il
-// fronte, e così i successivi finché non trovano uno stadio vuoto; se non c'è
-// posto l'ultimo esce dal mattebox. Restituisce il vetro uscito (o null).
-function makeRoomForNd(stages) {
-  let carry = stages[0]; stages[0] = null;
-  for (let i = 1; i < stages.length && carry; i++) [stages[i], carry] = [carry, stages[i]];
-  return carry;
+// Quanti stadi occupa l'ND a quel passo: 0 = nessuno, 1 = un vetro, 2 = una coppia.
+function ndUsed(ndIdx = state.filters.previewNd) { return ndParts(ndSteps()[ndIdx] || 0).length; }
+// L'ND entra nei primi n stadi: i vetri che c'erano scalano verso il fronte, e
+// così i successivi finché non trovano uno stadio vuoto; se non c'è posto gli
+// ultimi escono dal mattebox. Restituisce { moved, out: [vetri usciti] }.
+function makeRoomForNd(stages, n = 1) {
+  const out = []; let moved = false;
+  n = Math.min(n, stages.length);
+  for (let k = n - 1; k >= 0; k--) {
+    let carry = stages[k]; if (!carry) continue;
+    stages[k] = null; moved = true;
+    for (let i = n; i < stages.length && carry; i++) [stages[i], carry] = [carry, stages[i]];
+    if (carry) out.push(carry);
+  }
+  return { moved, out };
+}
+// L'ND passa da `from` a `to` stadi occupati. Se ne servono di più i vetri
+// scalano verso il fronte (makeRoomForNd). Se ne libera (da due ND a uno, o ND
+// tolto) i vetri tornano indietro di altrettanti stadi, verso la lente.
+function ndStagesChanged(stages, from, to) {
+  if (to >= from) return makeRoomForNd(stages, to);
+  const d = from - to, old = [...stages];
+  for (let i = to; i < stages.length; i++) stages[i] = old[i + d] ?? null;
+  return { moved: stages.some((k, i) => k !== old[i]), out: [] };
 }
 // Testo dell'ND nella riga dello stadio 1 (il fattore porta già il tipo: "IRND8").
 function ndStageLabel(v) { const f = state.filters; return f.ndFormat === 'factor' ? ndLabel(v) : `${f.ndType} ${ndLabel(v)}`; }
 function stageLabels(stages = state.filters.stages, ndIdx = state.filters.previewNd) {
   const g = new Map(kitGlasses().map(x => [x.key, x.label]));
-  return stages.map((k, i) => (i === 0 && ndOn(ndIdx) ? ndStageLabel(ndSteps()[ndIdx]) : (k && g.get(k)) || '—'));
+  const nd = ndParts(ndSteps()[ndIdx] || 0);
+  return stages.map((k, i) => (i < nd.length ? ndStageLabel(nd[i]) : (k && g.get(k)) || '—'));
 }
 // Scelte per uno stadio: vuoto, poi i vetri del kit non usati negli altri stadi.
 function stageOptions(i, stages = state.filters.stages) {
@@ -355,10 +371,31 @@ function ndLabel(d) {
   const stops = Math.round(d / 0.3 * 10) / 10;
   if (state.filters.ndFormat === 'stops') return `${fmt(stops, 1)} stop`;
   if (state.filters.ndFormat === 'factor') return `${state.filters.ndType}${Math.round(2 ** stops)}`;
-  return fmt(d, 2);
+  return Number.isInteger(d) ? `${d}${state.decimal}0` : fmt(d, 2);  // 3,0 e non "3"
 }
 function dioLabel(d) { return d ? `${DIO_LABEL[d.v] || '+' + fmt(d.v)}${d.split ? ' SPLIT' : ''}` : '—'; }
-function ndSteps() { return [0, ...[...state.filters.nd].sort((a, b) => a - b)]; }
+// Totali che si ottengono con due ND del kit e che il kit non ha già come vetro
+// singolo. Se un totale si fa in più modi vale la coppia con il vetro più denso.
+// parts = [più denso, meno denso]: il più denso sta nello stadio 1.
+function ndComboList(f = state.filters) {
+  const nd = [...f.nd].sort((a, b) => a - b), best = new Map();
+  for (let i = 0; i < nd.length; i++) for (let j = i + 1; j < nd.length; j++) {
+    const t = Math.round((nd[i] + nd[j]) * 100) / 100;
+    if (nd.includes(t)) continue;
+    if (!best.has(t) || nd[j] > best.get(t)[0]) best.set(t, [nd[j], nd[i]]);
+  }
+  return [...best].sort((a, b) => a[0] - b[0]).map(([total, parts]) => ({ total, parts }));
+}
+// Scala dell'ND: nessuno, poi i vetri del kit e le coppie scelte, per densità.
+function ndSteps() {
+  const f = state.filters, ok = new Set(ndComboList().map(c => c.total));
+  return [0, ...[...f.nd, ...(f.ndCombos || []).filter(t => ok.has(t))].sort((a, b) => a - b)];
+}
+// I vetri che fanno quel valore: uno, o i due di una coppia.
+function ndParts(v) {
+  if (!v) return [];
+  return state.filters.nd.includes(v) ? [v] : ndComboList().find(c => c.total === v)?.parts || [v];
+}
 function dioSteps() { return [null, ...[...state.filters.dio].sort((a, b) => a.v - b.v || a.split - b.split)]; }
 
 function slug(s) {
@@ -624,7 +661,7 @@ function drawStageNum(ctx, x, y, w, h, n, selected) {
 // la più grande che entra ovunque.
 function stageFontSize(w, h) {
   const [, c] = newCanvas(1, 1);
-  const labels = [...kitGlasses().map(g => g.label), ...ndSteps().slice(1).map(ndStageLabel)];
+  const labels = [...kitGlasses().map(g => g.label), ...state.filters.nd.map(ndStageLabel)];
   return Math.min(...labels.map(t => fitFont(c, t, 800, w - 16, h * 0.55)));
 }
 function drawStageGlass(ctx, x, y, w, h, label, selected, size) {
@@ -877,7 +914,7 @@ function renderScreen(s, layout, opts = {}) {
       const f = state.filters;
       drawTile(ctx, L.nd.x, L.nd.y, L.nd.w, L.nd.h, ndLabel(ndSteps()[opts.nd ?? f.previewNd] || 0));
       if (L.dio) drawTile(ctx, L.dio.x, L.dio.y, L.dio.w, L.dio.h, dioLabel(dioSteps()[opts.dio ?? f.previewDio] || null));
-      if (stageCount()) drawStages(ctx, L, stageLabels(opts.stages ?? f.stages, opts.nd ?? f.previewNd), opts.sel ?? -1);
+      if (stageCount()) drawStages(ctx, L, stageLabels(opts.stages ?? f.stages, opts.ndStages ?? opts.nd ?? f.previewNd), opts.sel ?? -1);
       if (!opts.noHints) drawHintsPreview(ctx, W, H);
     }
   } else {
@@ -921,6 +958,11 @@ function filtersIni() {
   const out = ['# camtag screen v2', 'type=filters'];
   const nd = ndSteps(), dio = dioSteps();
   out.push(`nd.count=${nd.length}`, `nd.labels=${nd.map(ndLabel).join('|')}`);
+  // Vetri ND del kit e, per ogni passo, quali vetri lo fanno (indici da 1, "+" per
+  // una coppia, il primo nello stadio 1). Gli stadi si riordinano quando il valore
+  // resta fermo per nd.settle secondi.
+  const ndGlasses = [...state.filters.nd].sort((a, b) => a - b);
+  out.push(`nd.glasses=${ndGlasses.map(ndStageLabel).join('|')}`, `nd.parts=${nd.map(v => ndParts(v).map(g => ndGlasses.indexOf(g) + 1).join('+') || '-').join('|')}`, `nd.settle=${ND_SETTLE_S}`);
   out.push(`dio.count=${state.filters.dio.length ? dio.length : 0}`);
   if (state.filters.dio.length) out.push(`dio.labels=${dio.map(dioLabel).join('|')}`);
   for (const layout of ['land', 'port']) {
@@ -939,8 +981,8 @@ function filtersIni() {
   // Stadi del mattebox: i vetri del kit nell'ordine in cui si scorrono, e il vetro
   // di partenza di ogni stadio (indice nel kit, "-" = vuoto). Pezzi: stN / stsN =
   // colonna del numero dello stadio N (normale / selezionata); fxG / fxsG = vetro G
-  // (indice nel kit, n = vuoto); fxdI = l'ND al passo I, per lo stadio dell'ND
-  // (stages.nd), che lo mostra finché l'ND non è "nessuno". Tutti con .p per il verticale.
+  // (indice nel kit, n = vuoto); fxdK = il vetro ND K (vedi nd.glasses, nd.parts),
+  // per gli stadi dell'ND a partire da stages.nd. Tutti con .p per il verticale.
   const kit = kitGlasses(), stages = stageCount() ? state.filters.stages : [];
   out.push(`kit.count=${kit.length}`, `kit.labels=${kit.map(g => g.label).join('|')}`);
   out.push(`stages.count=${stages.length}`, `stages.nd=1`, `stages.start=${stages.map(k => (k ? kit.findIndex(g => g.key === k) : '-')).join('|')}`);
@@ -982,8 +1024,9 @@ async function buildZip() {
           if (stageCount()) [['n', '—'], ...kitGlasses().map((g, i) => [i, g.label])].forEach(([i, label]) =>
             sub.file(`${sel ? 'fxs' : 'fx'}${i}${ext}`, bits(gw, L.listRow, c => drawStageGlass(c, 0, 0, gw, L.listRow, label, sel, fs))));
         }
-        // L'ND nello stadio 1: mai selezionato, quindi solo la versione normale.
-        if (stageCount()) ndSteps().forEach((v, i) => { if (i) sub.file(`fxd${i}${ext}`, bits(gw, L.listRow, c => drawStageGlass(c, 0, 0, gw, L.listRow, ndStageLabel(v), false, fs))); });
+        // I vetri ND negli stadi: mai selezionati, quindi solo la versione normale.
+        if (stageCount()) [...state.filters.nd].sort((a, b) => a - b).forEach((v, i) =>
+          sub.file(`fxd${i + 1}${ext}`, bits(gw, L.listRow, c => drawStageGlass(c, 0, 0, gw, L.listRow, ndStageLabel(v), false, fs))));
       }
     }
   }
@@ -1219,7 +1262,14 @@ function renderDbResults(box, query, brand, type) {
 // ---------- editor: filtri ----------
 function filtersEditor(ed) {
   const f = state.filters;
-  const clampPreview = () => { f.previewNd = Math.min(f.previewNd, ndSteps().length - 1); f.previewDio = Math.min(f.previewDio, dioSteps().length - 1); if (ndOn()) makeRoomForNd(f.stages); };
+  const clampPreview = (was = ndUsed()) => { f.previewNd = Math.min(f.previewNd, ndSteps().length - 1); f.previewDio = Math.min(f.previewDio, dioSteps().length - 1); ndStagesChanged(f.stages, was, ndUsed()); };
+  // Cambia il kit ND o le coppie tenendo fermo il valore di partenza (non il suo indice).
+  const editNd = fn => {
+    const v = ndSteps()[f.previewNd], was = ndUsed(); fn();
+    const ok = new Set(ndComboList().map(c => c.total)); f.ndCombos = f.ndCombos.filter(t => ok.has(t));
+    const i = ndSteps().indexOf(v); if (i >= 0) f.previewNd = i;
+    clampPreview(was); changed(true);
+  };
   ed.append(h('h2', {}, 'Filtri'),
     h('label', { class: 'inline' }, h('input', { type: 'checkbox', checked: state.auto.filters, onchange: e => { state.auto.filters = e.target.checked; changed(); } }), 'Includi nell\'esportazione'));
 
@@ -1234,8 +1284,15 @@ function filtersEditor(ed) {
           ...[['ND', 'ND'], ['IRND', 'IRND'], ['FSND', 'FSND (full spectrum)']].map(([v, t]) => h('option', { value: v, selected: f.ndType === v }, t))))),
     h('label', {}, 'ND nel kit (i tasti C/D scorrono solo questi)'),
     h('div', { class: 'checks' }, ...ND_VALUES.map(v => h('label', { class: 'inline' },
-      h('input', { type: 'checkbox', checked: f.nd.includes(v), onchange: e => { f.nd = e.target.checked ? [...f.nd, v] : f.nd.filter(x => x !== v); clampPreview(); changed(true); } }),
+      h('input', { type: 'checkbox', checked: f.nd.includes(v), onchange: e => editNd(() => { f.nd = e.target.checked ? [...f.nd, v] : f.nd.filter(x => x !== v); }) }),
       ndLabel(v)))));
+  // Totali fatti con due vetri: entrano nella scala solo quelli spuntati.
+  const combos = ndComboList();
+  if (combos.length) ed.append(h('label', {}, 'Combinazioni di due ND'),
+    h('div', { class: 'checks' }, ...combos.map(c => h('label', { class: 'inline' },
+      h('input', { type: 'checkbox', checked: f.ndCombos.includes(c.total), onchange: e => editNd(() => { f.ndCombos = e.target.checked ? [...f.ndCombos, c.total] : f.ndCombos.filter(t => t !== c.total); }) }),
+      `${ndLabel(c.total)} = ${ndLabel(c.parts[0])} + ${ndLabel(c.parts[1])}`))),
+    h('p', { class: 'hint' }, 'Spunta i totali che fai con due vetri: C/D li scorrono insieme agli altri, e sul dispositivo i due vetri occupano gli stadi 1 e 2.'));
 
   // Diottrie
   const has = (v, split) => f.dio.some(d => d.v === v && d.split === split);
@@ -1250,7 +1307,7 @@ function filtersEditor(ed) {
   // Valori iniziali / anteprima
   ed.append(h('h3', {}, 'Valori iniziali'),
     h('div', { class: 'two' },
-      h('div', {}, h('label', {}, 'ND'), h('select', { onchange: e => { f.previewNd = +e.target.value; if (ndOn()) makeRoomForNd(f.stages); changed(true); } },
+      h('div', {}, h('label', {}, 'ND'), h('select', { onchange: e => { const was = ndUsed(); f.previewNd = +e.target.value; ndStagesChanged(f.stages, was, ndUsed()); changed(true); } },
         ...ndSteps().map((v, i) => h('option', { value: i, selected: f.previewNd === i }, ndLabel(v))))),
       h('div', {}, h('label', {}, 'Diottria'), h('select', { disabled: !f.dio.length, onchange: e => { f.previewDio = +e.target.value; changed(); } },
         ...dioSteps().map((v, i) => h('option', { value: i, selected: f.previewDio === i }, dioLabel(v)))))),
@@ -1259,7 +1316,7 @@ function filtersEditor(ed) {
   // Mattebox: quanti stadi e cosa c'è in ognuno all'avvio.
   const kit = kitGlasses();
   const setStages = n => { f.stages = Array.from({ length: n }, (_, i) => f.stages[i] ?? null); changed(true); };
-  const ndRow = ndOn();  // l'ND di partenza occupa lo stadio 1
+  const ndStart = ndParts(ndSteps()[f.previewNd] || 0);  // l'ND di partenza occupa i primi stadi
   ed.append(h('h3', {}, 'Mattebox'),
     h('div', {}, h('label', {}, 'Stadi'),
       h('select', { onchange: e => setStages(+e.target.value) },
@@ -1267,15 +1324,15 @@ function filtersEditor(ed) {
     h('table', { class: 't' }, ...f.stages.map((k, i) => {
       const opts = stageOptions(i);
       const name = h('td', { class: 'num' }, `${i + 1}${i === 0 ? ' · lato lente' : ''}`);
-      if (i === 0 && ndRow) return h('tr', {}, name, h('td', {}, h('select', { disabled: true }, h('option', {}, `${ndStageLabel(ndSteps()[f.previewNd])} · l'ND di partenza`))));
+      if (i < ndStart.length) return h('tr', {}, name, h('td', {}, h('select', { disabled: true }, h('option', {}, `${ndStageLabel(ndStart[i])} · l'ND di partenza`))));
       return h('tr', {}, name,
         h('td', {}, h('select', { disabled: !kit.length, onchange: e => { f.stages[i] = e.target.value || null; changed(true); } },
           h('option', { value: '', selected: !k }, '— vuoto'),
           ...kit.map(g => h('option', { value: g.key, selected: g.key === k, disabled: !opts.includes(g.key) }, g.label)))));
     })),
-    h('p', { class: 'hint' }, 'L\'ND, quando c\'è, sta nello stadio 1. Senza ND lo stadio 1 è libero per un altro vetro; quando l\'ND rientra, i vetri scalano di uno stadio verso il fronte e, se non c\'è posto, l\'ultimo esce.'),
+    h('p', { class: 'hint' }, 'L\'ND, quando c\'è, sta nello stadio 1 (due ND insieme: stadi 1 e 2). Gli stadi che l\'ND non usa sono liberi per gli altri vetri; quando l\'ND ne ha bisogno, i vetri scalano verso il fronte e, se non c\'è posto, l\'ultimo esce. Quando l\'ND libera uno stadio (da due ND a uno, o ND tolto) i vetri tornano indietro verso la lente.'),
     h('p', { class: 'hint' }, kit.length
-      ? 'Il dispositivo parte da qui. Per cambiare i vetri sul dispositivo: nella schermata filtri tieni A o B, scegli lo stadio con A/B e il vetro con C/D, poi premi E o F per uscire.'
+      ? 'Il dispositivo parte da qui. Per cambiare i vetri sul dispositivo: nella schermata filtri tieni A o B, scegli lo stadio con A/B e il vetro con C/D. Dopo 5 secondi senza tocchi la modifica è accettata; per uscire subito premi E o F.'
       : 'Aggiungi dei vetri al kit qui sotto per riempire gli stadi.'));
 
   // Kit: i vetri che hai nella valigetta (gli ND pieni stanno nel kit ND qui sopra).
@@ -1456,7 +1513,7 @@ $('#importFile').onchange = e => {
 // Simulatore: dispositivo con i tasti, comportamento previsto per il firmware
 // ============================================================================
 // rot = rotazione fisica del dispositivo in gradi, in senso orario (0 = verticale, tasti in basso).
-const sim = { i: 0, rot: 0, locked: false, lockRot: 0, asleep: false, nd: null, dio: null, stages: [], sig: '', msg: '' };
+const sim = { i: 0, rot: 0, locked: false, lockRot: 0, asleep: false, nd: null, ndShown: 0, dio: null, stages: [], sig: '', msg: '' };
 let simOn = false;
 
 function simPlan() { return exportPlan(); }
@@ -1491,8 +1548,8 @@ function simGoto(pred) { const p = simPlan(), j = p.findIndex(pred); if (j >= 0)
 // Si entra tenendo A o B nella schermata filtri; si esce con E o F, o tenendo
 // di nuovo A o B (o da soli dopo EDIT_TIMEOUT_S). Lo stadio selezionato
 // è in negativo sulla stessa schermata: A/B cambiano stadio, C/D cambiano vetro.
-// Con l'ND montato lo stadio 1 è suo e non si seleziona.
-const EDIT_TIMEOUT_S = 30;  // senza tocchi si esce da soli
+// Gli stadi occupati dall'ND non si selezionano.
+const EDIT_TIMEOUT_S = 5;  // senza tocchi la modifica è accettata e si esce da soli
 let simEditTimer = 0;
 // Direzione "+" del tasto (in alto o a destra per chi guarda), come in rockerAction.
 function keyDir(k, rot) { const first = k === 'A' || k === 'C'; return first === (rot === 90 || rot === 180) ? 1 : -1; }
@@ -1508,7 +1565,7 @@ function simEditPress(k, long) {
   const ed = sim.edit, st = sim.stages;
   if (k === 'E' || k === 'F' || (long && (k === 'A' || k === 'B'))) { sim.edit = null; sim.msg = 'Stadi salvati.'; return; }
   if (k === 'A' || k === 'B') {
-    ed.i = Math.max(ndOn(sim.nd) ? 1 : 0, Math.min(st.length - 1, ed.i + editNavStep(k, sim.rot)));
+    ed.i = Math.max(ndUsed(sim.ndShown), Math.min(st.length - 1, ed.i + editNavStep(k, sim.rot)));
   } else if (k === 'C' || k === 'D') {
     // Vuoto, poi i vetri liberi del kit; in fondo si ricomincia.
     const opts = stageOptions(ed.i, st), j = opts.indexOf(st[ed.i]);
@@ -1517,22 +1574,37 @@ function simEditPress(k, long) {
 }
 function simEditArm() {
   clearTimeout(simEditTimer);
-  if (sim.edit) simEditTimer = setTimeout(() => { sim.edit = null; sim.msg = `Modifica chiusa: ${EDIT_TIMEOUT_S} secondi senza tocchi.`; renderSim(); }, EDIT_TIMEOUT_S * 1000);
+  if (sim.edit) simEditTimer = setTimeout(() => { sim.edit = null; sim.msg = `Stadi salvati: ${EDIT_TIMEOUT_S} secondi senza tocchi.`; renderSim(); }, EDIT_TIMEOUT_S * 1000);
+}
+
+// L'ND cambia subito nel riquadro grande; gli stadi si riordinano (ND nei primi
+// stadi, vetri che scalano) solo quando il valore resta fermo, così passare da
+// una coppia mentre scorri non sposta nulla (regole in ndStagesChanged). sim.ndShown = il passo già applicato.
+const ND_SETTLE_S = 2;
+let simNdTimer = 0;
+function simNdSettle() {
+  clearTimeout(simNdTimer);
+  if (sim.ndShown === sim.nd) return;
+  const was = ndUsed(sim.ndShown), now = ndUsed(sim.nd);
+  sim.ndShown = sim.nd;
+  const r = stageCount() ? ndStagesChanged(sim.stages, was, now) : { moved: false, out: [] };
+  if (r.moved) sim.msg = now < was ? (now ? 'Un ND in meno: i vetri tornano accanto all\'ND.' : 'ND tolto: i vetri tornano verso la lente.')
+    : 'L\'ND prende il suo posto: i vetri scalano verso il fronte.' + (r.out.length ? ` Usciti: ${r.out.map(k => kitGlasses().find(g => g.key === k)?.label).join(', ')}.` : '');
 }
 
 function simPress(k, long) {
-  const plan = simPlan();
+  const plan = simPlan(), cur = plan[sim.i] || plan[0], isFilters = cur?.kind === 'filters';
+  // Qualsiasi tasto che non sia ±ND applica subito il riordino in sospeso.
+  if (!(isFilters && !sim.edit && !sim.asleep && !(long && (k === 'A' || k === 'B')) && rockerAction(k, true, sim.rot).role === 'nd')) simNdSettle();
   if (k === 'P') { sim.asleep = !sim.asleep; sim.edit = null; sim.msg = sim.asleep ? 'Spento: l\'e-paper resta visibile. Power per riaccendere.' : 'Acceso.'; return renderSim(); }
   if (sim.asleep) { sim.msg = 'È spento: solo il power lo riaccende.'; return renderSim(); }
   if (!plan.length) return;
   if (sim.edit) { sim.msg = ''; simEditPress(k, long); simEditArm(); return renderSim(); }
-  const cur = plan[sim.i] || plan[0], f = state.filters;
-  const isFilters = cur.kind === 'filters';
   if (isFilters && long && (k === 'A' || k === 'B')) {
     if (!stageCount()) { sim.msg = 'Nessun vetro nel kit: aggiungili nello strumento web.'; return renderSim(); }
-    const first = ndOn(sim.nd) ? 1 : 0;
-    if (first >= sim.stages.length) { sim.msg = 'L\'unico stadio è occupato dall\'ND.'; return renderSim(); }
-    sim.edit = { i: first }; sim.msg = 'Modifica stadi: A/B stadio, C/D vetro, E o F per uscire.'; simEditArm();
+    const first = ndUsed(sim.ndShown);
+    if (first >= sim.stages.length) { sim.msg = 'Tutti gli stadi sono occupati dall\'ND.'; return renderSim(); }
+    sim.edit = { i: first }; sim.msg = `Modifica stadi: A/B stadio, C/D vetro. Si chiude da sola dopo ${EDIT_TIMEOUT_S} s, o subito con E o F.`; simEditArm();
     return renderSim();
   }
   const act = rockerAction(k, isFilters, sim.rot);
@@ -1544,13 +1616,9 @@ function simPress(k, long) {
   } else if (act.role === 'dio') {
     sim.dio = Math.max(0, Math.min(dioSteps().length - 1, sim.dio + act.dir));
   } else if (act.role === 'nd') {
-    const was = ndOn(sim.nd);
     sim.nd = Math.max(0, Math.min(ndSteps().length - 1, sim.nd + act.dir));
-    // L'ND rientra nello stadio 1: i vetri scalano verso il fronte.
-    if (!was && ndOn(sim.nd) && stageCount() && sim.stages[0]) {
-      const out = makeRoomForNd(sim.stages);
-      sim.msg = 'ND nello stadio 1: i vetri scalano di uno stadio.' + (out ? ` Tolto: ${kitGlasses().find(g => g.key === out)?.label}.` : '');
-    }
+    clearTimeout(simNdTimer);
+    simNdTimer = setTimeout(() => { sim.msg = ''; simNdSettle(); renderSim(); }, ND_SETTLE_S * 1000);
   } else if (act.role === 'nav') step(act.dir);
   else if (k === 'E') { if (isFilters) step(1); else if (!simGoto(p => p.kind === 'filters')) sim.msg = 'Nessuna schermata filtri.'; }
   else if (k === 'F') {
@@ -1564,7 +1632,7 @@ function renderSim() {
   const plan = simPlan(), f = state.filters;
   // Se cambiano i filtri nello strumento, il dispositivo riparte dai valori iniziali.
   const sig = JSON.stringify(f);
-  if (sig !== sim.sig) { sim.sig = sig; sim.nd = Math.min(f.previewNd, ndSteps().length - 1); sim.dio = Math.min(f.previewDio, dioSteps().length - 1); sim.stages = [...f.stages]; }
+  if (sig !== sim.sig) { sim.sig = sig; sim.nd = Math.min(f.previewNd, ndSteps().length - 1); sim.dio = Math.min(f.previewDio, dioSteps().length - 1); sim.stages = [...f.stages]; sim.ndShown = sim.nd; clearTimeout(simNdTimer); }
   if (sim.i >= plan.length) sim.i = 0;
   const dev = $("#simDevice"), cv = $('#simScreen'), ctx = cv.getContext('2d');
   dev.style.transform = `rotate(${sim.rot}deg)`;
@@ -1572,7 +1640,7 @@ function renderSim() {
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
   const item = plan[sim.i];
   if (sim.edit && (item?.kind !== 'filters' || !stageCount())) sim.edit = null;
-  const first = ndOn(sim.nd) ? 1 : 0;
+  const first = ndUsed(sim.ndShown);
   if (sim.edit && first >= sim.stages.length) sim.edit = null;
   if (sim.edit) sim.edit.i = Math.max(first, Math.min(sim.edit.i, sim.stages.length - 1));
   if (!item) {
@@ -1584,7 +1652,7 @@ function renderSim() {
     let layout = angle % 180 === 90 ? 'land' : 'port';
     const avail = item.kind === 'card' ? layoutsOf(item.card) : ['land', 'port'];
     if (!avail.includes(layout)) { layout = layout === 'land' ? 'port' : 'land'; angle = (angle + 270) % 360; }
-    const r = renderScreen(item, layout, { preview: true, noHints: true, nd: sim.nd, dio: sim.dio, stages: sim.stages, sel: sim.edit ? sim.edit.i : -1 });
+    const r = renderScreen(item, layout, { preview: true, noHints: true, nd: sim.nd, ndStages: sim.ndShown, dio: sim.dio, stages: sim.stages, sel: sim.edit ? sim.edit.i : -1 });
     const [tmp, tctx] = newCanvas(r.w, r.h), img = tctx.createImageData(r.w, r.h);
     for (let i = 0; i < r.w * r.h; i++) { const c = r.bits[i] ? 255 : 0; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = c; img.data[i * 4 + 3] = 255; }
     tctx.putImageData(img, 0, 0);

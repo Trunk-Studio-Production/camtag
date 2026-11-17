@@ -91,10 +91,10 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   `screen.ini` v2 (riquadri e area stadi per orientamento, tasti e indicazioni
   per verso `keys.<gradi>`, `hints.<gradi>`, `edit.keys.<gradi>`,
   `edit.hints.<gradi>`, `edit.timeout`, vetri `kit.*`, `stages.count`,
-  `stages.nd` e `stages.start`) e i pezzi: `ndI`, `dioI` (I = passo, 0 =
+  `stages.nd`, `stages.start`, e per l'ND `nd.glasses`, `nd.parts`, `nd.settle`) e i pezzi: `ndI`, `dioI` (I = passo, 0 =
   nessuno); `stN`/`stsN` colonna del numero dello stadio N, normale e
   selezionata; `fxG`/`fxsG` vetro G (indice nel kit, `n` = vuoto), normale e
-  selezionato; `fxdI` l'ND al passo I nella riga dello stadio 1. Tutti `.bmp`, con
+  selezionato; `fxdK` il vetro ND K nelle righe degli stadi dell'ND. Tutti `.bmp`, con
   `.p.bmp` per il verticale. Una riga = `stN` + `fxG` affiancati (`listNum` =
   larghezza del numero), altezza fissa `listRow`; in cima a ogni riga dopo la
   prima il firmware disegna un separatore da 2 px. Comporre i pezzi deve dare
@@ -123,19 +123,26 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   in base al numero di lenti: con poche lenti ogni lente va su due righe grandi,
   con tante torna la tabella; la misura è unica per tutte le pagine.
 - ND e diottrie: +/− sul dispositivo, scorrendo solo i valori del kit scelto
-  nello strumento web; si mostra solo il formato ND scelto (0,9 / 3 stop / ND8).
-  Tipo ND: ND, IRND o FSND (full spectrum).
+  nello strumento web. Nella scala dell'ND entrano anche i totali fatti con
+  **due vetri** spuntati nello strumento (`ndCombos`, `ndComboList`: mai un
+  totale che il kit ha già, coppia con il vetro più denso, che va nello stadio
+  1); gli stadi si riordinano solo a valore fermo da 2 s (`simNdSettle`). Si
+  mostra solo il formato ND scelto (0,9 / 3 stop / ND8). Tipo ND: ND, IRND o
+  FSND (full spectrum).
 - Gli altri vetri (diffusione, polarizzatori, colore…) seguono il mattebox
   (`docs/filtri.md`): un **kit** di vetri, uno per tipo, e da 1 a 4 **stadi**
   numerati da 1 = lato lente; ogni stadio ha un vetro o è vuoto (`—`), e un
   vetro sta in un solo stadio. Non esiste "montato": la schermata mostra sempre
   tutti gli stadi sotto ND e diottria. **L'ND, quando c'è, occupa lo stadio 1**
-  (la riga 1 lo mostra e non si seleziona); senza ND lo stadio 1 è libero, e
+  (una coppia: stadi 1 e 2; le sue righe non si selezionano); senza ND lo stadio 1 è libero, e
   quando l'ND rientra i vetri scalano di uno stadio verso il fronte
-  (`makeRoomForNd`; se non c'è posto l'ultimo esce). Il simulatore tiene il suo
+  (`makeRoomForNd`; se non c'è posto l'ultimo esce); quando l'ND libera
+  stadi (da due a uno, o tolto) tornano indietro di altrettanti verso la lente
+  (`ndStagesChanged`). Il simulatore tiene il suo
   stato (`sim.nd`, `sim.dio`, `sim.stages`) separato dai valori di partenza. Sul dispositivo si cambiano in
   **modifica** (`simEditPress`), sulla stessa schermata: tieni A o B per
-  entrare; E o F per uscire (anche tieni A o B, o da soli dopo 30 s), A/B scelgono lo stadio, C/D
+  entrare; dopo 5 s senza tocchi la modifica è accettata e si esce da soli
+  (subito con E o F, o tenendo A o B); A/B scelgono lo stadio, C/D
   scorrono vuoto + i vetri liberi del kit, ricominciando in fondo. Selezione =
   riga in negativo, niente cursore lampeggiante; aggiornamenti parziali,
   completo all'uscita. Diottrie e ND restano su A|B e C|D fuori dalla modifica.
