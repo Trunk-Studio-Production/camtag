@@ -158,7 +158,7 @@ function freshState() {
     version: 2, device: 'x3', decimal: ',', production: '',
     auto: { lenschart: true, filters: true },
     lenses: [],
-    filters: { ndFormat: 'density', ir: false, nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], dio: [], style: [], previewNd: 0, previewDio: 0 },
+    filters: { ndFormat: 'density', ndType: 'ND', nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], dio: [], style: [], previewNd: 0, previewDio: 0 },
     cards: [DEFAULTS.crew()],
   };
 }
@@ -169,6 +169,7 @@ function migrate(s) {
   const f = freshState();
   for (const k of ['decimal', 'production', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
   s.filters = Object.assign(f.filters, s.filters);
+  if ('ir' in s.filters) { if (s.filters.ir) s.filters.ndType = 'IRND'; delete s.filters.ir; }  // vecchia casella IRND
   s.device = 'x3'; s.version = 2;
   return s;
 }
@@ -201,7 +202,7 @@ function ndLabel(d) {
   if (!d) return '—';
   const stops = Math.round(d / 0.3 * 10) / 10;
   if (state.filters.ndFormat === 'stops') return `${fmt(stops, 1)} stop`;
-  if (state.filters.ndFormat === 'factor') return `${state.filters.ir ? 'IR' : ''}ND${Math.round(2 ** stops)}`;
+  if (state.filters.ndFormat === 'factor') return `${state.filters.ndType}${Math.round(2 ** stops)}`;
   return fmt(d, 2);
 }
 function dioLabel(d) { return d ? `${DIO_LABEL[d.v] || '+' + fmt(d.v)}${d.split ? ' SPLIT' : ''}` : '—'; }
@@ -215,7 +216,38 @@ function slug(s) {
 // ============================================================================
 // Lens chart: ordinamento, paginazione, lente "fuori dal coro"
 // ============================================================================
-function sortedLenses() { return [...state.lenses].sort((a, b) => focalSort(a) - focalSort(b) || (a.seriesCode || '').localeCompare(b.seriesCode || '')); }
+// ---------- Modifiche locali alle lenti del database (contratto in data/README.md) ----------
+// lenses.json resta com'è (scheda del costruttore); le differenze dell'esemplare
+// vivono qui, per id, e valgono per tutte le produzioni.
+const OVR_KEY = 'camtag.lensOverrides.v1';
+const OVR_FIELDS = [['tstop', 'T', 'number'], ['tstopLong', 'T tele', 'number'], ['mod_m', 'MOD m', 'number'],
+                    ['front_mm', 'Ø mm', 'number'], ['filterThread', 'Filetto', 'text'], ['squeeze', 'Squeeze', 'number']];
+let lensOverrides = (() => { try { return JSON.parse(localStorage.getItem(OVR_KEY))?.overrides || {}; } catch { return {}; } })();
+function saveOverrides() { try { localStorage.setItem(OVR_KEY, JSON.stringify({ version: 1, overrides: lensOverrides })); } catch {} }
+let lensById = new Map();
+let editingUid = null;
+
+// Valori della scheda + modifiche locali, mantenendo le scelte della produzione (sigla, negativo).
+function dbWithOverrides(dbLens) { const o = lensOverrides[dbLens.id]; return o ? { ...dbLens, ...o } : dbLens; }
+function effective(l) {
+  const base = l.dbId && lensById.get(l.dbId);
+  if (!base) return l;
+  const tech = {};
+  for (const [k] of OVR_FIELDS) tech[k] = base[k];
+  return { ...l, ...tech, ...(lensOverrides[l.dbId] || {}) };
+}
+function isModified(l) { const o = l.dbId && lensOverrides[l.dbId]; return !!o && OVR_FIELDS.some(([k]) => k in o); }
+
+function setOverride(dbId, key, raw, type) {
+  const base = lensById.get(dbId); if (!base) return;
+  const v = raw === '' ? null : type === 'number' ? Number(raw) : raw;
+  const o = { ...(lensOverrides[dbId] || {}) };
+  if (v === base[key] || (v === null && base[key] == null)) delete o[key]; else o[key] = v;
+  if (Object.keys(o).filter(k => k !== 'note').length || o.note) lensOverrides[dbId] = o; else delete lensOverrides[dbId];
+  saveOverrides();
+}
+
+function sortedLenses() { return state.lenses.map(effective).sort((a, b) => focalSort(a) - focalSort(b) || (a.seriesCode || '').localeCompare(b.seriesCode || '')); }
 function lensPages() {
   const all = sortedLenses(), pages = [];
   for (let i = 0; i < all.length; i += LENS_ROWS_PER_PAGE) pages.push(all.slice(i, i + LENS_ROWS_PER_PAGE));
@@ -283,35 +315,73 @@ function drawLensChart(ctx, W, H, rows, pageIdx, pageCount) {
   fitFont(ctx, title, 800, W * 0.7, barH * 0.5); ctx.fillText(title, pad, barH / 2);
   if (pageCount > 1) { ctx.textAlign = 'right'; ctx.font = `700 ${Math.round(barH * 0.4)}px ${FONT}`; ctx.fillText(`${pageIdx + 1}/${pageCount}`, W - pad, barH / 2); }
 
-  const cols = [['FOC', 0, 'left'], ['T', 0.26, 'left'], ['MOD m', 0.42, 'left'], ['Ø mm', 0.62, 'left'], ['SERIE', 0.80, 'left']];
-  const colX = f => pad + f * (W - pad * 2);
-  const headH = Math.round(H > W ? 34 : 28);
-  ctx.fillStyle = '#000'; ctx.textAlign = 'left';
-  ctx.font = `700 ${Math.round(headH * 0.5)}px ${FONT}`;
-  for (const [t, f] of cols) ctx.fillText(t, colX(f) + (f === 0 ? 8 : 0), barH + headH / 2 + 2);
-  const top = barH + headH;
-  ctx.fillRect(pad, top - 2, W - pad * 2, 3);
+  // Righe alte quanto lo spazio permette: poche lenti = testo grande. Tutte le
+  // pagine usano la misura della pagina più piena, così la scala non cambia.
+  const n = Math.max(1, Math.min(state.lenses.length, LENS_ROWS_PER_PAGE));
+  const avail = H - barH - pad * 0.5;
+  const tall = (avail / n) >= 120;  // abbastanza spazio: ogni lente su due righe
+  const headH = tall ? 0 : Math.round(Math.min(46, Math.max(H > W ? 34 : 28, avail / n * 0.32)));
+  const rowH = Math.min((avail - headH - (tall ? pad * 0.4 : 0)) / n, H * 0.45);
+  const top = barH + headH + (tall ? pad * 0.4 : 0);
+  ctx.fillStyle = '#000'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
 
   if (!rows.length) {
     ctx.textAlign = 'center'; ctx.font = `600 ${Math.round(H * 0.045)}px ${FONT}`;
     ctx.fillText('Nessuna lente selezionata', W / 2, top + (H - top) / 2);
     return;
   }
-  const rowH = (H - top - pad * 0.5) / LENS_ROWS_PER_PAGE;
+  const code = l => (l.seriesCode || '') + (l.squeeze ? ` ×${fmt(l.squeeze)}` : '');
+  const specs = l => [['T', tText(l)], ['MOD m', fmt(l.mod_m)], ['Ø mm', l.front_mm != null ? fmt(l.front_mm, 1) : '—']];
+  // Una sola misura per tipo di testo su tutta la pagina: la più grande che entra ovunque.
+  const sizeFor = (texts, weight, maxW, maxSize) => Math.min(...texts.map(t => fitFont(ctx, t, weight, maxW, maxSize)));
+  const rule = y => { ctx.fillStyle = '#000'; ctx.fillRect(pad, y, W - pad * 2, 1); };
+  const inner = W - pad * 2;
+
+  if (tall) {
+    // Sopra: focale grande e sigla. Sotto: T, MOD, Ø, con l'etichetta sopra il valore.
+    const fs = sizeFor(rows.map(focalText), 900, inner * 0.64 - 20, rowH * 0.42);
+    const cs = sizeFor(rows.map(code), 800, inner * 0.32, fs * 0.6);
+    const ls = Math.max(14, Math.round(rowH * 0.075));
+    const groupW = inner / 3;
+    const vs = sizeFor(rows.flatMap(l => specs(l).map(s => s[1])), 800, groupW - 34, rowH * 0.26);
+    rows.forEach((l, i) => {
+      const y = top + i * rowH, line1 = y + rowH * 0.27;
+      const labelY = y + rowH * 0.55, valueY = labelY + ls * 0.6 + vs * 0.62;
+      if (i > 0) rule(y);
+      ctx.font = `900 ${fs}px ${FONT}`;
+      const fw = ctx.measureText(focalText(l)).width;
+      if (out.has(l.uid)) { ctx.fillStyle = '#000'; ctx.fillRect(pad, line1 - fs * 0.62, fw + 20, fs * 1.18); ctx.fillStyle = '#fff'; }
+      ctx.textAlign = 'left'; ctx.fillText(focalText(l), pad + 10, line1);
+      ctx.fillStyle = '#000'; ctx.textAlign = 'right'; ctx.font = `800 ${cs}px ${FONT}`;
+      ctx.fillText(code(l), W - pad, line1);
+      ctx.textAlign = 'left';
+      specs(l).forEach(([k, v], j) => {
+        const x = pad + 10 + j * groupW;
+        ctx.font = `600 ${ls}px ${FONT}`; ctx.fillText(k.toUpperCase(), x, labelY);
+        ctx.font = `800 ${vs}px ${FONT}`; ctx.fillText(v, x, valueY);
+      });
+    });
+    return;
+  }
+
+  // Tabella: una riga per lente.
+  const cols = [['FOC', 0], ['T', 0.26], ['MOD m', 0.42], ['Ø mm', 0.62], ['SERIE', 0.80]];
+  const colX = f => pad + f * inner;
+  const gap = 14;
+  ctx.font = `700 ${Math.round(headH * 0.5)}px ${FONT}`;
+  for (const [t, f] of cols) ctx.fillText(t, colX(f) + (f === 0 ? 8 : 0), barH + headH / 2 + 2);
+  ctx.fillRect(pad, top - 2, W - pad * 2, 3);
+  const focW = colX(cols[1][1]) - colX(0) - gap;
+  const fs = sizeFor(rows.map(focalText), 900, focW - 16, rowH * 0.62);
+  const cellW = j => (j + 2 < cols.length ? colX(cols[j + 2][1]) : W - pad) - colX(cols[j + 1][1]) - gap;
+  const vs = Math.min(...rows.flatMap(l => [...specs(l).map(s => s[1]), code(l)].map((v, j) => fitFont(ctx, v, 800, cellW(j), rowH * 0.5))));
   rows.forEach((l, i) => {
     const y = top + i * rowH, mid = y + rowH / 2 + 1;
-    if (i > 0) { ctx.fillStyle = '#000'; ctx.fillRect(pad, y, W - pad * 2, 1); }
-    const isOut = out.has(l.uid);
-    const focW = colX(cols[1][1]) - colX(0) - 12;
-    if (isOut) { ctx.fillStyle = '#000'; ctx.fillRect(colX(0), y + 3, focW, rowH - 6); }
-    ctx.fillStyle = isOut ? '#fff' : '#000'; ctx.textBaseline = 'middle';
-    fitFont(ctx, focalText(l), 900, focW - 16, rowH * 0.62); ctx.fillText(focalText(l), colX(0) + 8, mid);
-    ctx.fillStyle = '#000';
-    const cells = [tText(l), fmt(l.mod_m), l.front_mm != null ? fmt(l.front_mm, 1) : '—', (l.seriesCode || '') + (l.squeeze ? ` ×${fmt(l.squeeze)}` : '')];
-    cells.forEach((v, j) => {
-      const x = colX(cols[j + 1][1]), w = (j + 2 < cols.length ? colX(cols[j + 2][1]) : W - pad) - x - 8;
-      fitFont(ctx, v, j === 3 ? 800 : 700, w, rowH * 0.5); ctx.fillText(v, x, mid);
-    });
+    if (i > 0) rule(y);
+    if (out.has(l.uid)) { ctx.fillStyle = '#000'; ctx.fillRect(colX(0), y + 3, focW, rowH - 6); ctx.fillStyle = '#fff'; }
+    ctx.font = `900 ${fs}px ${FONT}`; ctx.fillText(focalText(l), colX(0) + 8, mid);
+    ctx.fillStyle = '#000'; ctx.font = `800 ${vs}px ${FONT}`;
+    [...specs(l).map(s => s[1]), code(l)].forEach((v, j) => ctx.fillText(v, colX(cols[j + 1][1]), mid));
   });
 }
 
@@ -353,7 +423,7 @@ function drawFiltersBackground(ctx, W, H) {
   fitFont(ctx, 'FILTRI', 800, L.bar.w - L.pad * 2, L.bar.h * 0.5); ctx.fillText('FILTRI', L.bar.x + L.pad, L.bar.y + L.bar.h / 2);
   ctx.fillStyle = '#000'; ctx.textBaseline = 'alphabetic';
   ctx.font = `700 22px ${FONT}`;
-  ctx.fillText(f.ir ? 'IRND' : 'ND', L.ndLabel.x, L.ndLabel.y + 20);
+  ctx.fillText(f.ndType, L.ndLabel.x, L.ndLabel.y + 20);
   if (L.dio) ctx.fillText('DIOTTRIA', L.dioLabel.x, L.dioLabel.y + 20);
   if (L.divider) ctx.fillRect(L.divider.x, L.divider.y, 3, L.divider.h);
   else ctx.fillRect(L.list.x, L.list.y - 10, L.list.w, 3);
@@ -379,7 +449,7 @@ function drawFiltersBackground(ctx, W, H) {
 function drawTile(ctx, x, y, w, h, text) {
   ctx.fillStyle = '#fff'; ctx.fillRect(x, y, w, h);
   ctx.fillStyle = '#000'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  fitFont(ctx, text, 900, w - 10, h * 0.82);
+  fitFont(ctx, text, 900, w - 10, text === '—' ? h * 0.35 : h * 0.82);  // "nessuno": un trattino, non una barra
   ctx.fillText(text, x + 4, y + h / 2 + h * 0.04);
 }
 
@@ -753,19 +823,39 @@ function lensEditor(ed) {
   if (!state.lenses.length) ed.append(h('p', { class: 'hint' }, 'Cerca nel database qui sotto e aggiungi le lenti della produzione.'));
   else {
     const out = outliers();
-    const tb = h('table', { class: 't' }, h('tr', {}, h('th', {}, 'Foc'), h('th', {}, 'Sigla'), h('th', {}, 'Serie'), h('th', {}, 'Negativo'), h('th', {})));
-    for (const l of sortedLenses()) {
+    const tb = h('table', { class: 't' }, h('tr', {}, h('th', {}, 'Foc'), h('th', {}, 'Sigla'), h('th', {}, 'Serie'), h('th', {}, 'Negativo'), h('th', {}), h('th', {})));
+    for (const e of sortedLenses()) {
+      const l = state.lenses.find(x => x.uid === e.uid);  // le modifiche vanno sull'originale
+      const mod = isModified(l);
       tb.append(h('tr', {},
-        h('td', { class: 'num' }, out.has(l.uid) ? h('span', { class: 'out' }, focalText(l)) : focalText(l)),
-        h('td', {}, h('input', { type: 'text', value: l.seriesCode || '', size: 4, maxlength: 5, oninput: e => { l.seriesCode = e.target.value.toUpperCase(); changed(); } })),
+        h('td', { class: 'num' }, out.has(l.uid) ? h('span', { class: 'out' }, focalText(e)) : focalText(e), mod ? h('span', { title: 'Dati modificati rispetto alla scheda del costruttore' }, ' •') : null),
+        h('td', {}, h('input', { type: 'text', value: l.seriesCode || '', size: 4, maxlength: 5, oninput: ev => { l.seriesCode = ev.target.value.toUpperCase(); changed(); } })),
         h('td', { title: `${l.brand} ${l.series}` }, `${l.series}`),
-        h('td', {}, (() => { const s = h('select', { onchange: e => { l.highlight = e.target.value; changed(true); } },
-            ...[['auto', 'auto'], ['on', 'sempre'], ['off', 'mai']].map(([v, t]) => h('option', { value: v, selected: (l.highlight || 'auto') === v }, t))); return s; })()),
+        h('td', {}, h('select', { onchange: ev => { l.highlight = ev.target.value; changed(true); } },
+            ...[['auto', 'auto'], ['on', 'sempre'], ['off', 'mai']].map(([v, t]) => h('option', { value: v, selected: (l.highlight || 'auto') === v }, t)))),
+        h('td', {}, h('button', { class: 'small' + (editingUid === l.uid ? ' on' : ''), title: 'Modifica dati', onclick: () => { editingUid = editingUid === l.uid ? null : l.uid; renderEditor(); } }, '✎')),
         h('td', {}, h('button', { class: 'small danger', title: 'Togli', onclick: () => { state.lenses = state.lenses.filter(x => x !== l); changed(true); } }, '✕'))));
+      if (editingUid === l.uid) tb.append(h('tr', {}, h('td', { colspan: 6 }, lensDataEditor(l, e))));
     }
     ed.append(tb, h('p', { class: 'hint' }, 'In negativo va la lente "fuori dal coro": serie diversa dal set principale o tipo diverso (es. l\'unica macro).'),
       h('button', { class: 'small danger', onclick: () => { if (confirm('Togliere tutte le lenti?')) { state.lenses = []; changed(true); } } }, 'Togli tutte'));
   }
+
+  // Modifiche locali: valgono per tutte le produzioni; si portano su un altro computer con un file.
+  const nOvr = Object.keys(lensOverrides).length;
+  const ovrFile = h('input', { type: 'file', accept: 'application/json', hidden: true, onchange: ev => {
+    const file = ev.target.files[0]; if (!file) return;
+    file.text().then(t => {
+      const d = JSON.parse(t);
+      if (!d || typeof d.overrides !== 'object') { alert('File non valido: manca "overrides".'); return; }
+      Object.assign(lensOverrides, d.overrides); saveOverrides(); changed(true);
+    }).catch(() => alert('File non valido.'));
+  } });
+  ed.append(h('h3', {}, `Lenti modificate (${nOvr})`),
+    h('p', { class: 'hint' }, 'Con ✎ cambi i dati di un esemplare (es. un anello frontale diverso dal noleggio). Il database resta quello del costruttore; la differenza è segnata con •.'),
+    h('div', { class: 'row', style: 'justify-content:flex-start;margin-top:8px' },
+      h('button', { class: 'small', disabled: !nOvr, onclick: () => download(new Blob([JSON.stringify({ version: 1, overrides: lensOverrides }, null, 2)], { type: 'application/json' }), 'camtag-lenti-modificate.json') }, 'Esporta modifiche'),
+      h('button', { class: 'small', onclick: () => ovrFile.click() }, 'Importa modifiche'), ovrFile));
 
   // Database
   ed.append(h('h3', {}, 'Database lenti'));
@@ -799,6 +889,40 @@ function lensEditor(ed) {
         tstop: num(m.tstop), tstopLong: null, mod_m: num(m.mod_m), front_mm: num(m.front_mm), filterThread: null, squeeze: null, highlight: 'auto' });
       changed(true);
     } }, 'Aggiungi')));
+}
+
+// Modifica dei dati tecnici di una lente. Lenti del database: modifica locale
+// per id, con il valore della scheda accanto. Lenti manuali: si cambiano e basta.
+function lensDataEditor(l, e) {
+  const base = l.dbId && lensById.get(l.dbId);
+  const box = h('div', { style: 'padding:8px 0' });
+  const grid = h('div', { class: 'three' });
+  for (const [k, label, type] of OVR_FIELDS) {
+    const cur = e[k] ?? '';
+    const differs = base && lensOverrides[l.dbId] && k in lensOverrides[l.dbId];
+    grid.append(h('div', {},
+      h('label', {}, label, differs ? h('span', { class: 'out', style: 'margin-left:4px' }, `scheda: ${base[k] ?? '—'}`) : null),
+      h('input', { type, step: 'any', value: cur, onchange: ev => {
+        if (base) setOverride(l.dbId, k, ev.target.value, type);
+        else l[k] = ev.target.value === '' ? null : type === 'number' ? Number(ev.target.value) : ev.target.value;
+        changed(true);
+      } })));
+  }
+  box.append(grid);
+  if (base) {
+    const note = (lensOverrides[l.dbId] || {}).note || '';
+    box.append(h('label', {}, 'Nota (es. "anello frontale 114 mm del noleggio")'),
+      h('input', { type: 'text', value: note, onchange: ev => {
+        const o = { ...(lensOverrides[l.dbId] || {}) };
+        if (ev.target.value.trim()) o.note = ev.target.value.trim(); else delete o.note;
+        if (Object.keys(o).length) lensOverrides[l.dbId] = o; else delete lensOverrides[l.dbId];
+        saveOverrides(); changed(true);
+      } }),
+      h('div', { class: 'row', style: 'justify-content:flex-start;margin-top:8px' },
+        h('button', { class: 'small', disabled: !lensOverrides[l.dbId], onclick: () => { delete lensOverrides[l.dbId]; saveOverrides(); changed(true); } }, 'Ripristina i dati della scheda'),
+        h('span', { class: 'hint', style: 'margin:0' }, 'La modifica vale per questa lente in tutte le produzioni.')));
+  }
+  return box;
 }
 
 // Re-rendering the editor resets the results list; keep its scroll position.
@@ -836,7 +960,8 @@ function renderDbResults(box, query, brand, type) {
       h('button', { class: 'small', disabled: !missing.length, onclick: () => { missing.forEach(addDbLens); changed(true); } }, missing.length ? `+ tutte (${missing.length})` : 'aggiunte')));
     for (const l of ls) {
       shown++;
-      const meta = `T${tText(l)} · MOD ${fmt(l.mod_m)} m · Ø ${l.front_mm != null ? fmt(l.front_mm, 1) : '—'}${l.type !== 'prime' ? ' · ' + LENS_TYPES[l.type] : ''}`;
+      const v = dbWithOverrides(l);
+      const meta = `T${tText(v)} · MOD ${fmt(v.mod_m)} m · Ø ${v.front_mm != null ? fmt(v.front_mm, 1) : '—'}${l.type !== 'prime' ? ' · ' + LENS_TYPES[l.type] : ''}${lensOverrides[l.id] ? ' · modificata' : ''}`;
       box.append(h('div', { class: 'it' }, h('span', {}, `${focalText(l)} mm`), h('span', { class: 'meta' }, meta),
         chosen.has(l.id) ? h('button', { class: 'small', disabled: true }, '✓') :
         h('button', { class: 'small', onclick: () => { addDbLens(l); keepScroll(() => changed(true)); } }, '+')));
@@ -857,8 +982,9 @@ function filtersEditor(ed) {
       h('div', {}, h('label', {}, 'Come mostrarlo'),
         h('select', { onchange: e => { f.ndFormat = e.target.value; changed(true); } },
           ...[['density', 'Densità (0,9)'], ['stops', 'Stop (3 stop)'], ['factor', 'Fattore (ND8)']].map(([v, t]) => h('option', { value: v, selected: f.ndFormat === v }, t)))),
-      h('div', {}, h('label', {}, 'Tipo'), h('label', { class: 'inline', style: 'margin-top:8px' },
-        h('input', { type: 'checkbox', checked: f.ir, onchange: e => { f.ir = e.target.checked; changed(); } }), 'IRND'))),
+      h('div', {}, h('label', {}, 'Tipo'),
+        h('select', { onchange: e => { f.ndType = e.target.value; changed(true); } },
+          ...[['ND', 'ND'], ['IRND', 'IRND'], ['FSND', 'FSND (full spectrum)']].map(([v, t]) => h('option', { value: v, selected: f.ndType === v }, t))))),
     h('label', {}, 'ND nel kit (i tasti C/D scorrono solo questi)'),
     h('div', { class: 'checks' }, ...ND_VALUES.map(v => h('label', { class: 'inline' },
       h('input', { type: 'checkbox', checked: f.nd.includes(v), onchange: e => { f.nd = e.target.checked ? [...f.nd, v] : f.nd.filter(x => x !== v); clampPreview(); changed(true); } }),
@@ -1007,17 +1133,24 @@ $('#bmpBtn').onclick = () => {
   download(encodeBmp(r.bits, r.w, r.h), `${base}${l === 'port' ? '.p' : ''}.bmp`);
 };
 $('#zipBtn').onclick = async () => download(await (await buildZip()).generateAsync({ type: 'blob' }), 'camtag.zip');
-$('#exportJson').onclick = () => download(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }), 'camtag-progetto.json');
+// Il file di progetto porta con sé le modifiche delle sue lenti, per essere completo su un altro computer.
+$('#exportJson').onclick = () => {
+  const used = Object.fromEntries(state.lenses.filter(l => l.dbId && lensOverrides[l.dbId]).map(l => [l.dbId, lensOverrides[l.dbId]]));
+  download(new Blob([JSON.stringify({ ...state, lensOverrides: used }, null, 2)], { type: 'application/json' }), 'camtag-progetto.json');
+};
 $('#importBtn').onclick = () => $('#importFile').click();
 $('#importFile').onchange = e => {
   const f = e.target.files[0]; if (!f) return;
-  f.text().then(t => { state = migrate(JSON.parse(t)); sel = { kind: 'lenschart' }; return Promise.all(state.cards.map(c => ensureImg(c.img))); }).then(() => { save(); refresh(); });
+  f.text().then(t => {
+    const d = JSON.parse(t);
+    if (d.lensOverrides) { Object.assign(lensOverrides, d.lensOverrides); saveOverrides(); delete d.lensOverrides; }
+    state = migrate(d); sel = { kind: 'lenschart' }; return Promise.all(state.cards.map(c => ensureImg(c.img))); }).then(() => { save(); refresh(); });
 };
 
 // Database: servito dalla radice del repo (python3 -m http.server), quindi ../data/.
 Promise.all([
   fetch('../data/lenses.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-    .then(d => { lensDb = d.lenses; }).catch(() => { lensDbError = 'Database lenti non trovato. Avvia il server dalla radice del progetto: python3 -m http.server 8765, poi apri /companion/.'; }),
+    .then(d => { lensDb = d.lenses; lensById = new Map(lensDb.map(l => [l.id, l])); }).catch(() => { lensDbError = 'Database lenti non trovato. Avvia il server dalla radice del progetto: python3 -m http.server 8765, poi apri /companion/.'; }),
   fetch('../data/filters.json').then(r => r.json()).then(d => { filterDb = d.filters; }).catch(() => {}),
   ...state.cards.map(c => ensureImg(c.img)),
 ]).then(refresh);

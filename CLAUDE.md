@@ -14,7 +14,10 @@ sono in italiano.
   esporta uno zip di BMP 1 bit. Unica dipendenza: JSZip da cdnjs. Legge
   `../data/*.json`, quindi va servito dalla radice del repo.
 - `data/lenses.json` — database lenti (schema in `data/README.md`), dati solo
-  dalle schede dei costruttori, con la fonte per ogni lente.
+  dalle schede dei costruttori, con la fonte per ogni lente. Mai modificarlo per
+  un esemplare: le differenze (es. Ø frontale del noleggio) sono modifiche
+  locali per `id` nello strumento web (localStorage `camtag.lensOverrides.v1`,
+  esportabili), applicate sopra il database quando si disegna.
 - `data/filters.json` — catalogo filtri di stile **provvisorio, non verificato**.
 - `third_party/freeink-sdk/` — sottomodulo git bloccato su `77ae8c7`. **Non
   modificarlo**: se serve un cambiamento, aggira nel nostro codice o chiedi.
@@ -77,9 +80,12 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 - Lens chart: colonne focale, T, MOD, Ø frontale, sigla di serie. In negativo
   solo la lente "fuori dal coro" (serie diversa dal set principale o tipo
   diverso, es. l'unica macro); con un pareggio tra serie non si evidenzia per
-  serie. Si può forzare per ogni lente (auto / sempre / mai).
+  serie. Si può forzare per ogni lente (auto / sempre / mai). Scala del testo
+  in base al numero di lenti: con poche lenti ogni lente va su due righe grandi,
+  con tante torna la tabella; la misura è unica per tutte le pagine.
 - ND e diottrie: +/− sul dispositivo, scorrendo solo i valori del kit scelto
   nello strumento web; si mostra solo il formato ND scelto (0,9 / 3 stop / ND8).
+  Tipo ND: ND, IRND o FSND (full spectrum).
 - Tasti: schermata filtri A/B = diottria −/+, C/D = ND −/+; altrove A/B =
   schermata precedente/successiva. E = salto ai filtri (dai filtri: schermata
   successiva), F = lens chart (pagina successiva), E tenuto = blocco rotazione.

@@ -114,8 +114,13 @@ chiavi mancanti.
 | DZOFilm | Catta Zoom | CAT | 3 | FF |
 | DZOFilm | Catta Ace | CTA | 3 | FF |
 | Atlas | Orion Series (anamorfiche 2×) | ORN | 12 | S35 |
+| Angénieux | Type EZ (EZ-1, EZ-2, EZ-3) | EZ | 6 | S35/FF |
 
-Totale: 270 lenti, 31 serie, verificate il 2026-11-17.
+Totale: 276 lenti, 32 serie, verificate il 2026-11-17.
+
+Gli Angénieux EZ cambiano focale e T secondo il blocco posteriore montato
+(S35 o FF/VistaVision): ogni zoom compare due volte, una voce per
+configurazione (es. EZ-1 S35 30-90 T2 e EZ-1 FF 45-135 T3).
 
 ## Valori `null` da conoscere
 
@@ -152,8 +157,33 @@ come scheda tecnica ufficiale:
 - DZOFilm: dzofilm.com
 - Atlas: atlaslensco.com. Il PDF di specifiche sta su cdn.shopify.com, il CDN
   del loro negozio.
+- Angénieux: www.angenieux.com (pagina Type EZ Series, brochure EZ 2025,
+  manuale EZ-1/EZ-2)
 
 Gli URL esatti sono in `sources` per ogni lente.
+
+## Lenti modificate dal noleggio o dall'operatore
+
+`lenses.json` contiene solo le specifiche del costruttore e non va modificato
+per adattare un esemplare (es. il Sigma 18-35 di Trunk portato a Ø frontale
+114 mm). Queste differenze appartengono all'utente, non al database: lo
+strumento web le tiene da parte come modifiche locali, legate all'`id` della
+lente, nel formato
+
+```json
+{ "version": 1,
+  "overrides": {
+    "sigma-high-speed-zoom-18-35": { "front_mm": 114, "note": "Anello frontale 114 mm (Trunk)" }
+  } }
+```
+
+- Campi modificabili: `tstop`, `tstopLong`, `mod_m`, `front_mm`,
+  `filterThread`, `squeeze`, più `note`. Nello strumento web stanno in
+  localStorage (`camtag.lensOverrides.v1`), si esportano e importano, e il file
+  di progetto include le modifiche delle sue lenti.
+- Lo strumento mostra il valore modificato e segnala che differisce dalla
+  scheda del costruttore. Così un aggiornamento del database non cancella le
+  modifiche, e si può sempre tornare al valore originale.
 
 ## Aggiungere o correggere una lente
 
