@@ -118,6 +118,15 @@
   .chip-x { border: 0; background: none; padding: 0 2px; font-size: 11px; line-height: 1; color: inherit; opacity: .55; cursor: pointer; }
   .chip-x:hover { opacity: 1; }
   .chips input { width: 56px; padding: 4px 6px; font-size: 12px; }
+  /* Invio via Bluetooth */
+  #bleDlg { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink);
+            width: min(420px, calc(100vw - 32px)); padding: 18px; }
+  #bleDlg::backdrop { background: rgba(0, 0, 0, .45); }
+  #bleDlg h3 { margin: 0 0 8px; font-size: 15px; }
+  #bleDlg p { margin: 6px 0; }
+  #bleDlg progress { width: 100%; height: 10px; margin: 10px 0 4px; accent-color: var(--accent); }
+  #bleDlg .err { color: var(--danger); }
+  #bleDlg .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 </style>
 </head>
 <body>
@@ -136,9 +145,21 @@
   </select>
   <button id="importBtn">Importa progetto</button>
   <button id="exportJson">Salva progetto</button>
-  <button id="zipBtn" class="primary">Scarica tutto (.zip)</button>
+  <button id="zipBtn">Scarica tutto (.zip)</button>
+  <button id="bleBtn" class="primary" title="Manda le card all'X3 senza microSD">Invia via Bluetooth</button>
   <input type="file" id="importFile" accept="application/json" hidden>
 </header>
+
+<dialog id="bleDlg">
+  <h3>Invio via Bluetooth</h3>
+  <p id="bleMsg"></p>
+  <progress id="bleBar" max="1" value="0" hidden></progress>
+  <p class="hint" id="bleDetail"></p>
+  <div class="acts">
+    <button id="bleStart" class="primary">Cerca CamTag</button>
+    <button id="bleClose">Chiudi</button>
+  </div>
+</dialog>
 
 <main>
   <section class="panel">
@@ -1495,6 +1516,165 @@ $('#bmpBtn').onclick = () => {
   download(encodeBmp(r.bits, r.w, r.h), `${base}${l === 'port' ? '.p' : ''}.bmp`);
 };
 $('#zipBtn').onclick = async () => download(await (await buildZip()).generateAsync({ type: 'blob' }), 'camtag.zip');
+
+// ============================================================================
+// Invio via Bluetooth LE (Web Bluetooth). Protocollo: docs/bluetooth.md.
+// Sull'X3: tieni premuto F per la ricezione. Manda gli stessi file dello zip.
+// ============================================================================
+const BLE = {
+  service: 'c4a70001-1b2e-4f3a-9d6e-3a7c5e0b2f10',
+  ctrl: 'c4a70002-1b2e-4f3a-9d6e-3a7c5e0b2f10',
+  data: 'c4a70003-1b2e-4f3a-9d6e-3a7c5e0b2f10',
+  window: 8192,      // byte in volo non ancora confermati (il dispositivo ne tiene 16 KB)
+  timeoutMs: 15000,
+};
+const BLE_ERRORS = {
+  CRC: 'I dati sono arrivati rovinati. Riprova.',
+  SD: 'Il dispositivo non riesce a scrivere sulla microSD (piena, protetta o assente?).',
+  OVERFLOW: 'I dati sono arrivati troppo in fretta. Riprova.',
+  STATO: 'Errore di protocollo. Riprova.',
+  DATI: 'Errore di protocollo. Riprova.',
+  COMANDO: 'Il dispositivo non capisce il comando: aggiorna il firmware.',
+};
+
+function crc32(bytes, crc = 0) {
+  if (!crc32.t) crc32.t = Uint32Array.from({ length: 256 }, (_, n) => { for (let k = 0; k < 8; k++) n = n & 1 ? 0xEDB88320 ^ (n >>> 1) : n >>> 1; return n >>> 0; });
+  crc = ~crc;
+  for (let i = 0; i < bytes.length; i++) crc = crc32.t[(crc ^ bytes[i]) & 255] ^ (crc >>> 8);
+  return ~crc >>> 0;
+}
+
+// Supporto di Web Bluetooth: messaggio per chi non ce l'ha.
+function bleSupportNote() {
+  if (!window.isSecureContext) return 'Serve una pagina in HTTPS (o localhost): il Bluetooth dal browser non funziona su http.';
+  if (!navigator.bluetooth) {
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    return ios ? 'Safari e gli altri browser di iPhone non hanno il Bluetooth per le pagine web. Apri questa pagina in un browser con Web Bluetooth, per esempio BLE Link o Bluefy.'
+      : 'Questo browser non ha il Bluetooth per le pagine web. Usa Chrome o Edge (su Android, Mac, Windows o Linux).';
+  }
+  return '';
+}
+
+let bleRun = null;  // trasferimento in corso: { cancel() }
+
+function bleUi(msg, { detail = '', progress = null, error = false, busy = false } = {}) {
+  $('#bleMsg').textContent = msg;
+  $('#bleMsg').classList.toggle('err', error);
+  $('#bleDetail').textContent = detail;
+  $('#bleBar').hidden = progress === null;
+  if (progress !== null) $('#bleBar').value = progress;
+  $('#bleStart').hidden = busy;
+  $('#bleClose').textContent = busy ? 'Annulla' : 'Chiudi';
+}
+
+async function bleSend() {
+  // requestDevice va chiamato subito, dentro il clic: il browser lo permette solo
+  // in risposta a un gesto. Le card si generano dopo, a dispositivo scelto.
+  const devicePromise = navigator.bluetooth.requestDevice({ filters: [{ services: [BLE.service] }, { namePrefix: 'CAMTAG' }], optionalServices: [BLE.service] });
+  let device;
+  try { device = await devicePromise; } catch (e) { bleUi('Nessun dispositivo scelto.', { detail: 'Sull\'X3 tieni premuto F finché compare BLUETOOTH, poi riprova.' }); return; }
+  let cancelled = false, disconnected = false, acked = 0, waiter = null;
+  const inbox = [];
+  const wake = () => { if (waiter) { const w = waiter; waiter = null; w(); } };
+  const waitFor = async cond => {
+    const t0 = Date.now();
+    while (!cond()) {
+      if (cancelled) throw new Error('Annullato.');
+      if (disconnected) throw new Error('Collegamento interrotto. Avvicina il telefono all\'X3 e riprova.');
+      const left = BLE.timeoutMs - (Date.now() - t0);
+      if (left <= 0) throw new Error('Il dispositivo non risponde. Riprova.');
+      await new Promise(res => { waiter = res; setTimeout(res, Math.min(left, 500)); });
+    }
+  };
+  const next = async () => {
+    await waitFor(() => inbox.length);
+    const m = inbox.shift();
+    if (m.startsWith('ERR')) throw new Error(BLE_ERRORS[m.slice(4)] || `Errore del dispositivo: ${m}`);
+    return m;
+  };
+  const enc = new TextEncoder(), dec = new TextDecoder();
+  let ctrl, data;
+  const cmd = c => (ctrl.writeValueWithResponse ? ctrl.writeValueWithResponse(enc.encode(c)) : ctrl.writeValue(enc.encode(c)));
+  const write = chunk => (data.writeValueWithoutResponse ? data.writeValueWithoutResponse(chunk) : data.writeValue(chunk));
+  bleRun = { cancel: () => { cancelled = true; wake(); } };
+  device.addEventListener('gattserverdisconnected', () => { disconnected = true; wake(); });
+
+  try {
+    bleUi('Preparo le card…', { busy: true, progress: 0 });
+    const zip = await buildZip(), files = [];
+    for (const [name, entry] of Object.entries(zip.files)) {
+      if (entry.dir || !name.startsWith('camtag/')) continue;
+      files.push({ path: name.slice(7), bytes: await entry.async('uint8array') });
+    }
+    if (!files.length) throw new Error('Non ci sono card da inviare.');
+    const total = files.reduce((s, f) => s + f.bytes.length, 0);
+
+    bleUi(`Mi collego a ${device.name || 'CamTag'}…`, { busy: true, progress: 0 });
+    const server = await device.gatt.connect();
+    const svc = await server.getPrimaryService(BLE.service);
+    ctrl = await svc.getCharacteristic(BLE.ctrl);
+    data = await svc.getCharacteristic(BLE.data);
+    ctrl.addEventListener('characteristicvaluechanged', e => {
+      const m = dec.decode(e.target.value);
+      if (m.startsWith('ACK ')) acked = +m.slice(4); else inbox.push(m);
+      wake();
+    });
+    await ctrl.startNotifications();
+
+    // HELLO: versione del protocollo e MTU. Se l'MTU non è ancora negoziato (23),
+    // si riprova una volta dopo poco; i pacchetti sono grandi MTU − 3.
+    let mtu = 23;
+    for (let i = 0; i < 2 && mtu <= 23; i++) {
+      if (i) await new Promise(r => setTimeout(r, 600));
+      await cmd('HELLO');
+      const h = (await next()).split(' ');
+      if (h[1] !== 'CAMTAG') throw new Error('Il dispositivo non è un CamTag.');
+      if (+h[2] !== 1) throw new Error('Versione del firmware diversa da quella dello strumento: aggiornali insieme.');
+      mtu = +h[4] || 23;
+    }
+    const chunkSize = Math.max(20, Math.min(512, mtu - 3));
+
+    await cmd('BEGIN'); await next();
+    let sent = 0;
+    const t0 = Date.now();
+    for (const [i, f] of files.entries()) {
+      bleUi(`Invio ${i + 1} di ${files.length}…`, { busy: true, progress: sent / total, detail: `${f.path} · ${Math.round(sent / 1024)} di ${Math.round(total / 1024)} KB` });
+      await cmd(`FILE ${f.bytes.length} ${crc32(f.bytes).toString(16)} ${f.path}`);
+      const r = await next();
+      if (r.startsWith('DONE')) continue;  // file vuoto
+      acked = 0;
+      for (let off = 0; off < f.bytes.length; off += chunkSize) {
+        await waitFor(() => off - acked < BLE.window || inbox.length);
+        if (inbox.length) await next();  // un ERR interrompe qui
+        await write(f.bytes.subarray(off, off + chunkSize));
+        $('#bleBar').value = (sent + off) / total;
+      }
+      const done = await next();
+      if (!done.startsWith('DONE')) throw new Error(`Risposta inattesa: ${done}`);
+      sent += f.bytes.length;
+    }
+    bleUi('Salvo sul dispositivo…', { busy: true, progress: 1 });
+    await cmd('COMMIT'); await next();
+    const secs = Math.max(1, Math.round((Date.now() - t0) / 1000));
+    bleUi('Fatto: le card sono sull\'X3.', { progress: 1, detail: `${files.length} file, ${Math.round(total / 1024)} KB in ${secs} s.` });
+  } catch (e) {
+    if (ctrl && !disconnected) { try { await cmd('ABORT'); } catch {} }
+    bleUi(cancelled ? 'Invio annullato: sul dispositivo restano le card di prima.' : e.message || String(e), { error: !cancelled, detail: cancelled ? '' : 'Sul dispositivo restano le card di prima.' });
+  } finally {
+    bleRun = null;
+    if (device.gatt.connected) device.gatt.disconnect();
+  }
+}
+
+$('#bleBtn').onclick = () => {
+  const note = bleSupportNote();
+  if (note) bleUi(note, { error: true }); else bleUi('Sull\'X3 tieni premuto F finché compare BLUETOOTH, poi tocca Cerca CamTag.');
+  $('#bleStart').hidden = !!note;
+  $('#bleDlg').showModal();
+};
+$('#bleStart').onclick = () => { bleSend(); };
+$('#bleClose').onclick = () => { if (bleRun) bleRun.cancel(); else $('#bleDlg').close(); };
+$('#bleDlg').addEventListener('cancel', e => { if (bleRun) { e.preventDefault(); bleRun.cancel(); } });
 // Il file di progetto porta con sé le modifiche delle sue lenti, per essere completo su un altro computer.
 $('#exportJson').onclick = () => {
   const used = Object.fromEntries(state.lenses.filter(l => l.dbId && lensOverrides[l.dbId]).map(l => [l.dbId, lensOverrides[l.dbId]]));
@@ -1613,6 +1793,8 @@ function simPress(k, long) {
   if (k === 'E' && long) {
     sim.locked = !sim.locked; sim.lockRot = sim.rot;
     sim.msg = sim.locked ? 'ROTAZIONE BLOCCATA' : 'ROTAZIONE AUTOMATICA';
+  } else if (k === 'F' && long) {
+    sim.msg = 'BLUETOOTH: in attesa delle card da "Invia via Bluetooth". E o F per uscire.';
   } else if (act.role === 'dio') {
     sim.dio = Math.max(0, Math.min(dioSteps().length - 1, sim.dio + act.dir));
   } else if (act.role === 'nd') {

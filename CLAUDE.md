@@ -13,9 +13,12 @@ costruttori di lenti e filtri nei dati vanno bene.
 ## Struttura
 
 - `device/` — firmware PlatformIO (C++/Arduino, ESP32-C3). È il nostro codice.
+  `BleUpload.cpp` riceve le card via Bluetooth (NimBLE-Arduino, acceso solo in
+  ricezione); `UploadProto.h` ha le parti provabili sull'host (`device/test/`).
 - `companion/index.html` — strumento web a file singolo: lens chart e filtri
   generati in automatico più schede manuali (crew, note, lente singola, patch);
-  esporta uno zip di BMP 1 bit. Dipendenze esterne: JSZip da cdnjs (i font
+  esporta uno zip di BMP 1 bit o manda gli stessi file all'X3 via Web Bluetooth
+  (`bleSend`). Dipendenze esterne: JSZip da cdnjs (i font
   Inter sono nel repo). Legge
   `../data/*.json`, quindi va servito dalla radice del repo. Ha un
   **simulatore** (`simPress`/`renderSim`) con tasti, rotazione, blocco e power:
@@ -107,6 +110,7 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   bilanciere comanda il valore che gli sta accanto, quindi a 90° in senso orario
   A|B diventa ND e C|D diottria. "+" sta sempre sul capo in alto o a destra per
   chi guarda (a 90° e 180° è il primo tasto, A o C).
+- Anche il protocollo Bluetooth (`docs/bluetooth.md`) è un contratto tra i due.
 - Il formato è un contratto tra `companion/` e `device/`: se cambi uno, aggiorna
   l'altro. **Il firmware non gestisce ancora la schermata filtri.**
 
@@ -149,7 +153,8 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 - Tasti: le pagine si cambiano **solo** con E (successiva) e F (precedente),
   in ciclo su tutte; A/B mai (conflitto con le diottrie). Schermata filtri A/B =
   diottria −/+, C/D = ND −/+; altrove i bilancieri non fanno nulla. E tenuto =
-  blocco rotazione.
+  blocco rotazione. F tenuto = ricezione via Bluetooth (E o F escono). E e F si
+  leggono al rilascio.
 - Indicazioni dei tasti a schermo solo dove servono (filtri), disegnate dal
   firmware sul bordo fisico dei tasti, così seguono la rotazione.
 
@@ -159,6 +164,7 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   `Canvas` disegna in coordinate logiche; la rotazione la gestisce lui.
 - Dopo una modifica al firmware: compila. Per la logica di disegno c'è un test
   host (stub di `SdFat.h` + `Canvas.cpp` compilati con `c++`): rifallo se tocchi `Canvas`.
+  Per il protocollo Bluetooth: `device/test/upload_proto_test.cpp` (comando in `docs/bluetooth.md`).
 - Dopo una modifica allo strumento web: aprilo nel browser integrato e
   controlla l'anteprima; verifica che i BMP esportati abbiano le dimensioni giuste.
 - **Mai caricare firmware sull'X3 senza un backup completo della flash** (vedi README).

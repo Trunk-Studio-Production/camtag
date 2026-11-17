@@ -26,17 +26,48 @@ git clone --depth 1 https://github.com/crosspoint-reader/crosspoint-reader refer
 
 ## Come funziona (v0.2)
 
-1. Nello strumento web crei le card e scarichi lo zip.
-2. Copi la cartella `camtag/` dello zip nella radice della microSD dell'X3.
+1. Nello strumento web crei le card.
+2. Le mandi all'X3 in uno di due modi:
+   - **Bluetooth**: sull'X3 tieni premuto **F** finché compare BLUETOOTH, poi
+     nello strumento web tocca **Invia via Bluetooth** (vedi sotto);
+   - **microSD**: scarichi lo zip e copi la sua cartella `camtag/` nella radice
+     della microSD.
 3. Sul dispositivo:
    - **E** (lato destro): card successiva; **F** (lato sinistro): precedente,
      in ciclo
    - **E tenuto premuto (0,8 s)**: blocca/sblocca la rotazione
+   - **F tenuto premuto (0,8 s)**: ricezione delle card via Bluetooth
    - A, B, C, D non cambiano card
    - **power**: spegne subito
    - dopo 20 s senza tasti si spegne da solo; l'e-paper continua a mostrare la card
    - il power lo riaccende sull'ultima card; ridisegna solo se nel frattempo
      l'hai girato
+
+### Invio via Bluetooth
+
+Lo strumento web può mandare le card all'X3 senza togliere la microSD, con il
+Bluetooth LE del browser (Web Bluetooth).
+
+1. Sull'X3 tieni premuto **F** per 0,8 s: compare **BLUETOOTH** con il nome
+   del dispositivo (es. `CAMTAG-1A2B`).
+2. Nello strumento web tocca **Invia via Bluetooth**, poi **Cerca CamTag** e
+   scegli il dispositivo.
+3. A fine invio l'X3 mostra la prima card con **CARD AGGIORNATE**.
+
+Le card arrivano in una cartella temporanea e sostituiscono quelle di prima
+solo a invio completo e controllato: se il collegamento cade o qualcosa va
+storto, sull'X3 restano le card di prima. **E** o **F** escono dalla
+ricezione; dopo 3 minuti senza invii esce da sola. Il Bluetooth è acceso
+solo in ricezione.
+
+Requisiti:
+- la pagina va aperta in **HTTPS** (o da `localhost`): su `http://` il browser
+  non dà il Bluetooth alle pagine;
+- **Android, Mac, Windows, Linux**: Chrome o Edge;
+- **iPhone e iPad**: Safari non ha Web Bluetooth; serve un browser che lo
+  aggiunga, come **BLE Link** (provato) o Bluefy.
+
+Il protocollo è descritto in [`docs/bluetooth.md`](docs/bluetooth.md).
 
 ### Rotazione automatica
 
@@ -141,13 +172,13 @@ ripristino restano compatibili.
 - [ ] Ghosting: ogni quanto serve un refresh completo (ora ogni 6 cambi)
 - [ ] Riaccensione con il power e consumo da spento
 - [ ] Lettura batteria (fuel gauge BQ27220): l'icona appare sotto il 20%
+- [ ] Ricezione via Bluetooth: velocità reale, Android (Chrome) e iPhone
+      (BLE Link), consumo con il Bluetooth acceso
 
 ## Prossimi passi
 
-1. **Caricamento senza microSD**: Wi-Fi in modalità access point con pagina di upload,
-   oppure Bluetooth LE dallo strumento web (Web Bluetooth).
-2. **Database lenti** nello strumento web.
-3. **Rotazione anche da spento**: risveglio a timer (es. ogni 10 s) per leggere
+1. **Database lenti** nello strumento web.
+2. **Rotazione anche da spento**: risveglio a timer (es. ogni 10 s) per leggere
    l'IMU e ridisegnare solo se è cambiato il verso. Da valutare dopo aver
    misurato i consumi reali.
-4. **Supporto** stampato in 3D per il montaggio sulla camera.
+3. **Supporto** stampato in 3D per il montaggio sulla camera.

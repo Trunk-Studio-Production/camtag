@@ -8,9 +8,11 @@
 //         E (lato destro)           = card successiva, in ciclo
 //         F (lato sinistro)         = card precedente, in ciclo
 //         E tenuto premuto          = blocca/sblocca la rotazione
+//         F tenuto premuto          = ricezione delle card via Bluetooth
 //         A B C D (bilancieri)      = nessuna funzione qui: mai cambio pagina
 //         power                     = spegni subito
 // Dopo IDLE_SLEEP_MS senza input si spegne da solo: l'e-paper resta visibile.
+// In ricezione: E o F escono; senza collegamenti per RECEIVE_IDLE_MS esce da sola.
 
 #include <Arduino.h>
 #include <BatteryMonitor.h>
@@ -29,12 +31,17 @@
 #include <cmath>
 #include <vector>
 
+#include "BleUpload.h"
 #include "Canvas.h"
 
 namespace {
 
 constexpr const char* kCardDir = "/camtag";
 constexpr uint32_t IDLE_SLEEP_MS = 20000;
+constexpr uint32_t RECEIVE_IDLE_MS = 180000;
+// Durante un trasferimento il display si aggiorna al massimo ogni tanto: ogni
+// aggiornamento ferma la scrittura sulla microSD.
+constexpr uint32_t RECEIVE_REDRAW_MS = 4000;
 constexpr int LOW_BATTERY_PERCENT = 20;
 // Ogni N cambi di card usa un refresh completo per togliere il ghosting.
 constexpr uint8_t FULL_REFRESH_EVERY = 6;
@@ -92,6 +99,13 @@ uint32_t lastImuPollMs = 0;
 Canvas::Rotation pendingRot = Canvas::ROT_0;
 uint32_t pendingSinceMs = 0;
 uint32_t bannerUntilMs = 0;
+bool sdReady = false;
+
+// Modalità ricezione via Bluetooth.
+bool receiving = false;
+char bleName[16] = "";
+uint16_t drawnFiles = 0;
+uint32_t lastReceiveDrawMs = 0;
 
 Canvas canvas(Canvas::Rotation rot) {
   return Canvas(display->getFrameBuffer(), display->getDisplayWidth(), display->getDisplayHeight(),
@@ -228,8 +242,127 @@ void toggleRotationLock() {
   bannerUntilMs = millis() + BANNER_MS;
 }
 
+// --- Ricezione via Bluetooth ----------------------------------------------------
+void drawReceive(const char* status, const char* detail, bool full) {
+  Canvas c = canvas(rotation);
+  const bool port = Canvas::isPortrait(rotation);
+  const int mid = c.height() / 2;
+  c.clear();
+  c.strokeRect(16, 16, c.width() - 32, c.height() - 32, 4, true);
+  c.textCentered(mid - 150, "BLUETOOTH", port ? 5 : 7);
+  c.textCentered(mid - 60, bleName, port ? 3 : 4);
+  c.textCentered(mid + 20, status, port ? 3 : 4);
+  if (detail) c.textCentered(mid + 80, detail, 2);
+  c.textCentered(c.height() - 64, "E O F PER USCIRE", 2);
+  present(full);
+  lastReceiveDrawMs = millis();
+  prefs.putString("shown", "");  // al prossimo avvio ridisegna la card
+}
+
+void showCurrentOrEmpty() {
+  if (!sdReady)
+    showMessage("NESSUNA MICROSD", nullptr);
+  else if (cards.empty())
+    showMessage("NESSUNA CARD", "TIENI F PER RICEVERLE");
+  else
+    showCard(current, true);
+}
+
+void enterReceive() {
+  if (!sdReady) {
+    showMessage("NESSUNA MICROSD", nullptr);
+    return;
+  }
+  const uint64_t mac = ESP.getEfuseMac();
+  snprintf(bleName, sizeof(bleName), "CAMTAG-%02X%02X", static_cast<unsigned>((mac >> 32) & 0xFF),
+           static_cast<unsigned>((mac >> 40) & 0xFF));
+  bannerUntilMs = 0;
+  if (!bleupload::start(bleName)) {
+    showMessage("BLUETOOTH NON DISPONIBILE", nullptr);
+    return;
+  }
+  LOGF("[camtag] ricezione: %s\n", bleName);
+  receiving = true;
+  drawnFiles = 0;
+  lastActivityMs = millis();
+  drawReceive("IN ATTESA", "APRI CAMTAG SUL TELEFONO", true);
+}
+
+void exitReceive() {
+  bleupload::stop();
+  receiving = false;
+  lastActivityMs = millis();
+  showCurrentOrEmpty();
+}
+
+void receiveDone() {
+  // Lascia arrivare al telefono l'OK del COMMIT: il client si scollega da solo.
+  for (uint32_t t0 = millis(); bleupload::connected() && millis() - t0 < 1500;) delay(20);
+  bleupload::stop();
+  receiving = false;
+  lastActivityMs = millis();
+  loadCardList();
+  current = 0;
+  if (cards.empty()) {
+    showMessage("NESSUNA CARD", "TIENI F PER RICEVERLE");
+    return;
+  }
+  showCard(0, true, "CARD AGGIORNATE");
+  bannerUntilMs = millis() + BANNER_MS;
+}
+
+[[noreturn]] void goToSleep();
+
+void loopReceive() {
+  if (input.wasPressed(InputManager::BTN_POWER)) goToSleep();
+  if (input.wasReleased(kKeyE) || input.wasReleased(kKeyF)) {
+    exitReceive();
+    return;
+  }
+
+  char line[24];
+  switch (bleupload::poll()) {
+    case bleupload::Event::Connected:
+      lastActivityMs = millis();
+      drawReceive("CONNESSO", nullptr, false);
+      break;
+    case bleupload::Event::Disconnected:
+      lastActivityMs = millis();
+      drawReceive("IN ATTESA", "COLLEGAMENTO CHIUSO", false);
+      break;
+    case bleupload::Event::Progress:
+      lastActivityMs = millis();
+      if (bleupload::filesReceived() != drawnFiles && millis() - lastReceiveDrawMs > RECEIVE_REDRAW_MS) {
+        drawnFiles = bleupload::filesReceived();
+        snprintf(line, sizeof(line), "RICEVUTI %u FILE", static_cast<unsigned>(drawnFiles));
+        drawReceive(line, nullptr, false);
+      }
+      break;
+    case bleupload::Event::Done:
+      receiveDone();
+      return;
+    case bleupload::Event::Failed:
+      lastActivityMs = millis();
+      drawReceive("ERRORE", bleupload::lastError(), false);
+      break;
+    case bleupload::Event::Aborted:
+      lastActivityMs = millis();
+      drawReceive("ANNULLATO", "CARD INVARIATE", false);
+      break;
+    case bleupload::Event::None:
+      break;
+  }
+  if (bleupload::transferring()) lastActivityMs = millis();
+  if (millis() - lastActivityMs > RECEIVE_IDLE_MS) exitReceive();
+}
+
 [[noreturn]] void goToSleep() {
   LOGF("[camtag] sleep\n");
+  if (receiving) {
+    bleupload::stop();
+    receiving = false;
+    showCurrentOrEmpty();  // non lasciare a schermo la ricezione
+  }
   if (bannerUntilMs) showCard(current, false);  // non lasciare il banner a schermo
   prefs.putUChar("rot", rotation);
   imu.sleep();
@@ -304,13 +437,14 @@ void setup() {
   pendingRot = rotation;
   lastActivityMs = millis();
 
-  if (!SdMan.begin()) {
+  sdReady = SdMan.begin();
+  if (!sdReady) {
     showMessage("NESSUNA MICROSD", nullptr);
     return;
   }
   loadCardList();
   if (cards.empty()) {
-    showMessage("NESSUNA CARD", "COPIA I .BMP IN /CAMTAG");
+    showMessage("NESSUNA CARD", "TIENI F PER RICEVERLE");
     return;
   }
 
@@ -325,11 +459,22 @@ void setup() {
 void loop() {
   input.update();
 
+  if (receiving) {
+    loopReceive();
+    if (input.wasAnyPressed() || input.wasAnyReleased()) lastActivityMs = millis();
+    // Corto: i dati arrivano in coda e vanno scritti in fretta sulla microSD.
+    delay(2);
+    return;
+  }
+
   if (input.wasPressed(InputManager::BTN_POWER)) goToSleep();
 
-  if (!cards.empty()) {
+  // F si legge al rilascio, come E: tenuto premuto apre la ricezione.
+  if (input.wasReleased(kKeyF) && input.getHeldTime() >= LONG_PRESS_MS) {
+    enterReceive();
+  } else if (!cards.empty()) {
     int step = 0;
-    if (input.wasPressed(kKeyF))
+    if (input.wasReleased(kKeyF))
       step = -1;
     else if (input.wasReleased(kKeyE)) {
       if (input.getHeldTime() >= LONG_PRESS_MS)
