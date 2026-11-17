@@ -21,6 +21,7 @@
     --accent: #ecebe6; --accent-ink: #121212; --sel: #2a2a27; --danger: #e0705f;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body { margin: 0; background: var(--bg); color: var(--ink);
          font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
   header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
@@ -49,7 +50,11 @@
   .add { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .stage { display: flex; flex-direction: column; gap: 10px; align-items: center; }
   .frame { background: #8a8a85; padding: 14px; border-radius: 14px; max-width: 100%; }
-  canvas#preview { display: block; max-width: 100%; max-height: 72vh; height: auto; width: auto; image-rendering: pixelated; background: #fff; }
+  /* Rimpicciolita, l'immagine 1 bit va ammorbidita (pixelated butterebbe via righe);
+     a 1:1 si vedono i pixel veri. */
+  canvas#preview { display: block; max-width: 100%; max-height: 72vh; height: auto; width: auto; image-rendering: auto; background: #fff; }
+  .frame.actual { max-width: none; overflow: auto; }
+  .frame.actual canvas#preview { max-width: none; max-height: none; image-rendering: pixelated; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: center; }
   label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
   label.inline { display: inline-flex; gap: 6px; align-items: center; margin: 0; color: var(--ink); font-size: 13px; }
@@ -74,6 +79,28 @@
   .db .it .meta { color: var(--muted); font-size: 12px; flex: 2; }
   .checks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px 10px; }
   details summary { cursor: pointer; font-size: 13px; margin-top: 12px; }
+  /* Simulatore in scala con le misure dell'X3 (5,34 px/mm): scocca 63,7 × 97,6 mm,
+     area attiva 51,84 × 77,76 mm (528 × 792 pixel a ~259 ppi). */
+  .simbox { width: 560px; height: 560px; max-width: 100%; display: flex; align-items: center; justify-content: center; }
+  .device { position: relative; width: 340px; height: 521px; background: #d6d5d0; border-radius: 26px;
+            box-shadow: inset 0 0 0 6px #c9c8c2, 0 6px 18px rgba(0,0,0,.25); transition: transform .35s ease; }
+  .device.asleep #simScreen { filter: contrast(.92); }
+  #simScreen { position: absolute; left: 32px; top: 34px; width: 277px; height: 415px; background: #fff; image-rendering: auto;
+               box-shadow: inset 0 0 0 1px #bbb; }
+  .device .key { position: absolute; padding: 0; border: none; background: #c4c3bd; cursor: pointer; }
+  .device .key:hover { background: #b7b6af; }
+  .device .key.down { background: #8f8e88; }
+  .device .pwr { top: -7px; right: 50px; width: 46px; height: 9px; border-radius: 4px 4px 0 0; }
+  .device .side { top: 110px; width: 8px; height: 92px; border-radius: 4px; }
+  .device .side-f { left: -7px; }
+  .device .side-e { right: -7px; }
+  .device .rocker { position: absolute; bottom: 22px; height: 20px; display: flex; border-radius: 10px; overflow: hidden;
+                    box-shadow: 0 0 0 2px #c9c8c2; }
+  .device .rocker .key { position: static; flex: 1; border-radius: 0; }
+  .device .rocker .key + .key { border-left: 1px solid #aaa9a3; }
+  .device .r1 { left: 46px; width: 118px; }
+  .device .r2 { left: 176px; width: 118px; }
+  .sim-status { min-height: 1.4em; font-size: 13px; margin: 0; }
   .kit { border: 1px solid var(--line); border-radius: 6px; padding: 8px; margin-top: 8px; }
   .kit-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 13px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
@@ -92,7 +119,7 @@
     <option value=".">Decimali: 0.9</option>
   </select>
   <select id="device" title="Dispositivo">
-    <option value="x3">Xteink X3 · 792×528</option>
+    <option value="x3">Xteink X3 · 528×792 (verticale)</option>
   </select>
   <button id="importBtn">Importa progetto</button>
   <button id="exportJson">Salva progetto</button>
@@ -115,19 +142,45 @@
 
   <section class="stage">
     <div class="row">
-      <button data-view="land">Orizzontale</button>
-      <button data-view="port">Verticale</button>
-      <span id="pageCtl" class="row"></span>
+      <button data-mode="preview" class="on">Anteprima</button>
+      <button data-mode="sim">Simulatore</button>
     </div>
-    <div class="frame"><canvas id="preview"></canvas></div>
-    <div class="row">
-      <button id="up">↑ Su</button>
-      <button id="down">↓ Giù</button>
-      <button id="dup">Duplica</button>
-      <button id="del" class="danger">Elimina</button>
-      <button id="bmpBtn">Scarica questa immagine</button>
+    <div id="previewMode" class="stage">
+      <div class="row">
+        <button data-view="land">Orizzontale</button>
+        <button data-view="port">Verticale</button>
+        <span id="pageCtl" class="row"></span>
+      </div>
+      <div class="frame"><canvas id="preview"></canvas></div>
+      <div class="row">
+        <button id="up">↑ Su</button>
+        <button id="down">↓ Giù</button>
+        <button id="dup">Duplica</button>
+        <button id="del" class="danger">Elimina</button>
+        <button id="bmpBtn">Scarica questa immagine</button>
+        <button id="actualBtn" title="Mostra la schermata senza scalarla: un pixel dell'X3 per pixel">Pixel 1:1</button>
+      </div>
+      <p class="hint" id="previewNote">Anteprima a 1 bit, identica a ciò che vedrai sull'e-paper.</p>
     </div>
-    <p class="hint" id="previewNote">Anteprima a 1 bit, identica a ciò che vedrai sull'e-paper.</p>
+    <div id="simMode" class="stage" hidden>
+      <div class="row">
+        <button id="rotL" title="Ruota il dispositivo in senso antiorario">⟲ Ruota</button>
+        <button id="rotR" title="Ruota il dispositivo in senso orario">Ruota ⟳</button>
+      </div>
+      <div class="simbox">
+        <div class="device" id="simDevice">
+          <button class="key pwr" data-key="P" title="Power"></button>
+          <button class="key side side-f" data-key="F" title="F"></button>
+          <button class="key side side-e" data-key="E" title="E (tieni premuto: blocco rotazione)"></button>
+          <canvas id="simScreen" width="528" height="792"></canvas>
+          <div class="rocker r1"><button class="key" data-key="A" title="A"></button><button class="key" data-key="B" title="B"></button></div>
+          <div class="rocker r2"><button class="key" data-key="C" title="C"></button><button class="key" data-key="D" title="D"></button></div>
+        </div>
+      </div>
+      <p class="sim-status" id="simStatus"></p>
+      <p class="hint">Clic sui tasti come sul dispositivo. E tenuto premuto (o Maiusc+clic su E) blocca la rotazione.
+        Da tastiera: A B C D E F, P = power. Le funzioni seguono il comportamento previsto per il firmware.</p>
+    </div>
   </section>
 
   <section class="panel" id="editor"></section>
@@ -260,8 +313,12 @@ function effective(l) {
   if (!base) return l;
   const tech = {};
   for (const [k] of OVR_FIELDS) tech[k] = base[k];
-  return { ...l, ...tech, ...(lensOverrides[l.dbId] || {}) };
+  const o = lensOverrides[l.dbId] || {};
+  // _mod: campi diversi dalla scheda, segnati con * sulla lens chart.
+  return { ...l, ...tech, ...o, _mod: new Set(Object.keys(o).filter(k => k !== 'note')) };
 }
+// "*" accanto a un valore modificato rispetto alla scheda del costruttore.
+function star(l, ...keys) { return l._mod && keys.some(k => l._mod.has(k)) ? '*' : ''; }
 function isModified(l) { const o = l.dbId && lensOverrides[l.dbId]; return !!o && OVR_FIELDS.some(([k]) => k in o); }
 
 function setOverride(dbId, key, raw, type) {
@@ -344,7 +401,8 @@ function drawLensChart(ctx, W, H, rows, pageIdx, pageCount) {
   // Righe alte quanto lo spazio permette: poche lenti = testo grande. Tutte le
   // pagine usano la misura della pagina più piena, così la scala non cambia.
   const n = Math.max(1, Math.min(state.lenses.length, LENS_ROWS_PER_PAGE));
-  const avail = H - barH - pad * 0.5;
+  const footH = H > W ? 44 : 36;
+  const avail = H - barH - footH - pad * 0.5;
   const tall = (avail / n) >= 120;  // abbastanza spazio: ogni lente su due righe
   const headH = tall ? 0 : Math.round(Math.min(46, Math.max(H > W ? 34 : 28, avail / n * 0.32)));
   const rowH = Math.min((avail - headH - (tall ? pad * 0.4 : 0)) / n, H * 0.45);
@@ -356,17 +414,29 @@ function drawLensChart(ctx, W, H, rows, pageIdx, pageCount) {
     ctx.fillText('Nessuna lente selezionata', W / 2, top + (H - top) / 2);
     return;
   }
-  const code = l => (l.seriesCode || '') + (l.squeeze ? ` ×${fmt(l.squeeze)}` : '');
-  const specs = l => [['T', tText(l)], ['MOD m', fmt(l.mod_m)], ['Ø mm', l.front_mm != null ? fmt(l.front_mm, 1) : '—']];
+  // Sigla piccola solo sulle lenti fuori dal set principale (o su tutte se non c'è).
+  const leg = seriesLegend();
+  const tag = l => leg.main && seriesKey(l) === leg.main ? '' : (l.seriesCode || '');
+  const specs = l => [['T', tText(l) + star(l, 'tstop', 'tstopLong')], ['MOD m', fmt(l.mod_m) + star(l, 'mod_m')],
+                      ['Ø mm', (l.front_mm != null ? fmt(l.front_mm, 1) : '—') + star(l, 'front_mm')]];
   // Una sola misura per tipo di testo su tutta la pagina: la più grande che entra ovunque.
   const sizeFor = (texts, weight, maxW, maxSize) => Math.min(...texts.map(t => fitFont(ctx, t, weight, maxW, maxSize)));
-  const rule = y => { ctx.fillStyle = '#000'; ctx.fillRect(pad, y, W - pad * 2, 1); };
+  // Righe sottili allineate ai pixel e spesse 2: a mezzo pixel diventerebbero
+  // grigie e la conversione in bianco e nero le cancellerebbe.
+  const rule = y => { ctx.fillStyle = '#000'; ctx.fillRect(Math.round(pad), Math.round(y), Math.round(W - pad * 2), 2); };
   const inner = W - pad * 2;
+  const SMALL = 0.72;  // Ø frontale: dato secondario, più piccolo (ma leggibile)
+  const smallSize = v => Math.min(v, Math.max(18, Math.round(v * SMALL)));
+
+  // Riquadro in basso con il nome della serie per esteso (e la legenda delle sigle).
+  ctx.fillStyle = '#000'; ctx.fillRect(pad, H - footH, inner, 2);
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  fitFont(ctx, leg.text, 700, inner, footH * 0.46, 11); ctx.fillText(leg.text, pad, H - footH / 2 + 1);
 
   if (tall) {
-    // Sopra: focale grande e sigla. Sotto: T, MOD, Ø, con l'etichetta sopra il valore.
-    const fs = sizeFor(rows.map(focalText), 900, inner * 0.64 - 20, rowH * 0.42);
-    const cs = sizeFor(rows.map(code), 800, inner * 0.32, fs * 0.6);
+    // Sopra: focale grande (e sigla piccola). Sotto: T, MOD, Ø con l'etichetta sopra.
+    const fs = sizeFor(rows.map(focalText), 900, inner * 0.7 - 20, rowH * 0.42);
+    const ts = Math.round(fs * 0.36);
     const ls = Math.max(14, Math.round(rowH * 0.075));
     const groupW = inner / 3;
     const vs = sizeFor(rows.flatMap(l => specs(l).map(s => s[1])), 800, groupW - 34, rowH * 0.26);
@@ -378,37 +448,57 @@ function drawLensChart(ctx, W, H, rows, pageIdx, pageCount) {
       const fw = ctx.measureText(focalText(l)).width;
       if (out.has(l.uid)) { ctx.fillStyle = '#000'; ctx.fillRect(pad, line1 - fs * 0.62, fw + 20, fs * 1.18); ctx.fillStyle = '#fff'; }
       ctx.textAlign = 'left'; ctx.fillText(focalText(l), pad + 10, line1);
-      ctx.fillStyle = '#000'; ctx.textAlign = 'right'; ctx.font = `800 ${cs}px ${FONT}`;
-      ctx.fillText(code(l), W - pad, line1);
-      ctx.textAlign = 'left';
+      ctx.fillStyle = '#000';
+      if (tag(l)) { ctx.font = `800 ${ts}px ${FONT}`; ctx.fillText(tag(l), pad + fw + 32, line1 + fs * 0.12); }
       specs(l).forEach(([k, v], j) => {
         const x = pad + 10 + j * groupW;
         ctx.font = `600 ${ls}px ${FONT}`; ctx.fillText(k.toUpperCase(), x, labelY);
-        ctx.font = `800 ${vs}px ${FONT}`; ctx.fillText(v, x, valueY);
+        ctx.font = `800 ${j === 2 ? smallSize(vs) : vs}px ${FONT}`; ctx.fillText(v, x, valueY);
       });
     });
     return;
   }
 
   // Tabella: una riga per lente.
-  const cols = [['FOC', 0], ['T', 0.26], ['MOD m', 0.42], ['Ø mm', 0.62], ['SERIE', 0.80]];
+  const cols = [['FOC', 0], ['T', 0.36], ['MOD m', 0.56], ['Ø mm', 0.81]];
   const colX = f => pad + f * inner;
   const gap = 14;
   ctx.font = `700 ${Math.round(headH * 0.5)}px ${FONT}`;
   for (const [t, f] of cols) ctx.fillText(t, colX(f) + (f === 0 ? 8 : 0), barH + headH / 2 + 2);
   ctx.fillRect(pad, top - 2, W - pad * 2, 3);
   const focW = colX(cols[1][1]) - colX(0) - gap;
-  const fs = sizeFor(rows.map(focalText), 900, focW - 16, rowH * 0.62);
+  const anyTag = rows.some(tag);
+  const fs = sizeFor(rows.map(focalText), 900, (anyTag ? focW * 0.66 : focW) - 16, rowH * 0.62);
+  const ts = Math.max(15, Math.round(Math.min(fs * 0.45, rowH * 0.36)));
   const cellW = j => (j + 2 < cols.length ? colX(cols[j + 2][1]) : W - pad) - colX(cols[j + 1][1]) - gap;
-  const vs = Math.min(...rows.flatMap(l => [...specs(l).map(s => s[1]), code(l)].map((v, j) => fitFont(ctx, v, 800, cellW(j), rowH * 0.5))));
+  const vs = Math.min(...rows.flatMap(l => specs(l).map((s, j) => fitFont(ctx, s[1], 800, cellW(j) / (j === 2 ? SMALL : 1), rowH * 0.5))));
   rows.forEach((l, i) => {
     const y = top + i * rowH, mid = y + rowH / 2 + 1;
     if (i > 0) rule(y);
     if (out.has(l.uid)) { ctx.fillStyle = '#000'; ctx.fillRect(colX(0), y + 3, focW, rowH - 6); ctx.fillStyle = '#fff'; }
     ctx.font = `900 ${fs}px ${FONT}`; ctx.fillText(focalText(l), colX(0) + 8, mid);
-    ctx.fillStyle = '#000'; ctx.font = `800 ${vs}px ${FONT}`;
-    [...specs(l).map(s => s[1]), code(l)].forEach((v, j) => ctx.fillText(v, colX(cols[j + 1][1]), mid));
+    if (tag(l)) { const fw = ctx.measureText(focalText(l)).width; ctx.font = `800 ${ts}px ${FONT}`; ctx.fillText(tag(l), colX(0) + 8 + fw + 8, mid + fs * 0.1); }
+    ctx.fillStyle = '#000';
+    specs(l).forEach(([, v], j) => { ctx.font = `800 ${j === 2 ? smallSize(vs) : vs}px ${FONT}`; ctx.fillText(v, colX(cols[j + 1][1]), mid); });
   });
+}
+
+// Serie della produzione: quella principale per esteso, le altre come "SIGLA = nome".
+function seriesKey(l) { return `${l.brand}|${l.series}`; }
+function seriesName(l) {
+  const s = l.series || '', b = l.brand || '';
+  const name = s.toLowerCase().startsWith(b.toLowerCase()) ? s : `${b} ${s}`.trim();
+  return name + (l.squeeze ? ` ×${fmt(l.squeeze)}` : '');
+}
+function seriesLegend() {
+  const L = state.lenses.map(effective);
+  const keys = [...new Set(L.map(seriesKey))];
+  const main = keys.length === 1 ? keys[0] : plurality(L.map(seriesKey));
+  const first = k => L.find(l => seriesKey(l) === k);
+  const parts = [];
+  if (main) parts.push(seriesName(first(main)));
+  for (const k of keys) if (k !== main) parts.push(`${seriesName(first(k))} (${first(k).seriesCode})`);
+  return { main, text: parts.join('  ·  ') };
 }
 
 // ============================================================================
@@ -419,7 +509,9 @@ function filtersLayout(W, H) {
   // Area utile: tolte le fasce sui lati corti, dove il firmware disegna le indicazioni.
   const area = port ? { x: 0, y: s, w: W, h: H - 2 * s } : { x: s, y: 0, w: W - 2 * s, h: H };
   const pad = 22, barH = port ? 64 : 56;
-  const L = { port, area, pad, bar: { x: area.x, y: area.y, w: area.w, h: barH } };
+  // La barra del titolo arriva ai bordi come nella lens chart; il titolo resta fuori
+  // dalle fasce. Le indicazioni dei tasti vi si disegnano sopra in un riquadro bianco.
+  const L = { port, area, pad, barH, bar: { x: 0, y: 0, w: W, h: port ? s + barH : barH } };
   const hasDio = state.filters.dio.length > 0;
   if (port) {
     let y = area.y + barH + 14;
@@ -446,7 +538,7 @@ function drawFiltersBackground(ctx, W, H) {
   const L = filtersLayout(W, H), f = state.filters;
   ctx.fillStyle = '#000'; ctx.fillRect(L.bar.x, L.bar.y, L.bar.w, L.bar.h);
   ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-  fitFont(ctx, 'FILTRI', 800, L.bar.w - L.pad * 2, L.bar.h * 0.5); ctx.fillText('FILTRI', L.bar.x + L.pad, L.bar.y + L.bar.h / 2);
+  fitFont(ctx, 'FILTRI', 800, L.area.w - L.pad * 2, L.barH * 0.5); ctx.fillText('FILTRI', L.area.x + L.pad, L.bar.h - L.barH / 2);
   ctx.fillStyle = '#000'; ctx.textBaseline = 'alphabetic';
   ctx.font = `700 22px ${FONT}`;
   ctx.fillText(f.ndType, L.ndLabel.x, L.ndLabel.y + 20);
@@ -464,7 +556,7 @@ function drawFiltersBackground(ctx, W, H) {
   const rowH = Math.min(52, L.list.h / items.length);
   items.forEach((t, i) => {
     const y = L.list.y + i * rowH;
-    if (i > 0) ctx.fillRect(L.list.x, y, L.list.w, 1);
+    if (i > 0) ctx.fillRect(Math.round(L.list.x), Math.round(y), Math.round(L.list.w), 2);  // vedi rule() nella lens chart
     ctx.textBaseline = 'middle';
     fitFont(ctx, t, 800, L.list.w, rowH * 0.55); ctx.fillText(t, L.list.x, y + rowH / 2 + 1);
   });
@@ -482,8 +574,7 @@ function drawTile(ctx, x, y, w, h, text) {
 // Indicazioni dei tasti come le disegnerà il firmware (solo anteprima verticale).
 function hintLabels() {
   const h = {};
-  if (state.filters.dio.length) { h.A = '-DIO'; h.B = '+DIO'; }
-  if (state.filters.nd.length) { h.C = '-ND'; h.D = '+ND'; }
+  for (const k of ['A', 'B', 'C', 'D']) { const t = rockerHint(k, 0); if (t) h[k] = t; }
   return h;
 }
 function drawHintsPreview(ctx, W, H) {
@@ -687,9 +778,9 @@ function renderScreen(s, layout, opts = {}) {
     const L = drawFiltersBackground(ctx, W, H);
     if (opts.preview) {
       const f = state.filters;
-      drawTile(ctx, L.nd.x, L.nd.y, L.nd.w, L.nd.h, ndLabel(ndSteps()[f.previewNd] || 0));
-      if (L.dio) drawTile(ctx, L.dio.x, L.dio.y, L.dio.w, L.dio.h, dioLabel(dioSteps()[f.previewDio] || null));
-      drawHintsPreview(ctx, W, H);
+      drawTile(ctx, L.nd.x, L.nd.y, L.nd.w, L.nd.h, ndLabel(ndSteps()[opts.nd ?? f.previewNd] || 0));
+      if (L.dio) drawTile(ctx, L.dio.x, L.dio.y, L.dio.w, L.dio.h, dioLabel(dioSteps()[opts.dio ?? f.previewDio] || null));
+      if (!opts.noHints) drawHintsPreview(ctx, W, H);
     }
   } else {
     const c = s.card;
@@ -739,11 +830,12 @@ function filtersIni() {
     out.push(`${layout}.nd=${L.nd.x},${L.nd.y},${L.nd.w},${L.nd.h}`);
     if (L.dio) out.push(`${layout}.dio=${L.dio.x},${L.dio.y},${L.dio.w},${L.dio.h}`);
   }
-  const keys = [];
-  if (state.filters.dio.length) keys.push('A:dio-', 'B:dio+');
-  if (state.filters.nd.length) keys.push('C:nd-', 'D:nd+');
-  out.push(`keys=${keys.join('|')}`);
-  out.push(`hints=${Object.entries(hintLabels()).map(([k, t]) => `${k}:${t}`).join('|')}`);
+  // Per ogni verso (gradi in senso orario): funzione dei tasti e testo dell'indicazione.
+  for (const rot of [0, 90, 180, 270]) {
+    const acts = ['A', 'B', 'C', 'D'].map(k => [k, rockerAction(k, true, rot)]).filter(([, a]) => a.role);
+    out.push(`keys.${rot}=${acts.map(([k, a]) => `${k}:${a.role}${a.dir > 0 ? '+' : '-'}`).join('|')}`);
+    out.push(`hints.${rot}=${['A', 'B', 'C', 'D'].map(k => [k, rockerHint(k, rot)]).filter(([, t]) => t).map(([k, t]) => `${k}:${t}`).join('|')}`);
+  }
   out.push(`nd.start=${state.filters.previewNd}`, `dio.start=${state.filters.previewDio}`);
   return out.join('\n') + '\n';
 }
@@ -835,7 +927,7 @@ function renderList() {
   state.cards.forEach((c, i) => item(i, String(i + 1).padStart(2, '0'), cardTitle(c), TYPE_LABEL[c.type], sel.kind === 'card' && sel.i === i, () => { sel = { kind: 'card', i }; refresh(); }));
 }
 
-function changed(redrawEditor = false) { save(); renderList(); drawPreview(); if (redrawEditor) renderEditor(); }
+function changed(redrawEditor = false) { save(); renderList(); drawPreview(); if (simOn) renderSim(); if (redrawEditor) renderEditor(); }
 
 // ---------- editor: lens chart ----------
 function lensEditor(ed) {
@@ -854,7 +946,7 @@ function lensEditor(ed) {
       const l = state.lenses.find(x => x.uid === e.uid);  // le modifiche vanno sull'originale
       const mod = isModified(l);
       tb.append(h('tr', {},
-        h('td', { class: 'num' }, out.has(l.uid) ? h('span', { class: 'out' }, focalText(e)) : focalText(e), mod ? h('span', { title: 'Dati modificati rispetto alla scheda del costruttore' }, ' •') : null),
+        h('td', { class: 'num' }, out.has(l.uid) ? h('span', { class: 'out' }, focalText(e)) : focalText(e), mod ? h('span', { title: 'Dati modificati rispetto alla scheda del costruttore' }, '*') : null),
         h('td', {}, h('input', { type: 'text', value: l.seriesCode || '', size: 4, maxlength: 5, oninput: ev => { l.seriesCode = ev.target.value.toUpperCase(); changed(); } })),
         h('td', { title: `${l.brand} ${l.series}` }, `${l.series}`),
         h('td', {}, h('select', { onchange: ev => { l.highlight = ev.target.value; changed(true); } },
@@ -878,7 +970,7 @@ function lensEditor(ed) {
     }).catch(() => alert('File non valido.'));
   } });
   ed.append(h('h3', {}, `Lenti modificate (${nOvr})`),
-    h('p', { class: 'hint' }, 'Con ✎ cambi i dati di un esemplare (es. un anello frontale diverso dal noleggio). Il database resta quello del costruttore; la differenza è segnata con •.'),
+    h('p', { class: 'hint' }, 'Con ✎ cambi i dati di un esemplare (es. un anello frontale diverso dal noleggio). Il database resta quello del costruttore; i valori modificati sono segnati con * anche sulla lens chart.'),
     h('div', { class: 'row', style: 'justify-content:flex-start;margin-top:8px' },
       h('button', { class: 'small', disabled: !nOvr, onclick: () => download(new Blob([JSON.stringify({ version: 1, overrides: lensOverrides }, null, 2)], { type: 'application/json' }), 'camtag-lenti-modificate.json') }, 'Esporta modifiche'),
       h('button', { class: 'small', onclick: () => ovrFile.click() }, 'Importa modifiche'), ovrFile));
@@ -986,8 +1078,8 @@ function renderDbResults(box, query, brand, type) {
       h('button', { class: 'small', disabled: !missing.length, onclick: () => { missing.forEach(addDbLens); changed(true); } }, missing.length ? `+ tutte (${missing.length})` : 'aggiunte')));
     for (const l of ls) {
       shown++;
-      const v = dbWithOverrides(l);
-      const meta = `T${tText(v)} · MOD ${fmt(v.mod_m)} m · Ø ${v.front_mm != null ? fmt(v.front_mm, 1) : '—'}${l.type !== 'prime' ? ' · ' + LENS_TYPES[l.type] : ''}${lensOverrides[l.id] ? ' · modificata' : ''}`;
+      const v = effective({ dbId: l.id });
+      const meta = `T${tText(v)}${star(v, 'tstop', 'tstopLong')} · MOD ${fmt(v.mod_m)}${star(v, 'mod_m')} m · Ø ${v.front_mm != null ? fmt(v.front_mm, 1) : '—'}${star(v, 'front_mm')}${l.type !== 'prime' ? ' · ' + LENS_TYPES[l.type] : ''}`;
       box.append(h('div', { class: 'it' }, h('span', {}, `${focalText(l)} mm`), h('span', { class: 'meta' }, meta),
         chosen.has(l.id) ? h('button', { class: 'small', disabled: true }, '✓') :
         h('button', { class: 'small', onclick: () => { addDbLens(l); keepScroll(() => changed(true)); } }, '+')));
@@ -1150,7 +1242,7 @@ function ensureImg(url) {
 
 function refresh() {
   $('#decimal').value = state.decimal;
-  const d = DEVICES[state.device]; $('#dims').textContent = `${d.w}×${d.h} · 1 bit`;
+  const d = DEVICES[state.device]; $('#dims').textContent = `${d.h}×${d.w} · 259 ppi · 1 bit`;
   renderList(); renderEditor(); drawPreview();
 }
 
@@ -1173,6 +1265,10 @@ $('#up').onclick = () => moveCard(-1);
 $('#down').onclick = () => moveCard(1);
 $('#dup').onclick = () => { if (sel.kind !== 'card') return; state.cards.splice(sel.i + 1, 0, structuredClone(state.cards[sel.i])); sel = { kind: 'card', i: sel.i + 1 }; save(); refresh(); };
 $('#del').onclick = () => { if (sel.kind !== 'card') return; state.cards.splice(sel.i, 1); sel = state.cards.length ? { kind: 'card', i: Math.max(0, sel.i - 1) } : { kind: 'lenschart' }; save(); refresh(); };
+$('#actualBtn').onclick = () => {
+  const fr = document.querySelector('#previewMode .frame'), on = fr.classList.toggle('actual');
+  $('#actualBtn').classList.toggle('on', on);
+};
 $('#bmpBtn').onclick = () => {
   const s = selectedScreen(); if (!s) return;
   const l = currentLayout(), r = renderScreen(s, l, { preview: true });
@@ -1193,6 +1289,128 @@ $('#importFile').onchange = e => {
     if (d.lensOverrides) { Object.assign(lensOverrides, d.lensOverrides); saveOverrides(); delete d.lensOverrides; }
     state = migrate(d); sel = { kind: 'lenschart' }; return Promise.all(state.cards.map(c => ensureImg(c.img))); }).then(() => { save(); refresh(); });
 };
+
+// ============================================================================
+// Simulatore: dispositivo con i tasti, comportamento previsto per il firmware
+// ============================================================================
+// rot = rotazione fisica del dispositivo in gradi, in senso orario (0 = verticale, tasti in basso).
+const sim = { i: 0, rot: 0, locked: false, lockRot: 0, asleep: false, nd: null, dio: null, msg: '' };
+let simOn = false;
+
+function simPlan() { return exportPlan(); }
+function simContentRot() { return sim.locked ? sim.lockRot : sim.rot; }
+// Funzione di un tasto dei bilancieri (A|B, C|D) secondo la schermata e il verso.
+// - Nella schermata filtri ogni bilanciere comanda il valore che gli sta accanto:
+//   A|B = diottria e C|D = ND, scambiati quando il dispositivo è ruotato di 90°
+//   in senso orario (A|B finisce in alto, accanto all'ND).
+// - "+" sta sempre sul capo che vedi in alto o a destra (90° e 180°: il primo tasto).
+// Restituisce { role: 'nd' | 'dio' | 'nav' | null, dir: +1 | -1 }.
+function rockerAction(k, isFilters, rot) {
+  if (!'ABCD'.includes(k)) return { role: null, dir: 0 };
+  const rocker = k === 'A' || k === 'B' ? 1 : 2;
+  const first = k === 'A' || k === 'C';
+  const plusFirst = rot === 90 || rot === 180;
+  const dir = first === plusFirst ? 1 : -1;
+  if (!isFilters) return { role: rocker === 1 ? 'nav' : null, dir };
+  const f = state.filters;
+  const near = rot === 90 ? { 1: 'nd', 2: 'dio' } : { 1: 'dio', 2: 'nd' };
+  let role = near[rocker];
+  if (role === 'dio' && !f.dio.length) role = rocker === 1 ? 'nav' : null;
+  if (role === 'nd' && !f.nd.length) role = rocker === 1 ? 'nav' : null;
+  return { role, dir };
+}
+function rockerHint(k, rot) {
+  const a = rockerAction(k, true, rot);
+  return a.role === 'nd' ? `${a.dir > 0 ? '+' : '-'}ND` : a.role === 'dio' ? `${a.dir > 0 ? '+' : '-'}DIO` : '';
+}
+function simGoto(pred) { const p = simPlan(), j = p.findIndex(pred); if (j >= 0) sim.i = j; return j >= 0; }
+
+function simPress(k, long) {
+  const plan = simPlan();
+  if (k === 'P') { sim.asleep = !sim.asleep; sim.msg = sim.asleep ? 'Spento: l\'e-paper resta visibile. Power per riaccendere.' : 'Acceso.'; return renderSim(); }
+  if (sim.asleep) { sim.msg = 'È spento: solo il power lo riaccende.'; return renderSim(); }
+  if (!plan.length) return;
+  const cur = plan[sim.i] || plan[0], f = state.filters;
+  const isFilters = cur.kind === 'filters';
+  const act = rockerAction(k, isFilters, sim.rot);
+  const step = d => { sim.i = (sim.i + d + plan.length) % plan.length; };
+  sim.msg = '';
+  if (k === 'E' && long) {
+    sim.locked = !sim.locked; sim.lockRot = sim.rot;
+    sim.msg = sim.locked ? 'ROTAZIONE BLOCCATA' : 'ROTAZIONE AUTOMATICA';
+  } else if (act.role === 'dio') {
+    sim.dio = Math.max(0, Math.min(dioSteps().length - 1, sim.dio + act.dir));
+  } else if (act.role === 'nd') {
+    sim.nd = Math.max(0, Math.min(ndSteps().length - 1, sim.nd + act.dir));
+  } else if (act.role === 'nav') step(act.dir);
+  else if (k === 'E') { if (isFilters) step(1); else if (!simGoto(p => p.kind === 'filters')) sim.msg = 'Nessuna schermata filtri.'; }
+  else if (k === 'F') {
+    if (cur.kind === 'lenschart') { const pages = plan.filter(p => p.kind === 'lenschart').length; simGoto(p => p.kind === 'lenschart' && p.page === (cur.page + 1) % pages); }
+    else if (!simGoto(p => p.kind === 'lenschart')) sim.msg = 'Nessuna lens chart.';
+  } else sim.msg = 'Nessuna funzione per questo tasto qui.';
+  renderSim();
+}
+
+function renderSim() {
+  const plan = simPlan(), f = state.filters;
+  if (sim.nd === null || sim.nd >= ndSteps().length) sim.nd = Math.min(f.previewNd, ndSteps().length - 1);
+  if (sim.dio === null || sim.dio >= dioSteps().length) sim.dio = Math.min(f.previewDio, dioSteps().length - 1);
+  if (sim.i >= plan.length) sim.i = 0;
+  const dev = $("#simDevice"), cv = $('#simScreen'), ctx = cv.getContext('2d');
+  dev.style.transform = `rotate(${sim.rot}deg)`;
+  dev.classList.toggle('asleep', sim.asleep);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
+  const item = plan[sim.i];
+  if (!item) {
+    ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.font = `700 28px ${FONT}`;
+    ctx.fillText('NESSUNA CARD', cv.width / 2, cv.height / 2);
+  } else {
+    // Come il firmware: variante adatta al verso; se manca, l'altra ruotata di -90°.
+    let angle = simContentRot();
+    let layout = angle % 180 === 90 ? 'land' : 'port';
+    const avail = item.kind === 'card' ? layoutsOf(item.card) : ['land', 'port'];
+    if (!avail.includes(layout)) { layout = layout === 'land' ? 'port' : 'land'; angle = (angle + 270) % 360; }
+    const r = renderScreen(item, layout, { preview: true, noHints: true, nd: sim.nd, dio: sim.dio });
+    const [tmp, tctx] = newCanvas(r.w, r.h), img = tctx.createImageData(r.w, r.h);
+    for (let i = 0; i < r.w * r.h; i++) { const c = r.bits[i] ? 255 : 0; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = c; img.data[i * 4 + 3] = 255; }
+    tctx.putImageData(img, 0, 0);
+    ctx.save(); ctx.translate(cv.width / 2, cv.height / 2); ctx.rotate(-angle * Math.PI / 180);
+    ctx.drawImage(tmp, -r.w / 2, -r.h / 2); ctx.restore();
+    // Indicazioni sul bordo dei tasti (fisso), con il testo dritto per chi guarda.
+    if (item.kind === 'filters') {
+      for (const k of ['A', 'B', 'C', 'D']) {
+        const t = rockerHint(k, sim.rot); if (!t) continue;
+        ctx.save(); ctx.translate(KEY_POS[k] * cv.width, cv.height - STRIP.port / 2); ctx.rotate(-sim.rot * Math.PI / 180);
+        ctx.font = `700 15px ui-monospace, Menlo, monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const w = ctx.measureText(t).width + 10;
+        ctx.fillStyle = '#fff'; ctx.fillRect(-w / 2, -11, w, 22); ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.strokeRect(-w / 2, -11, w, 22);
+        ctx.fillStyle = '#000'; ctx.fillText(t, 0, 1); ctx.restore();
+      }
+    }
+  }
+  const name = item ? (item.kind === 'lenschart' ? `Lens chart${plan.filter(p => p.kind === 'lenschart').length > 1 ? ` ${item.page + 1}` : ''}` : item.kind === 'filters' ? 'Filtri' : cardTitle(item.card)) : '—';
+  $('#simStatus').textContent = [`${sim.i + 1}/${plan.length} · ${name}`, sim.locked ? 'rotazione bloccata' : '', sim.asleep ? 'spento' : '', sim.msg].filter(Boolean).join(' · ');
+}
+
+document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
+  simOn = b.dataset.mode === 'sim';
+  document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === b));
+  $('#previewMode').hidden = simOn; $('#simMode').hidden = !simOn;
+  if (simOn) renderSim(); else drawPreview();
+});
+$('#rotL').onclick = () => { sim.rot = (sim.rot + 270) % 360; sim.msg = ''; renderSim(); };
+$('#rotR').onclick = () => { sim.rot = (sim.rot + 90) % 360; sim.msg = ''; renderSim(); };
+document.querySelectorAll('#simDevice .key').forEach(b => {
+  let t0 = 0;
+  b.addEventListener('pointerdown', () => { t0 = Date.now(); b.classList.add('down'); });
+  b.addEventListener('pointerleave', () => b.classList.remove('down'));
+  b.addEventListener('pointerup', e => { b.classList.remove('down'); simPress(b.dataset.key, e.shiftKey || Date.now() - t0 >= 800); });
+});
+document.addEventListener('keydown', e => {
+  if (!simOn || e.repeat || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+  const k = e.key.toUpperCase();
+  if ('ABCDEFP'.includes(k) && k.length === 1) { e.preventDefault(); simPress(k, e.shiftKey); }
+});
 
 // Database: servito dalla radice del repo (python3 -m http.server), quindi ../data/.
 Promise.all([

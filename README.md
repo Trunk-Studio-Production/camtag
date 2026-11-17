@@ -83,6 +83,12 @@ Schermate:
 "Scarica tutto" crea `camtag.zip`: la cartella `camtag/` va copiata nella
 radice della microSD.
 
+**Simulatore** (pulsante sopra l'anteprima): l'X3 disegnato con tutti i tasti
+cliccabili (anche da tastiera: A–F, P = power). Si può ruotare, bloccare la
+rotazione (E tenuto premuto) e spegnere, e si comporta come è previsto per il
+firmware. Le schermate sono a risoluzione piena (792×528 e 528×792); il
+simulatore le mostra a circa metà scala, vicino alla dimensione reale.
+
 ## Firmware
 
 Compila:

@@ -16,12 +16,15 @@ costruttori di lenti e filtri nei dati vanno bene.
 - `companion/index.html` — strumento web a file singolo: lens chart e filtri
   generati in automatico più schede manuali (crew, note, lente singola, patch);
   esporta uno zip di BMP 1 bit. Unica dipendenza: JSZip da cdnjs. Legge
-  `../data/*.json`, quindi va servito dalla radice del repo.
+  `../data/*.json`, quindi va servito dalla radice del repo. Ha un
+  **simulatore** (`simPress`/`renderSim`) con tasti, rotazione, blocco e power:
+  è la specifica di comportamento per il firmware, e i due devono restare allineati.
 - `data/lenses.json` — database lenti (schema in `data/README.md`), dati solo
   dalle schede dei costruttori, con la fonte per ogni lente. Mai modificarlo per
   un esemplare: le differenze (es. Ø frontale del noleggio) sono modifiche
   locali per `id` nello strumento web (localStorage `camtag.lensOverrides.v1`,
-  esportabili), applicate sopra il database quando si disegna.
+  esportabili), applicate sopra il database quando si disegna. Un valore
+  modificato porta un `*` accanto, sulla lens chart e nello strumento.
 - `data/filters.json` — catalogo filtri d'effetto **provvisorio, non verificato**.
 - `third_party/freeink-sdk/` — sottomodulo git bloccato su `77ae8c7`. **Non
   modificarlo**: se serve un cambiamento, aggira nel nostro codice o chiedi.
@@ -54,8 +57,13 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 ## Hardware X3 (dal profilo `XTEINK_X3` in BoardConfig.h)
 
 - ESP32-C3, ~380 KB RAM, niente PSRAM. Framebuffer 1 bpp allocato dall'SDK.
-- Pannello 792×528 nativo orizzontale, MSB-first, **1 = bianco**.
+- Vetro 528×792 in verticale (area attiva 51,84 × 77,76 mm, ~259 ppi); il
+  framebuffer dell'SDK è 792×528 (orizzontale), MSB-first, **1 = bianco**.
   Controller UC8253 o UC8279 secondo il lotto, rilevato all'avvio.
+- Nello strumento web le immagini rimpicciolite vanno ammorbidite, non
+  `pixelated` (che butta via righe); i pixel veri si vedono con "Pixel 1:1".
+- Disegnando per l'e-paper, righe sottili su pixel interi e spesse almeno 2 px:
+  una riga da 1 px a mezzo pixel diventa grigia e la soglia a 1 bit la cancella.
 - microSD su SPI condiviso con il display; batteria 650 mAh con fuel gauge
   BQ27220; RTC DS3231; IMU QMI8658 (accelerometro + giroscopio).
 - Niente touch. Posizione naturale **verticale**: in basso due bilancieri,
@@ -70,18 +78,28 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   528×792. BMP 1 bit non compresso, palette 0 = nero, 1 = bianco. Ordine = nome.
 - Nomi riservati: `NN_lenschart[-2…]` (pagine da 11 righe) e `NN_filters`.
 - Schermata filtri: lo sfondo ha i riquadri dei valori vuoti; la cartella
-  `NN_filters/` contiene `screen.ini` (riquadri per orientamento, tasti,
-  etichette delle indicazioni, valori iniziali) e i riquadri `ndI[.p].bmp`,
+  `NN_filters/` contiene `screen.ini` (riquadri per orientamento, tasti e
+  indicazioni per ogni verso `keys.<gradi>`/`hints.<gradi>`, valori iniziali)
+  e i riquadri `ndI[.p].bmp`,
   `dioI[.p].bmp` (I = passo; 0 = nessuno). Il firmware compone sfondo + riquadri.
-- Sulla schermata filtri restano libere le fasce sui lati corti (40 px in
-  verticale, 64 in orizzontale) per le indicazioni dei tasti.
+- Sulla schermata filtri il contenuto lascia libere le fasce sui lati corti
+  (40 px in verticale, 64 in orizzontale) per le indicazioni dei tasti; la barra
+  del titolo invece arriva ai bordi, e le indicazioni vi si disegnano sopra in
+  un riquadro bianco con bordo nero.
+- Bilancieri nella schermata filtri (regola unica in `rockerAction`): ogni
+  bilanciere comanda il valore che gli sta accanto, quindi a 90° in senso orario
+  A|B diventa ND e C|D diottria. "+" sta sempre sul capo in alto o a destra per
+  chi guarda (a 90° e 180° è il primo tasto, A o C).
 - Il formato è un contratto tra `companion/` e `device/`: se cambi uno, aggiorna
   l'altro. **Il firmware non gestisce ancora la schermata filtri.**
 
 ## Decisioni di prodotto
 
 - Solo X3 per ora; l'X4 è un futuro lontano.
-- Lens chart: colonne focale, T, MOD, Ø frontale, sigla di serie. In negativo
+- Lens chart: focale, T, MOD, Ø frontale (più piccolo, dato secondario). Niente
+  colonna serie: in basso un riquadro con il nome per esteso del set principale
+  e "Serie (SIGLA)" per le altre; la sigla piccola compare accanto alla focale
+  solo sulle lenti fuori dal set principale (su tutte se non c'è). In negativo
   solo la lente "fuori dal coro" (serie diversa dal set principale o tipo
   diverso, es. l'unica macro); con un pareggio tra serie non si evidenzia per
   serie. Si può forzare per ogni lente (auto / sempre / mai). Scala del testo
