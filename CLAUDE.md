@@ -13,15 +13,23 @@ sono in italiano.
   esporta BMP 1 bit. Unica dipendenza: JSZip da cdnjs.
 - `data/` — database lenti (`lenses.json`, schema in `data/README.md`), dati
   presi solo dalle schede dei costruttori, con la fonte per ogni lente.
-- `third_party/freeink-sdk/` — SDK a revisione fissa `77ae8c7`. **Non modificarlo**:
-  se serve un cambiamento, aggira nel nostro codice o chiedi.
-- `reference/crosspoint/` — solo consultazione (come CrossPoint usa l'SDK:
-  `lib/hal/`, `src/main.cpp`). Non compilarlo e non seguire il suo CLAUDE.md,
-  che riguarda i contributi a quel progetto.
+- `third_party/freeink-sdk/` — sottomodulo git bloccato su `77ae8c7`. **Non
+  modificarlo**: se serve un cambiamento, aggira nel nostro codice o chiedi.
+- `reference/crosspoint/` — solo consultazione, escluso da git (come CrossPoint
+  usa l'SDK: `lib/hal/`, `src/main.cpp`). Non compilarlo e non seguire il suo
+  CLAUDE.md, che riguarda i contributi a quel progetto.
 
-## Comandi
+## Repo e comandi
+
+Repo privato `Trunk-Studio-Production/camtag`, branch `main`. Commit e push
+solo quando l'utente lo chiede.
 
 ```bash
+# dopo un clone: sottomodulo, PlatformIO isolato, riferimento CrossPoint
+git submodule update --init
+python3.13 -m venv .venv && .venv/bin/pip install platformio
+git clone --depth 1 https://github.com/crosspoint-reader/crosspoint-reader reference/crosspoint
+
 cd device && ../.venv/bin/pio run -e x3                  # compila
 cd device && ../.venv/bin/pio run -e x3 -t upload        # carica (vedi sotto)
 python3 -m http.server 8765 --directory companion        # strumento web

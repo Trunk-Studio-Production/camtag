@@ -9,9 +9,20 @@ immagini, si sfoglia con i tasti e resta visibile anche da spento.
 |---|---|
 | `device/` | Firmware PlatformIO per Xteink X3 (e X4), sopra FreeInk SDK |
 | `companion/` | Strumento web per creare le card ed esportarle in BMP 1 bit |
-| `third_party/freeink-sdk/` | FreeInk SDK (driver display, tasti, batteria, SD), revisione `77ae8c7` |
-| `reference/crosspoint/` | CrossPoint, solo come riferimento: non viene compilato |
+| `third_party/freeink-sdk/` | FreeInk SDK (driver display, tasti, batteria, SD), sottomodulo su `77ae8c7` |
+| `reference/crosspoint/` | CrossPoint, solo come riferimento: non compilato e non nel repo |
 | `.venv/` | PlatformIO recente, isolato dal resto del sistema |
+| `data/` | Database lenti (in costruzione) |
+
+### Dopo un clone
+
+```bash
+git submodule update --init
+python3.13 -m venv .venv && .venv/bin/pip install platformio
+git clone --depth 1 https://github.com/crosspoint-reader/crosspoint-reader reference/crosspoint
+```
+
+`.venv/` e `reference/` non sono nel repo: vanno ricreati così.
 
 ## Come funziona (v0.2)
 
