@@ -23,36 +23,57 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink);
          font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
-  header { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
   header h1 { font-size: 16px; margin: 0; letter-spacing: .04em; }
   header .sp { flex: 1; }
+  header select { width: auto; }
   button, select, input, textarea { font: inherit; color: inherit; }
   button { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; cursor: pointer; }
   button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
   button.danger { color: var(--danger); }
+  button.small { padding: 3px 8px; font-size: 12px; }
   button.on { background: var(--sel); border-color: var(--ink); }
   button:disabled { opacity: .35; cursor: default; }
-  main { display: grid; grid-template-columns: 220px 1fr 340px; gap: 16px; padding: 16px; }
-  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+  main { display: grid; grid-template-columns: 220px minmax(0, 1fr) 430px; gap: 16px; padding: 16px; align-items: start; }
+  @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
   .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-width: 0; }
   .panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+  .panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 18px 0 8px; border-top: 1px solid var(--line); padding-top: 14px; }
   #list { list-style: none; margin: 0 0 10px; padding: 0; }
   #list li { display: flex; gap: 8px; align-items: center; padding: 7px 8px; border-radius: 6px; cursor: pointer; }
   #list li.sel { background: var(--sel); }
+  #list li.off .t { text-decoration: line-through; color: var(--muted); }
   #list li .n { color: var(--muted); font-variant-numeric: tabular-nums; width: 20px; }
   #list li .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #list li .k { font-size: 11px; color: var(--muted); }
   .add { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .stage { display: flex; flex-direction: column; gap: 10px; align-items: center; }
   .frame { background: #8a8a85; padding: 14px; border-radius: 14px; max-width: 100%; }
-  canvas#preview { display: block; max-width: 100%; height: auto; image-rendering: pixelated; background: #fff; }
+  canvas#preview { display: block; max-width: 100%; max-height: 72vh; height: auto; width: auto; image-rendering: pixelated; background: #fff; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: center; }
   label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
-  input[type=text], input[type=number], textarea, select { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; }
+  label.inline { display: inline-flex; gap: 6px; align-items: center; margin: 0; color: var(--ink); font-size: 13px; }
+  input[type=text], input[type=number], input[type=search], textarea, select { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; }
   textarea { min-height: 110px; resize: vertical; }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
-  .empty { color: var(--muted); padding: 30px 0; text-align: center; }
+  .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+  .warn { font-size: 12px; color: var(--danger); margin: 8px 0 0; }
+  .empty { color: var(--muted); padding: 14px 0; text-align: center; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.t td, table.t th { padding: 4px 4px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+  table.t th { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+  table.t td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.t input, table.t select { padding: 3px 5px; font-size: 12px; }
+  .out { background: var(--ink); color: var(--panel); padding: 0 4px; border-radius: 3px; }
+  .db { max-height: 420px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; margin-top: 8px; }
+  .db .grp { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--sel); position: sticky; top: 0; font-weight: 600; font-size: 13px; }
+  .db .grp span { flex: 1; }
+  .db .it { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-top: 1px solid var(--line); font-size: 13px; }
+  .db .it span { flex: 1; font-variant-numeric: tabular-nums; }
+  .db .it .meta { color: var(--muted); font-size: 12px; flex: 2; }
+  .checks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px 10px; }
+  details summary { cursor: pointer; font-size: 13px; margin-top: 12px; }
 </style>
 </head>
 <body>
@@ -60,33 +81,37 @@
   <h1>CAMTAG · CARDS</h1>
   <span class="hint" id="dims"></span>
   <span class="sp"></span>
+  <select id="decimal" title="Separatore decimale">
+    <option value=",">Decimali: 0,9</option>
+    <option value=".">Decimali: 0.9</option>
+  </select>
   <select id="device" title="Dispositivo">
     <option value="x3">Xteink X3 · 792×528</option>
-    <option value="x4">Xteink X4 · 800×480</option>
   </select>
   <button id="importBtn">Importa progetto</button>
   <button id="exportJson">Salva progetto</button>
-  <button id="zipBtn" class="primary">Scarica tutte (.zip)</button>
+  <button id="zipBtn" class="primary">Scarica tutto (.zip)</button>
   <input type="file" id="importFile" accept="application/json" hidden>
 </header>
 
 <main>
   <section class="panel">
-    <h2>Card</h2>
+    <h2>Schermate</h2>
     <ul id="list"></ul>
     <div class="add">
-      <button data-add="lens">+ Lente</button>
       <button data-add="crew">+ Crew</button>
       <button data-add="notes">+ Note</button>
+      <button data-add="lens">+ Lente singola</button>
       <button data-add="patch">+ Patch</button>
     </div>
-    <p class="hint">L'ordine qui è l'ordine sul dispositivo (nomi file 01_, 02_…).</p>
+    <p class="hint">Lens chart e Filtri si generano da soli. L'ordine qui è l'ordine sul dispositivo.</p>
   </section>
 
   <section class="stage">
     <div class="row">
       <button data-view="land">Orizzontale</button>
       <button data-view="port">Verticale</button>
+      <span id="pageCtl" class="row"></span>
     </div>
     <div class="frame"><canvas id="preview"></canvas></div>
     <div class="row">
@@ -94,18 +119,31 @@
       <button id="down">↓ Giù</button>
       <button id="dup">Duplica</button>
       <button id="del" class="danger">Elimina</button>
-      <button id="bmpBtn" class="primary">Scarica BMP</button>
+      <button id="bmpBtn">Scarica questa immagine</button>
     </div>
-    <p class="hint">Anteprima a 1 bit, identica a ciò che vedrai sull'e-paper.</p>
+    <p class="hint" id="previewNote">Anteprima a 1 bit, identica a ciò che vedrai sull'e-paper.</p>
   </section>
 
   <section class="panel" id="editor"></section>
 </main>
 
 <script>
-const DEVICES = { x3: { w: 792, h: 528 }, x4: { w: 800, h: 480 } };
+// ============================================================================
+// Costanti e stato
+// ============================================================================
+const DEVICES = { x3: { w: 792, h: 528 } };
 const FONT = '-apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif';
 const STORE_KEY = 'camtag.project.v1';
+const LENS_ROWS_PER_PAGE = 11;
+// Fasce libere sui lati corti (dove stanno i tasti) per le indicazioni del firmware.
+const STRIP = { port: 40, land: 64 };
+// Posizione dei tasti A, B, C, D lungo il bordo inferiore (verticale), in frazione di larghezza.
+const KEY_POS = { A: 0.14, B: 0.44, C: 0.57, D: 0.86 };
+
+const ND_VALUES = [0.3, 0.6, 0.9, 1.2, 1.5, 1.8, 2.1, 2.4];
+const DIOPTERS = [0.25, 0.5, 1, 2, 3, 4];
+const DIO_LABEL = { 0.25: '+1/4', 0.5: '+1/2', 1: '+1', 2: '+2', 3: '+3', 4: '+4' };
+const LENS_TYPES = { prime: 'Fisso', macro: 'Macro', zoom: 'Zoom', anamorphic: 'Anamorfico', probe: 'Probe', specialty: 'Speciale' };
 
 const DEFAULTS = {
   lens:  () => ({ formats: 'both', type: 'lens', brand: 'MARCA', series: 'Serie', focal: '35', tstop: '1.8', mod: '0.35 m', front: '95 mm', thread: '', notes: '' }),
@@ -115,40 +153,103 @@ const DEFAULTS = {
 };
 const TYPE_LABEL = { lens: 'Lente', crew: 'Crew', notes: 'Note', patch: 'Patch' };
 
-let state = migrate(load()) || { device: 'x3', cards: [DEFAULTS.lens(), DEFAULTS.crew()] };
-let sel = 0;
-let view = 'land';
+function freshState() {
+  return {
+    version: 2, device: 'x3', decimal: ',', production: '',
+    auto: { lenschart: true, filters: true },
+    lenses: [],
+    filters: { ndFormat: 'density', ir: false, nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], dio: [], style: [], previewNd: 0, previewDio: 0 },
+    cards: [DEFAULTS.crew()],
+  };
+}
 
-// Older projects stored a fixed orientation per card; now both layouts are exported.
 function migrate(s) {
   if (!s || !Array.isArray(s.cards)) return s;
   for (const c of s.cards) { if (!c.formats) c.formats = 'both'; delete c.orient; delete c.mount; }
+  const f = freshState();
+  for (const k of ['decimal', 'production', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
+  s.filters = Object.assign(f.filters, s.filters);
+  s.device = 'x3'; s.version = 2;
   return s;
 }
-const imgCache = new Map();
 
 function load() { try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch { return null; } }
 function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch {} }
 
-// ---------- rendering ----------
-function cardTitle(c) {
-  if (c.type === 'lens') return `${c.focal}mm ${c.brand}`;
-  if (c.type === 'crew') return c.title || 'Crew';
-  if (c.type === 'notes') return c.title || 'Note';
-  return c.caption || 'Immagine';
+let state = migrate(load()) || freshState();
+let sel = { kind: 'lenschart' };
+let view = 'land';
+let page = 0;
+let lensDb = null, lensDbError = '';
+let dbSearch = { q: '', brand: '', type: '' };
+let filterDb = [];
+const imgCache = new Map();
+
+// ============================================================================
+// Formattazione
+// ============================================================================
+function fmt(n, max = 2) {
+  if (n === null || n === undefined || n === '') return '—';
+  const r = Math.round(Number(n) * 10 ** max) / 10 ** max;
+  return String(r).replace('.', state.decimal);
 }
+function focalText(l) { return l.focal != null ? fmt(l.focal, 1) : `${fmt(l.focalMin, 1)}-${fmt(l.focalMax, 1)}`; }
+function focalSort(l) { return l.focal != null ? l.focal : (l.focalMin ?? 0); }
+function tText(l) { return l.tstop == null ? '—' : (l.tstopLong ? `${fmt(l.tstop)}-${fmt(l.tstopLong)}` : fmt(l.tstop)); }
+
+function ndLabel(d) {
+  if (!d) return '—';
+  const stops = Math.round(d / 0.3 * 10) / 10;
+  if (state.filters.ndFormat === 'stops') return `${fmt(stops, 1)} stop`;
+  if (state.filters.ndFormat === 'factor') return `${state.filters.ir ? 'IR' : ''}ND${Math.round(2 ** stops)}`;
+  return fmt(d, 2);
+}
+function dioLabel(d) { return d ? `${DIO_LABEL[d.v] || '+' + fmt(d.v)}${d.split ? ' SPLIT' : ''}` : '—'; }
+function ndSteps() { return [0, ...[...state.filters.nd].sort((a, b) => a - b)]; }
+function dioSteps() { return [null, ...[...state.filters.dio].sort((a, b) => a.v - b.v || a.split - b.split)]; }
 
 function slug(s) {
   return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase().slice(0, 24) || 'card';
 }
 
+// ============================================================================
+// Lens chart: ordinamento, paginazione, lente "fuori dal coro"
+// ============================================================================
+function sortedLenses() { return [...state.lenses].sort((a, b) => focalSort(a) - focalSort(b) || (a.seriesCode || '').localeCompare(b.seriesCode || '')); }
+function lensPages() {
+  const all = sortedLenses(), pages = [];
+  for (let i = 0; i < all.length; i += LENS_ROWS_PER_PAGE) pages.push(all.slice(i, i + LENS_ROWS_PER_PAGE));
+  return pages;
+}
+function plurality(items) {
+  const m = new Map(); for (const k of items) m.set(k, (m.get(k) || 0) + 1);
+  const sorted = [...m.entries()].sort((a, b) => b[1] - a[1]);
+  if (!sorted.length || (sorted[1] && sorted[1][1] === sorted[0][1])) return null;  // pareggio: nessun principale
+  return sorted[0][0];
+}
+// Evidenziata se di serie diversa dal set principale o di tipo diverso dal resto.
+function outliers() {
+  const L = state.lenses, out = new Set();
+  const key = l => `${l.brand}|${l.series}`;
+  const mainSeries = L.length > 1 ? plurality(L.map(key)) : null;
+  const mainType = L.length > 1 ? plurality(L.map(l => l.type || 'prime')) : null;
+  for (const l of L) {
+    if (l.highlight === 'on') out.add(l.uid);
+    else if (l.highlight !== 'off' &&
+             ((mainSeries && key(l) !== mainSeries) || (mainType && (l.type || 'prime') !== mainType))) out.add(l.uid);
+  }
+  return out;
+}
+
+// ============================================================================
+// Disegno: utilità
+// ============================================================================
 function fitFont(ctx, text, weight, maxW, maxSize, minSize = 10) {
-  let s = maxSize;
+  let s = Math.round(maxSize);
   for (; s > minSize; s -= 2) { ctx.font = `${weight} ${s}px ${FONT}`; if (ctx.measureText(text).width <= maxW) break; }
   ctx.font = `${weight} ${s}px ${FONT}`;
   return s;
 }
-
 function wrap(ctx, text, maxW) {
   const out = [];
   for (const para of String(text).split('\n')) {
@@ -162,8 +263,143 @@ function wrap(ctx, text, maxW) {
   }
   return out;
 }
+function newCanvas(W, H) {
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  return [cv, ctx];
+}
+function dims(layout) { const { w, h } = DEVICES[state.device]; return layout === 'port' ? [h, w] : [w, h]; }
 
-// Focal number + "mm" suffix, sized together to fit maxW. Returns the font size.
+// ============================================================================
+// Schermata: lens chart
+// ============================================================================
+function drawLensChart(ctx, W, H, rows, pageIdx, pageCount) {
+  const out = outliers();
+  const pad = Math.round(W * 0.035);
+  const barH = Math.round(H > W ? 64 : 56);
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, barH);
+  ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  const title = (state.production || 'LENS CHART').toUpperCase();
+  fitFont(ctx, title, 800, W * 0.7, barH * 0.5); ctx.fillText(title, pad, barH / 2);
+  if (pageCount > 1) { ctx.textAlign = 'right'; ctx.font = `700 ${Math.round(barH * 0.4)}px ${FONT}`; ctx.fillText(`${pageIdx + 1}/${pageCount}`, W - pad, barH / 2); }
+
+  const cols = [['FOC', 0, 'left'], ['T', 0.26, 'left'], ['MOD m', 0.42, 'left'], ['Ø mm', 0.62, 'left'], ['SERIE', 0.80, 'left']];
+  const colX = f => pad + f * (W - pad * 2);
+  const headH = Math.round(H > W ? 34 : 28);
+  ctx.fillStyle = '#000'; ctx.textAlign = 'left';
+  ctx.font = `700 ${Math.round(headH * 0.5)}px ${FONT}`;
+  for (const [t, f] of cols) ctx.fillText(t, colX(f) + (f === 0 ? 8 : 0), barH + headH / 2 + 2);
+  const top = barH + headH;
+  ctx.fillRect(pad, top - 2, W - pad * 2, 3);
+
+  if (!rows.length) {
+    ctx.textAlign = 'center'; ctx.font = `600 ${Math.round(H * 0.045)}px ${FONT}`;
+    ctx.fillText('Nessuna lente selezionata', W / 2, top + (H - top) / 2);
+    return;
+  }
+  const rowH = (H - top - pad * 0.5) / LENS_ROWS_PER_PAGE;
+  rows.forEach((l, i) => {
+    const y = top + i * rowH, mid = y + rowH / 2 + 1;
+    if (i > 0) { ctx.fillStyle = '#000'; ctx.fillRect(pad, y, W - pad * 2, 1); }
+    const isOut = out.has(l.uid);
+    const focW = colX(cols[1][1]) - colX(0) - 12;
+    if (isOut) { ctx.fillStyle = '#000'; ctx.fillRect(colX(0), y + 3, focW, rowH - 6); }
+    ctx.fillStyle = isOut ? '#fff' : '#000'; ctx.textBaseline = 'middle';
+    fitFont(ctx, focalText(l), 900, focW - 16, rowH * 0.62); ctx.fillText(focalText(l), colX(0) + 8, mid);
+    ctx.fillStyle = '#000';
+    const cells = [tText(l), fmt(l.mod_m), l.front_mm != null ? fmt(l.front_mm, 1) : '—', (l.seriesCode || '') + (l.squeeze ? ` ×${fmt(l.squeeze)}` : '')];
+    cells.forEach((v, j) => {
+      const x = colX(cols[j + 1][1]), w = (j + 2 < cols.length ? colX(cols[j + 2][1]) : W - pad) - x - 8;
+      fitFont(ctx, v, j === 3 ? 800 : 700, w, rowH * 0.5); ctx.fillText(v, x, mid);
+    });
+  });
+}
+
+// ============================================================================
+// Schermata: filtri (sfondo + riquadri dei valori)
+// ============================================================================
+function filtersLayout(W, H) {
+  const port = H > W, s = port ? STRIP.port : STRIP.land;
+  // Area utile: tolte le fasce sui lati corti, dove il firmware disegna le indicazioni.
+  const area = port ? { x: 0, y: s, w: W, h: H - 2 * s } : { x: s, y: 0, w: W - 2 * s, h: H };
+  const pad = 22, barH = port ? 64 : 56;
+  const L = { port, area, pad, bar: { x: area.x, y: area.y, w: area.w, h: barH } };
+  const hasDio = state.filters.dio.length > 0;
+  if (port) {
+    let y = area.y + barH + 14;
+    const slotH = hasDio ? 130 : 170;
+    L.ndLabel = { x: area.x + pad, y }; y += 28;
+    L.nd = { x: area.x + pad, y, w: area.w - 2 * pad, h: slotH }; y += slotH + 10;
+    if (hasDio) { L.dioLabel = { x: area.x + pad, y }; y += 28; L.dio = { x: area.x + pad, y, w: area.w - 2 * pad, h: slotH }; y += slotH + 10; }
+    L.list = { x: area.x + pad, y: y + 8, w: area.w - 2 * pad, h: area.y + area.h - y - 16 };
+  } else {
+    const colW = Math.round(area.w * 0.5);
+    let y = area.y + barH + 12;
+    const slotH = hasDio ? 150 : 330;
+    L.ndLabel = { x: area.x + pad, y }; y += 28;
+    L.nd = { x: area.x + pad, y, w: colW - pad * 1.5, h: slotH }; y += slotH + 8;
+    if (hasDio) { L.dioLabel = { x: area.x + pad, y }; y += 28; L.dio = { x: area.x + pad, y, w: colW - pad * 1.5, h: slotH }; }
+    L.list = { x: area.x + colW + pad * 0.5, y: area.y + barH + 16, w: area.w - colW - pad * 1.5, h: area.h - barH - 32 };
+    L.divider = { x: area.x + colW - 2, y: area.y + barH + 16, h: area.h - barH - 32 };
+  }
+  for (const k of ['nd', 'dio']) if (L[k]) for (const p of ['x', 'y', 'w', 'h']) L[k][p] = Math.round(L[k][p]);
+  return L;
+}
+
+function drawFiltersBackground(ctx, W, H) {
+  const L = filtersLayout(W, H), f = state.filters;
+  ctx.fillStyle = '#000'; ctx.fillRect(L.bar.x, L.bar.y, L.bar.w, L.bar.h);
+  ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  fitFont(ctx, 'FILTRI', 800, L.bar.w - L.pad * 2, L.bar.h * 0.5); ctx.fillText('FILTRI', L.bar.x + L.pad, L.bar.y + L.bar.h / 2);
+  ctx.fillStyle = '#000'; ctx.textBaseline = 'alphabetic';
+  ctx.font = `700 22px ${FONT}`;
+  ctx.fillText(f.ir ? 'IRND' : 'ND', L.ndLabel.x, L.ndLabel.y + 20);
+  if (L.dio) ctx.fillText('DIOTTRIA', L.dioLabel.x, L.dioLabel.y + 20);
+  if (L.divider) ctx.fillRect(L.divider.x, L.divider.y, 3, L.divider.h);
+  else ctx.fillRect(L.list.x, L.list.y - 10, L.list.w, 3);
+
+  // Filtri di stile: elenco fisso.
+  const items = f.style.map(s => `${s.name}${s.strength ? ' ' + s.strength : ''}`);
+  if (!items.length) {
+    ctx.font = `600 20px ${FONT}`; ctx.fillStyle = '#000';
+    ctx.fillText('Nessun filtro di stile', L.list.x, L.list.y + 30);
+    return L;
+  }
+  const rowH = Math.min(52, L.list.h / items.length);
+  items.forEach((t, i) => {
+    const y = L.list.y + i * rowH;
+    if (i > 0) ctx.fillRect(L.list.x, y, L.list.w, 1);
+    ctx.textBaseline = 'middle';
+    fitFont(ctx, t, 800, L.list.w, rowH * 0.55); ctx.fillText(t, L.list.x, y + rowH / 2 + 1);
+  });
+  return L;
+}
+
+// Riquadro di un valore: testo grande centrato su bianco.
+function drawTile(ctx, x, y, w, h, text) {
+  ctx.fillStyle = '#fff'; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#000'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  fitFont(ctx, text, 900, w - 10, h * 0.82);
+  ctx.fillText(text, x + 4, y + h / 2 + h * 0.04);
+}
+
+// Indicazioni dei tasti come le disegnerà il firmware (solo anteprima verticale).
+function hintLabels() {
+  const h = {};
+  if (state.filters.dio.length) { h.A = '-DIO'; h.B = '+DIO'; }
+  if (state.filters.nd.length) { h.C = '-ND'; h.D = '+ND'; }
+  return h;
+}
+function drawHintsPreview(ctx, W, H) {
+  if (H <= W) return;
+  ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `700 15px ui-monospace, Menlo, monospace`;
+  for (const [k, t] of Object.entries(hintLabels())) ctx.fillText(t, KEY_POS[k] * W, H - STRIP.port / 2);
+}
+
+// ============================================================================
+// Schede manuali (lente singola, crew, note, patch)
+// ============================================================================
 function drawFocal(ctx, big, x, maxW, maxSize, y, centredOnY) {
   let s = maxSize, bw, mw;
   for (; s > 20; s -= 2) {
@@ -195,8 +431,7 @@ function drawLens(ctx, W, H, c) {
 
   if (!portrait) {
     const colW = W * 0.58;
-    const big = `${c.focal}`;
-    const s = drawFocal(ctx, big, pad, colW - pad * 1.5, H * 0.55, (barH + (H - barH - notesH) / 2), true);
+    drawFocal(ctx, `${c.focal}`, pad, colW - pad * 1.5, H * 0.55, (barH + (H - barH - notesH) / 2), true);
     const x = colW + pad * 0.5, rowH = (H - barH - notesH - pad) / Math.max(specs.length, 1);
     ctx.fillRect(colW, barH + pad * 0.6, 4, H - barH - notesH - pad * 1.2);
     specs.forEach(([k, v], i) => {
@@ -205,8 +440,7 @@ function drawLens(ctx, W, H, c) {
       fitFont(ctx, v, 800, W - x - pad, rowH * 0.48); ctx.fillText(v, x, y + rowH * 0.82);
     });
   } else {
-    const big = `${c.focal}`;
-    const s = drawFocal(ctx, big, pad, W - pad * 2, H * 0.28, barH + pad, false);
+    const s = drawFocal(ctx, `${c.focal}`, pad, W - pad * 2, H * 0.28, barH + pad, false);
     const top = barH + pad + s * 0.78 + pad, rowH = (H - top - notesH - pad) / Math.max(specs.length, 1);
     specs.forEach(([k, v], i) => {
       const y = top + rowH * i;
@@ -229,7 +463,6 @@ function drawCrew(ctx, W, H, c) {
   ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
   fitFont(ctx, (c.title || '').toUpperCase(), 800, W - pad * 2, barH * 0.5);
   ctx.fillText((c.title || '').toUpperCase(), pad, barH / 2);
-
   const rows = String(c.lines).split('\n').map(l => l.trim()).filter(Boolean).map(l => {
     const i = l.indexOf(':'); return i < 0 ? ['', l] : [l.slice(0, i).trim(), l.slice(i + 1).trim()];
   });
@@ -295,35 +528,17 @@ function drawPatch(ctx, W, H, c) {
   }
 }
 
-// Layouts a card is exported in. The device picks one from its accelerometer.
-function layoutsOf(c) { return c.formats === 'land' ? ['land'] : c.formats === 'port' ? ['port'] : ['land', 'port']; }
-
-// Renders a card upright to a 1-bit Uint8Array (1 = white).
-// 'land' = panel size (e.g. 792x528), 'port' = the same size turned (528x792).
-function renderCard(c, layout) {
-  const { w: PW, h: PH } = DEVICES[state.device];
-  const portrait = layout === 'port';
-  const W = portrait ? PH : PW, H = portrait ? PW : PH;
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const ctx = cv.getContext('2d');
-  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
-  ({ lens: drawLens, crew: drawCrew, notes: drawNotes, patch: drawPatch })[c.type](ctx, W, H, c);
-
+// ============================================================================
+// Rasterizzazione 1 bit e BMP
+// ============================================================================
+function toBits(ctx, W, H, mode = 'threshold', t = 128) {
   const src = ctx.getImageData(0, 0, W, H).data;
-  const gray = new Float32Array(W * H);
-  for (let i = 0; i < W * H; i++) gray[i] = 0.299 * src[i * 4] + 0.587 * src[i * 4 + 1] + 0.114 * src[i * 4 + 2];
-  const isPhoto = c.type === 'patch' && c.img && c.dither !== 'none';
-  const bits = isPhoto ? (c.dither === 'fs' ? floyd(gray, W, H) : atkinson(gray, W, H))
-                       : threshold(gray, c.type === 'patch' ? c.threshold : 128);
-  if (c.type === 'patch' && c.invert) {
-    const capStart = c.caption ? (H - Math.round(H * 0.14)) * W : W * H;
-    for (let i = 0; i < capStart; i++) bits[i] ^= 1;
-  }
-
-  return { bits, w: W, h: H };
+  const g = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) g[i] = 0.299 * src[i * 4] + 0.587 * src[i * 4 + 1] + 0.114 * src[i * 4 + 2];
+  if (mode === 'atkinson') return atkinson(g, W, H);
+  if (mode === 'fs') return floyd(g, W, H);
+  const b = new Uint8Array(W * H); for (let i = 0; i < g.length; i++) b[i] = g[i] >= t ? 1 : 0; return b;
 }
-
-function threshold(g, t) { const b = new Uint8Array(g.length); for (let i = 0; i < g.length; i++) b[i] = g[i] >= t ? 1 : 0; return b; }
 function atkinson(g, W, H) {
   const b = new Uint8Array(W * H);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -345,8 +560,7 @@ function floyd(g, W, H) {
   }
   return b;
 }
-
-// 1-bit BMP: palette 0 = black, 1 = white, rows bottom-up, 4-byte aligned.
+// 1-bit BMP: palette 0 = nero, 1 = bianco, righe dal basso, allineate a 4 byte.
 function encodeBmp(bits, W, H) {
   const rowBytes = Math.ceil(W / 32) * 4, dataSize = rowBytes * H, off = 62;
   const buf = new ArrayBuffer(off + dataSize), dv = new DataView(buf), u8 = new Uint8Array(buf);
@@ -363,111 +577,394 @@ function encodeBmp(bits, W, H) {
   return new Blob([buf], { type: 'image/bmp' });
 }
 
-// The device pairs "NAME.bmp" (horizontal) with "NAME.p.bmp" (vertical).
-function fileName(c, i, layout) {
-  return `${String(i + 1).padStart(2, '0')}_${c.type}_${slug(cardTitle(c))}${layout === 'port' ? '.p' : ''}.bmp`;
+// ============================================================================
+// Render delle schermate
+// ============================================================================
+// opts.preview: compone anche valori e indicazioni (per l'anteprima).
+function renderScreen(s, layout, opts = {}) {
+  const [W, H] = dims(layout);
+  const [cv, ctx] = newCanvas(W, H);
+  if (s.kind === 'lenschart') {
+    const pages = lensPages();
+    drawLensChart(ctx, W, H, pages[s.page] || [], s.page, pages.length);
+  } else if (s.kind === 'filters') {
+    const L = drawFiltersBackground(ctx, W, H);
+    if (opts.preview) {
+      const f = state.filters;
+      drawTile(ctx, L.nd.x, L.nd.y, L.nd.w, L.nd.h, ndLabel(ndSteps()[f.previewNd] || 0));
+      if (L.dio) drawTile(ctx, L.dio.x, L.dio.y, L.dio.w, L.dio.h, dioLabel(dioSteps()[f.previewDio] || null));
+      drawHintsPreview(ctx, W, H);
+    }
+  } else {
+    const c = s.card;
+    ({ lens: drawLens, crew: drawCrew, notes: drawNotes, patch: drawPatch })[c.type](ctx, W, H, c);
+    const photo = c.type === 'patch' && c.img && c.dither !== 'none';
+    const bits = toBits(ctx, W, H, photo ? c.dither : 'threshold', c.type === 'patch' ? c.threshold : 128);
+    if (c.type === 'patch' && c.invert) {
+      const end = c.caption ? (H - Math.round(H * 0.14)) * W : W * H;
+      for (let i = 0; i < end; i++) bits[i] ^= 1;
+    }
+    return { bits, w: W, h: H };
+  }
+  return { bits: toBits(ctx, W, H), w: W, h: H };
 }
 
-// Layout shown in the preview: the chosen view, if this card is exported in it.
-function previewLayout(c) { const l = layoutsOf(c); return l.includes(view) ? view : l[0]; }
+function renderTileBits(text, w, h) {
+  const [, ctx] = newCanvas(w, h);
+  drawTile(ctx, 0, 0, w, h, text);
+  return toBits(ctx, w, h);
+}
 
-// ---------- UI ----------
+function layoutsOf(c) { return c.formats === 'land' ? ['land'] : c.formats === 'port' ? ['port'] : ['land', 'port']; }
+
+// ============================================================================
+// Esportazione
+// ============================================================================
+// Ordine sul dispositivo: lens chart (pagine), filtri, schede manuali.
+function exportPlan() {
+  const plan = [];
+  if (state.auto.lenschart && state.lenses.length)
+    lensPages().forEach((_, i) => plan.push({ kind: 'lenschart', page: i, base: i ? `lenschart-${i + 1}` : 'lenschart' }));
+  if (state.auto.filters) plan.push({ kind: 'filters', base: 'filters' });
+  state.cards.forEach(c => plan.push({ kind: 'card', card: c, base: `${c.type}_${slug(cardTitle(c))}` }));
+  plan.forEach((p, i) => p.name = `${String(i + 1).padStart(2, '0')}_${p.base}`);
+  return plan;
+}
+
+// Descrive al firmware dove comporre i valori e quali tasti li cambiano.
+function filtersIni() {
+  const out = ['# camtag screen v1', 'type=filters'];
+  const nd = ndSteps(), dio = dioSteps();
+  out.push(`nd.count=${nd.length}`, `nd.labels=${nd.map(ndLabel).join('|')}`);
+  out.push(`dio.count=${state.filters.dio.length ? dio.length : 0}`);
+  if (state.filters.dio.length) out.push(`dio.labels=${dio.map(dioLabel).join('|')}`);
+  for (const layout of ['land', 'port']) {
+    const [W, H] = dims(layout), L = filtersLayout(W, H);
+    out.push(`${layout}.nd=${L.nd.x},${L.nd.y},${L.nd.w},${L.nd.h}`);
+    if (L.dio) out.push(`${layout}.dio=${L.dio.x},${L.dio.y},${L.dio.w},${L.dio.h}`);
+  }
+  const keys = [];
+  if (state.filters.dio.length) keys.push('A:dio-', 'B:dio+');
+  if (state.filters.nd.length) keys.push('C:nd-', 'D:nd+');
+  out.push(`keys=${keys.join('|')}`);
+  out.push(`hints=${Object.entries(hintLabels()).map(([k, t]) => `${k}:${t}`).join('|')}`);
+  out.push(`nd.start=${state.filters.previewNd}`, `dio.start=${state.filters.previewDio}`);
+  return out.join('\n') + '\n';
+}
+
+async function buildZip() {
+  const zip = new JSZip(), dir = zip.folder('camtag');
+  for (const p of exportPlan()) {
+    if (p.kind === 'card') {
+      for (const l of layoutsOf(p.card)) { const r = renderScreen(p, l); dir.file(`${p.name}${l === 'port' ? '.p' : ''}.bmp`, encodeBmp(r.bits, r.w, r.h)); }
+      continue;
+    }
+    for (const l of ['land', 'port']) { const r = renderScreen(p, l); dir.file(`${p.name}${l === 'port' ? '.p' : ''}.bmp`, encodeBmp(r.bits, r.w, r.h)); }
+    if (p.kind === 'filters') {
+      const sub = dir.folder(p.name);
+      sub.file('screen.ini', filtersIni());
+      for (const l of ['land', 'port']) {
+        const [W, H] = dims(l), L = filtersLayout(W, H), ext = l === 'port' ? '.p.bmp' : '.bmp';
+        ndSteps().forEach((v, i) => sub.file(`nd${i}${ext}`, encodeBmp(renderTileBits(ndLabel(v), L.nd.w, L.nd.h), L.nd.w, L.nd.h)));
+        if (L.dio) dioSteps().forEach((v, i) => sub.file(`dio${i}${ext}`, encodeBmp(renderTileBits(dioLabel(v), L.dio.w, L.dio.h), L.dio.w, L.dio.h)));
+      }
+    }
+  }
+  return zip;
+}
+
+// ============================================================================
+// Interfaccia
+// ============================================================================
 const $ = s => document.querySelector(s);
 const preview = $('#preview');
+function h(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (k === 'class') e.className = v;
+    else if (v === true) e.setAttribute(k, '');
+    else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null) e.append(k instanceof Node ? k : document.createTextNode(k));
+  return e;
+}
+function cardTitle(c) {
+  if (c.type === 'lens') return `${c.focal}mm ${c.brand}`;
+  if (c.type === 'crew') return c.title || 'Crew';
+  if (c.type === 'notes') return c.title || 'Note';
+  return c.caption || 'Immagine';
+}
+function selectedScreen() {
+  if (sel.kind === 'lenschart') return { kind: 'lenschart', page: Math.min(page, Math.max(lensPages().length - 1, 0)) };
+  if (sel.kind === 'filters') return { kind: 'filters' };
+  const c = state.cards[sel.i]; return c ? { kind: 'card', card: c } : null;
+}
+function availableLayouts() { const s = selectedScreen(); return s && s.kind === 'card' ? layoutsOf(s.card) : ['land', 'port']; }
+function currentLayout() { const l = availableLayouts(); return l.includes(view) ? view : l[0]; }
 
 function drawPreview() {
-  const c = state.cards[sel];
-  const ctx = preview.getContext('2d');
-  if (!c) { preview.width = DEVICES[state.device].w; preview.height = DEVICES[state.device].h; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, preview.width, preview.height); return; }
-  const layout = previewLayout(c);
-  const r = renderCard(c, layout);
+  const s = selectedScreen(), ctx = preview.getContext('2d');
+  if (!s) { preview.width = 792; preview.height = 528; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, 792, 528); return; }
+  const layout = currentLayout(), r = renderScreen(s, layout, { preview: true });
   preview.width = r.w; preview.height = r.h;
   const img = ctx.createImageData(r.w, r.h);
-  for (let i = 0; i < r.w * r.h; i++) {
-    const col = r.bits[i] ? 255 : 0;
-    img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = col; img.data[i * 4 + 3] = 255;
-  }
+  for (let i = 0; i < r.w * r.h; i++) { const c = r.bits[i] ? 255 : 0; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = c; img.data[i * 4 + 3] = 255; }
   ctx.putImageData(img, 0, 0);
-  document.querySelectorAll('[data-view]').forEach(b => {
-    b.classList.toggle('on', b.dataset.view === layout);
-    b.disabled = !layoutsOf(c).includes(b.dataset.view);
-  });
+  document.querySelectorAll('[data-view]').forEach(b => { b.classList.toggle('on', b.dataset.view === layout); b.disabled = !availableLayouts().includes(b.dataset.view); });
+
+  const pc = $('#pageCtl'); pc.innerHTML = '';
+  if (s.kind === 'lenschart' && lensPages().length > 1) {
+    const n = lensPages().length;
+    pc.append(h('button', { class: 'small', disabled: s.page === 0, onclick: () => { page--; drawPreview(); } }, '‹'),
+              h('span', { class: 'hint' }, `Pagina ${s.page + 1}/${n}`),
+              h('button', { class: 'small', disabled: s.page >= n - 1, onclick: () => { page++; drawPreview(); } }, '›'));
+  }
+  $('#previewNote').textContent = s.kind === 'filters'
+    ? (layout === 'port' ? 'Anteprima: le indicazioni dei tasti in basso le disegna il dispositivo, sul bordo dei tasti.' : 'Le fasce libere ai lati ospitano le indicazioni dei tasti, disegnate dal dispositivo.')
+    : 'Anteprima a 1 bit, identica a ciò che vedrai sull\'e-paper.';
+  const isCard = s.kind === 'card';
+  $('#up').disabled = $('#down').disabled = $('#dup').disabled = $('#del').disabled = !isCard;
 }
 
 function renderList() {
   const ul = $('#list'); ul.innerHTML = '';
-  state.cards.forEach((c, i) => {
-    const li = document.createElement('li'); if (i === sel) li.className = 'sel';
-    li.innerHTML = `<span class="n">${String(i + 1).padStart(2, '0')}</span><span class="t"></span><span class="k">${TYPE_LABEL[c.type]}</span>`;
-    li.querySelector('.t').textContent = cardTitle(c);
-    li.onclick = () => { sel = i; refresh(); };
-    ul.appendChild(li);
-  });
+  const pages = lensPages().length;
+  const item = (key, num, title, kind, isSel, onclick, off) => {
+    const li = h('li', { class: (isSel ? 'sel ' : '') + (off ? 'off' : ''), onclick }, h('span', { class: 'n' }, num), h('span', { class: 't' }, title), h('span', { class: 'k' }, kind));
+    ul.append(li);
+  };
+  item('lc', '◆', `Lens chart · ${state.lenses.length} lenti${pages > 1 ? ` · ${pages} pag.` : ''}`, 'auto', sel.kind === 'lenschart', () => { sel = { kind: 'lenschart' }; refresh(); }, !state.auto.lenschart || !state.lenses.length);
+  item('fl', '◆', 'Filtri · ND e diottrie', 'auto', sel.kind === 'filters', () => { sel = { kind: 'filters' }; refresh(); }, !state.auto.filters);
+  state.cards.forEach((c, i) => item(i, String(i + 1).padStart(2, '0'), cardTitle(c), TYPE_LABEL[c.type], sel.kind === 'card' && sel.i === i, () => { sel = { kind: 'card', i }; refresh(); }));
 }
 
-function field(label, key, type = 'text', opts) {
-  const c = state.cards[sel];
-  const wrapEl = document.createElement('div');
-  const l = document.createElement('label'); l.textContent = label; wrapEl.appendChild(l);
+function changed(redrawEditor = false) { save(); renderList(); drawPreview(); if (redrawEditor) renderEditor(); }
+
+// ---------- editor: lens chart ----------
+function lensEditor(ed) {
+  ed.append(h('h2', {}, 'Lens chart'),
+    h('label', { class: 'inline' }, h('input', { type: 'checkbox', checked: state.auto.lenschart, onchange: e => { state.auto.lenschart = e.target.checked; changed(); } }), 'Includi nell\'esportazione'),
+    h('label', {}, 'Titolo (es. nome produzione)'),
+    h('input', { type: 'text', value: state.production, placeholder: 'LENS CHART', oninput: e => { state.production = e.target.value; changed(); } }));
+
+  // Lenti selezionate
+  ed.append(h('h3', {}, `Lenti selezionate (${state.lenses.length})`));
+  if (!state.lenses.length) ed.append(h('p', { class: 'hint' }, 'Cerca nel database qui sotto e aggiungi le lenti della produzione.'));
+  else {
+    const out = outliers();
+    const tb = h('table', { class: 't' }, h('tr', {}, h('th', {}, 'Foc'), h('th', {}, 'Sigla'), h('th', {}, 'Serie'), h('th', {}, 'Negativo'), h('th', {})));
+    for (const l of sortedLenses()) {
+      tb.append(h('tr', {},
+        h('td', { class: 'num' }, out.has(l.uid) ? h('span', { class: 'out' }, focalText(l)) : focalText(l)),
+        h('td', {}, h('input', { type: 'text', value: l.seriesCode || '', size: 4, maxlength: 5, oninput: e => { l.seriesCode = e.target.value.toUpperCase(); changed(); } })),
+        h('td', { title: `${l.brand} ${l.series}` }, `${l.series}`),
+        h('td', {}, (() => { const s = h('select', { onchange: e => { l.highlight = e.target.value; changed(true); } },
+            ...[['auto', 'auto'], ['on', 'sempre'], ['off', 'mai']].map(([v, t]) => h('option', { value: v, selected: (l.highlight || 'auto') === v }, t))); return s; })()),
+        h('td', {}, h('button', { class: 'small danger', title: 'Togli', onclick: () => { state.lenses = state.lenses.filter(x => x !== l); changed(true); } }, '✕'))));
+    }
+    ed.append(tb, h('p', { class: 'hint' }, 'In negativo va la lente "fuori dal coro": serie diversa dal set principale o tipo diverso (es. l\'unica macro).'),
+      h('button', { class: 'small danger', onclick: () => { if (confirm('Togliere tutte le lenti?')) { state.lenses = []; changed(true); } } }, 'Togli tutte'));
+  }
+
+  // Database
+  ed.append(h('h3', {}, 'Database lenti'));
+  if (!lensDb) { ed.append(h('p', { class: 'warn' }, lensDbError || 'Caricamento…')); }
+  else {
+    const brands = [...new Set(lensDb.map(l => l.brand))].sort();
+    const q = h('input', { type: 'search', value: dbSearch.q, placeholder: 'Cerca: marca, serie, sigla, focale (es. "supreme 35")' });
+    const fb = h('select', {}, h('option', { value: '' }, 'Tutte le marche'), ...brands.map(b => h('option', { value: b, selected: dbSearch.brand === b }, b)));
+    const ft = h('select', {}, h('option', { value: '' }, 'Tutti i tipi'), ...Object.entries(LENS_TYPES).map(([k, v]) => h('option', { value: k, selected: dbSearch.type === k }, v)));
+    const box = h('div', { class: 'db' });
+    const run = () => { dbSearch = { q: q.value, brand: fb.value, type: ft.value }; renderDbResults(box, q.value, fb.value, ft.value); };
+    q.addEventListener('input', run); fb.addEventListener('change', run); ft.addEventListener('change', run);
+    ed.append(q, h('div', { class: 'two', style: 'margin-top:6px' }, fb, ft), box);
+    ed.append(h('p', { class: 'hint' }, `${lensDb.length} lenti. Dati dalle schede tecniche dei costruttori; "—" = dato non pubblicato in modo affidabile.`));
+    run();
+  }
+
+  // Inserimento manuale
+  const m = { brand: '', series: '', seriesCode: '', type: 'prime', focal: '', tstop: '', mod_m: '', front_mm: '' };
+  const inp = (k, ph, type = 'text') => h('input', { type, placeholder: ph, step: 'any', oninput: e => m[k] = e.target.value });
+  ed.append(h('details', {}, h('summary', {}, 'Aggiungi una lente a mano'),
+    h('div', { class: 'two' }, inp('brand', 'Marca'), inp('series', 'Serie')),
+    h('div', { class: 'three', style: 'margin-top:6px' }, inp('seriesCode', 'Sigla'), inp('focal', 'Focale mm', 'number'), inp('tstop', 'T', 'number')),
+    h('div', { class: 'three', style: 'margin-top:6px' }, inp('mod_m', 'MOD m', 'number'), inp('front_mm', 'Ø mm', 'number'),
+      h('select', { onchange: e => m.type = e.target.value }, ...Object.entries(LENS_TYPES).map(([k, v]) => h('option', { value: k }, v)))),
+    h('button', { class: 'primary', style: 'margin-top:8px', onclick: () => {
+      if (!m.focal) { alert('Serve almeno la focale.'); return; }
+      const num = v => v === '' ? null : Number(v);
+      state.lenses.push({ uid: 'm-' + Date.now(), dbId: null, brand: m.brand || 'Manuale', series: m.series || m.brand || 'Manuale',
+        seriesCode: (m.seriesCode || slug(m.series).slice(0, 3)).toUpperCase(), type: m.type, focal: num(m.focal), focalMin: null, focalMax: null,
+        tstop: num(m.tstop), tstopLong: null, mod_m: num(m.mod_m), front_mm: num(m.front_mm), filterThread: null, squeeze: null, highlight: 'auto' });
+      changed(true);
+    } }, 'Aggiungi')));
+}
+
+// Re-rendering the editor resets the results list; keep its scroll position.
+function keepScroll(fn) {
+  const box = document.querySelector('.db'), top = box ? box.scrollTop : 0;
+  fn();
+  const nb = document.querySelector('.db'); if (nb) nb.scrollTop = top;
+}
+
+function addDbLens(l) {
+  if (state.lenses.some(x => x.dbId === l.id)) return;
+  const { id, brand, series, seriesCode, type, focal, focalMin, focalMax, tstop, tstopLong, mod_m, front_mm, filterThread, squeeze } = l;
+  state.lenses.push({ uid: 'db-' + id, dbId: id, brand, series, seriesCode, type, focal, focalMin, focalMax, tstop, tstopLong, mod_m, front_mm, filterThread, squeeze, highlight: 'auto' });
+}
+
+function renderDbResults(box, query, brand, type) {
+  box.innerHTML = '';
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const hits = lensDb.filter(l => {
+    if (brand && l.brand !== brand) return false;
+    if (type && l.type !== type) return false;
+    const hay = `${l.brand} ${l.series} ${l.seriesCode} ${LENS_TYPES[l.type] || ''} ${focalText(l)} ${focalText(l)}mm`.toLowerCase();
+    return terms.every(t => hay.includes(t));
+  });
+  if (!hits.length) { box.append(h('div', { class: 'empty' }, 'Nessuna lente trovata')); return; }
+  const groups = new Map();
+  for (const l of hits) { const k = `${l.brand} ${l.series}`; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(l); }
+  const chosen = new Set(state.lenses.map(l => l.dbId));
+  let shown = 0;
+  for (const [name, ls] of groups) {
+    if (shown > 400) { box.append(h('div', { class: 'empty' }, 'Restringi la ricerca per vedere altre lenti')); break; }
+    ls.sort((a, b) => focalSort(a) - focalSort(b));
+    const missing = ls.filter(l => !chosen.has(l.id));
+    box.append(h('div', { class: 'grp' }, h('span', {}, `${name} · ${ls[0].seriesCode}`),
+      h('button', { class: 'small', disabled: !missing.length, onclick: () => { missing.forEach(addDbLens); changed(true); } }, missing.length ? `+ tutte (${missing.length})` : 'aggiunte')));
+    for (const l of ls) {
+      shown++;
+      const meta = `T${tText(l)} · MOD ${fmt(l.mod_m)} m · Ø ${l.front_mm != null ? fmt(l.front_mm, 1) : '—'}${l.type !== 'prime' ? ' · ' + LENS_TYPES[l.type] : ''}`;
+      box.append(h('div', { class: 'it' }, h('span', {}, `${focalText(l)} mm`), h('span', { class: 'meta' }, meta),
+        chosen.has(l.id) ? h('button', { class: 'small', disabled: true }, '✓') :
+        h('button', { class: 'small', onclick: () => { addDbLens(l); keepScroll(() => changed(true)); } }, '+')));
+    }
+  }
+}
+
+// ---------- editor: filtri ----------
+function filtersEditor(ed) {
+  const f = state.filters;
+  const clampPreview = () => { f.previewNd = Math.min(f.previewNd, ndSteps().length - 1); f.previewDio = Math.min(f.previewDio, dioSteps().length - 1); };
+  ed.append(h('h2', {}, 'Filtri'),
+    h('label', { class: 'inline' }, h('input', { type: 'checkbox', checked: state.auto.filters, onchange: e => { state.auto.filters = e.target.checked; changed(); } }), 'Includi nell\'esportazione'));
+
+  // ND
+  ed.append(h('h3', {}, 'ND'),
+    h('div', { class: 'two' },
+      h('div', {}, h('label', {}, 'Come mostrarlo'),
+        h('select', { onchange: e => { f.ndFormat = e.target.value; changed(true); } },
+          ...[['density', 'Densità (0,9)'], ['stops', 'Stop (3 stop)'], ['factor', 'Fattore (ND8)']].map(([v, t]) => h('option', { value: v, selected: f.ndFormat === v }, t)))),
+      h('div', {}, h('label', {}, 'Tipo'), h('label', { class: 'inline', style: 'margin-top:8px' },
+        h('input', { type: 'checkbox', checked: f.ir, onchange: e => { f.ir = e.target.checked; changed(); } }), 'IRND'))),
+    h('label', {}, 'ND nel kit (i tasti C/D scorrono solo questi)'),
+    h('div', { class: 'checks' }, ...ND_VALUES.map(v => h('label', { class: 'inline' },
+      h('input', { type: 'checkbox', checked: f.nd.includes(v), onchange: e => { f.nd = e.target.checked ? [...f.nd, v] : f.nd.filter(x => x !== v); clampPreview(); changed(true); } }),
+      ndLabel(v)))));
+
+  // Diottrie
+  const has = (v, split) => f.dio.some(d => d.v === v && d.split === split);
+  const toggle = (v, split, on) => { f.dio = on ? [...f.dio, { v, split }] : f.dio.filter(d => !(d.v === v && d.split === split)); clampPreview(); changed(true); };
+  ed.append(h('h3', {}, 'Diottrie'),
+    h('table', { class: 't' }, h('tr', {}, h('th', {}, ''), h('th', {}, 'Intera'), h('th', {}, 'Split')),
+      ...DIOPTERS.map(v => h('tr', {}, h('td', {}, DIO_LABEL[v]),
+        h('td', {}, h('input', { type: 'checkbox', checked: has(v, false), onchange: e => toggle(v, false, e.target.checked) })),
+        h('td', {}, h('input', { type: 'checkbox', checked: has(v, true), onchange: e => toggle(v, true, e.target.checked) }))))),
+    h('p', { class: 'hint' }, 'Con almeno una diottria nel kit, nella schermata filtri i tasti A/B diventano diottria −/+.'));
+
+  // Valori iniziali / anteprima
+  ed.append(h('h3', {}, 'Valori iniziali'),
+    h('div', { class: 'two' },
+      h('div', {}, h('label', {}, 'ND'), h('select', { onchange: e => { f.previewNd = +e.target.value; changed(); } },
+        ...ndSteps().map((v, i) => h('option', { value: i, selected: f.previewNd === i }, ndLabel(v))))),
+      h('div', {}, h('label', {}, 'Diottria'), h('select', { disabled: !f.dio.length, onchange: e => { f.previewDio = +e.target.value; changed(); } },
+        ...dioSteps().map((v, i) => h('option', { value: i, selected: f.previewDio === i }, dioLabel(v)))))),
+    h('p', { class: 'hint' }, 'Il dispositivo parte da qui, poi ricorda l\'ultimo valore impostato con i tasti.'));
+
+  // Filtri di stile
+  ed.append(h('h3', {}, 'Filtri di stile'));
+  if (f.style.length) ed.append(h('table', { class: 't' }, ...f.style.map((s, i) => h('tr', {},
+    h('td', {}, s.name), h('td', {}, h('input', { type: 'text', value: s.strength || '', size: 6, oninput: e => { s.strength = e.target.value; changed(); } })),
+    h('td', {}, h('button', { class: 'small danger', onclick: () => { f.style.splice(i, 1); changed(true); } }, '✕'))))));
+  else ed.append(h('p', { class: 'hint' }, 'Nessun filtro di stile.'));
+
+  const cats = [...new Set(filterDb.map(x => x.category))];
+  const fam = h('select', {}, h('option', { value: '' }, 'Scegli dal catalogo…'),
+    ...cats.map(c => h('optgroup', { label: c }, ...filterDb.filter(x => x.category === c).map(x => h('option', { value: x.id }, `${x.brand ? x.brand + ' ' : ''}${x.name}`)))));
+  const str = h('select', {}, h('option', { value: '' }, '—'));
+  fam.addEventListener('change', () => {
+    const x = filterDb.find(y => y.id === fam.value); str.innerHTML = '';
+    str.append(h('option', { value: '' }, '—'), ...(x ? x.strengths : []).map(s => h('option', { value: s }, s)));
+  });
+  const custom = h('input', { type: 'text', placeholder: 'Oppure scrivi un filtro (es. "Glimmerglass 2")' });
+  ed.append(h('div', { class: 'two', style: 'margin-top:8px' }, fam, str),
+    h('button', { class: 'small', style: 'margin-top:6px', onclick: () => {
+      const x = filterDb.find(y => y.id === fam.value); if (!x) return;
+      f.style.push({ name: `${x.name}`, strength: str.value }); changed(true);
+    } }, '+ Aggiungi dal catalogo'),
+    h('div', { class: 'two', style: 'margin-top:10px' }, custom,
+      h('button', { class: 'small', onclick: () => { if (!custom.value.trim()) return; f.style.push({ name: custom.value.trim(), strength: '' }); changed(true); } }, '+ Aggiungi personalizzato')),
+    h('p', { class: 'hint' }, 'Catalogo filtri provvisorio: le gradazioni sono da verificare.'));
+}
+
+// ---------- editor: schede manuali ----------
+function field(c, label, key, type = 'text', opts) {
+  const wrapEl = h('div', {}, h('label', {}, label));
   let el;
-  if (type === 'textarea') el = document.createElement('textarea');
-  else if (type === 'select') { el = document.createElement('select'); for (const [v, t] of opts) { const o = document.createElement('option'); o.value = v; o.textContent = t; el.appendChild(o); } }
-  else if (type === 'checkbox') { el = document.createElement('input'); el.type = 'checkbox'; el.checked = !!c[key]; }
-  else { el = document.createElement('input'); el.type = type; }
+  if (type === 'textarea') el = h('textarea');
+  else if (type === 'select') el = h('select', {}, ...opts.map(([v, t]) => h('option', { value: v }, t)));
+  else if (type === 'checkbox') el = h('input', { type: 'checkbox', checked: !!c[key] });
+  else el = h('input', { type });
   if (type !== 'checkbox') el.value = c[key] ?? '';
-  el.oninput = el.onchange = () => {
-    c[key] = type === 'checkbox' ? el.checked : type === 'number' ? Number(el.value) : el.value;
-    save(); drawPreview(); renderList();
-  };
-  wrapEl.appendChild(el);
+  el.oninput = el.onchange = () => { c[key] = type === 'checkbox' ? el.checked : type === 'number' ? Number(el.value) : el.value; changed(); };
+  wrapEl.append(el);
   return wrapEl;
+}
+
+function cardEditor(ed, c, idx) {
+  ed.append(h('h2', {}, TYPE_LABEL[c.type]));
+  ed.append(field(c, 'Formati esportati', 'formats', 'select', [['both', 'Orizzontale + verticale (rotazione automatica)'], ['land', 'Solo orizzontale'], ['port', 'Solo verticale']]));
+  const pair = (a, b) => ed.append(h('div', { class: 'two' }, a, b));
+  if (c.type === 'lens') {
+    pair(field(c, 'Marca', 'brand'), field(c, 'Serie', 'series'));
+    pair(field(c, 'Focale (mm)', 'focal'), field(c, 'T-stop', 'tstop'));
+    pair(field(c, 'MOD (fuoco minimo)', 'mod'), field(c, 'Ø frontale', 'front'));
+    ed.append(field(c, 'Filettatura filtri (opzionale, es. M82)', 'thread'));
+    ed.append(field(c, 'Nota in basso (opzionale)', 'notes'));
+  } else if (c.type === 'crew') {
+    ed.append(field(c, 'Titolo', 'title'), field(c, 'Una riga per persona — "Ruolo: Nome"', 'lines', 'textarea'));
+  } else if (c.type === 'notes') {
+    ed.append(field(c, 'Titolo', 'title'), field(c, 'Testo', 'body', 'textarea'));
+  } else {
+    const inp = h('input', { type: 'file', accept: 'image/*', onchange: () => {
+      const file = inp.files[0]; if (!file) return;
+      const r = new FileReader();
+      r.onload = () => downscale(r.result).then(url => { c.img = url; return ensureImg(url); }).then(() => changed());
+      r.readAsDataURL(file);
+    } });
+    ed.append(h('label', {}, 'Immagine'), inp);
+    pair(field(c, 'Adattamento', 'fit', 'select', [['contain', 'Intera'], ['cover', 'Riempi']]),
+         field(c, 'Retinatura', 'dither', 'select', [['atkinson', 'Atkinson'], ['fs', 'Floyd–Steinberg'], ['none', 'Soglia']]));
+    ed.append(field(c, 'Soglia (solo "Soglia")', 'threshold', 'number'), field(c, 'Inverti colori', 'invert', 'checkbox'), field(c, 'Didascalia (opzionale)', 'caption'));
+  }
 }
 
 function renderEditor() {
   const ed = $('#editor'); ed.innerHTML = '';
-  const c = state.cards[sel];
-  if (!c) { ed.innerHTML = '<div class="empty">Aggiungi una card</div>'; return; }
-  const h = document.createElement('h2'); h.textContent = TYPE_LABEL[c.type]; ed.appendChild(h);
-  ed.appendChild(field('Formati esportati', 'formats', 'select', [['both', 'Orizzontale + verticale (rotazione automatica)'], ['land', 'Solo orizzontale'], ['port', 'Solo verticale']]));
-  const pair = (a, b) => { const d = document.createElement('div'); d.className = 'two'; d.append(a, b); ed.appendChild(d); };
-  if (c.type === 'lens') {
-    pair(field('Marca', 'brand'), field('Serie', 'series'));
-    pair(field('Focale (mm)', 'focal'), field('T-stop', 'tstop'));
-    pair(field('MOD (fuoco minimo)', 'mod'), field('Ø frontale', 'front'));
-    ed.appendChild(field('Filettatura filtri (opzionale, es. M82)', 'thread'));
-    ed.appendChild(field('Nota in basso (opzionale)', 'notes'));
-  } else if (c.type === 'crew') {
-    ed.appendChild(field('Titolo', 'title'));
-    ed.appendChild(field('Una riga per persona — "Ruolo: Nome"', 'lines', 'textarea'));
-  } else if (c.type === 'notes') {
-    ed.appendChild(field('Titolo', 'title'));
-    ed.appendChild(field('Testo', 'body', 'textarea'));
-  } else {
-    const l = document.createElement('label'); l.textContent = 'Immagine'; ed.appendChild(l);
-    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
-    inp.onchange = () => {
-      const f = inp.files[0]; if (!f) return;
-      const r = new FileReader();
-      r.onload = () => downscale(r.result).then(url => { c.img = url; return ensureImg(url); }).then(() => { save(); drawPreview(); });
-      r.readAsDataURL(f);
-    };
-    ed.appendChild(inp);
-    pair(field('Adattamento', 'fit', 'select', [['contain', 'Intera'], ['cover', 'Riempi']]),
-         field('Retinatura', 'dither', 'select', [['atkinson', 'Atkinson'], ['fs', 'Floyd–Steinberg'], ['none', 'Soglia']]));
-    ed.appendChild(field('Soglia (solo "Soglia")', 'threshold', 'number'));
-    ed.appendChild(field('Inverti colori', 'invert', 'checkbox'));
-    ed.appendChild(field('Didascalia (opzionale)', 'caption'));
-  }
-  const p = document.createElement('p'); p.className = 'hint';
-  p.textContent = 'File: ' + layoutsOf(c).map(l => fileName(c, sel, l)).join('  ·  '); ed.appendChild(p);
+  if (sel.kind === 'lenschart') return lensEditor(ed);
+  if (sel.kind === 'filters') return filtersEditor(ed);
+  const c = state.cards[sel.i];
+  if (!c) { ed.append(h('div', { class: 'empty' }, 'Seleziona una schermata')); return; }
+  cardEditor(ed, c, sel.i);
 }
 
-// Keep stored images small so the project fits in browser storage.
 function downscale(url, max = 1000) {
   return new Promise(res => {
     const im = new Image(); im.onload = () => {
       const s = Math.min(1, max / Math.max(im.width, im.height));
-      const cv = document.createElement('canvas'); cv.width = Math.round(im.width * s); cv.height = Math.round(im.height * s);
+      const [cv] = newCanvas(Math.round(im.width * s), Math.round(im.height * s));
       cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
       res(cv.toDataURL('image/jpeg', 0.85));
     }; im.src = url;
@@ -479,46 +976,52 @@ function ensureImg(url) {
 }
 
 function refresh() {
-  $('#device').value = state.device;
+  $('#decimal').value = state.decimal;
   const d = DEVICES[state.device]; $('#dims').textContent = `${d.w}×${d.h} · 1 bit`;
   renderList(); renderEditor(); drawPreview();
 }
 
 function download(blob, name) {
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
-  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  const a = h('a', { href: URL.createObjectURL(blob), download: name });
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
-  state.cards.push(DEFAULTS[b.dataset.add]()); sel = state.cards.length - 1; save(); refresh();
+  state.cards.push(DEFAULTS[b.dataset.add]()); sel = { kind: 'card', i: state.cards.length - 1 }; save(); refresh();
 });
-$('#device').onchange = e => { state.device = e.target.value; save(); refresh(); };
-$('#up').onclick = () => { if (sel > 0) { [state.cards[sel - 1], state.cards[sel]] = [state.cards[sel], state.cards[sel - 1]]; sel--; save(); refresh(); } };
-$('#down').onclick = () => { if (sel < state.cards.length - 1) { [state.cards[sel + 1], state.cards[sel]] = [state.cards[sel], state.cards[sel + 1]]; sel++; save(); refresh(); } };
-$('#dup').onclick = () => { if (!state.cards[sel]) return; state.cards.splice(sel + 1, 0, structuredClone(state.cards[sel])); sel++; save(); refresh(); };
-$('#del').onclick = () => { if (!state.cards[sel]) return; state.cards.splice(sel, 1); sel = Math.max(0, sel - 1); save(); refresh(); };
-$('#bmpBtn').onclick = () => {
-  const c = state.cards[sel]; if (!c) return;
-  const l = previewLayout(c), r = renderCard(c, l);
-  download(encodeBmp(r.bits, r.w, r.h), fileName(c, sel, l));
-};
 document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => { view = b.dataset.view; drawPreview(); });
-$('#zipBtn').onclick = async () => {
-  if (!state.cards.length) return;
-  const zip = new JSZip(), dir = zip.folder('camtag');
-  state.cards.forEach((c, i) => layoutsOf(c).forEach(l => {
-    const r = renderCard(c, l); dir.file(fileName(c, i, l), encodeBmp(r.bits, r.w, r.h));
-  }));
-  download(await zip.generateAsync({ type: 'blob' }), 'camtag-cards.zip');
+$('#decimal').onchange = e => { state.decimal = e.target.value; save(); refresh(); };
+const moveCard = d => {
+  if (sel.kind !== 'card') return; const i = sel.i, j = i + d;
+  if (j < 0 || j >= state.cards.length) return;
+  [state.cards[i], state.cards[j]] = [state.cards[j], state.cards[i]]; sel = { kind: 'card', i: j }; save(); refresh();
 };
+$('#up').onclick = () => moveCard(-1);
+$('#down').onclick = () => moveCard(1);
+$('#dup').onclick = () => { if (sel.kind !== 'card') return; state.cards.splice(sel.i + 1, 0, structuredClone(state.cards[sel.i])); sel = { kind: 'card', i: sel.i + 1 }; save(); refresh(); };
+$('#del').onclick = () => { if (sel.kind !== 'card') return; state.cards.splice(sel.i, 1); sel = state.cards.length ? { kind: 'card', i: Math.max(0, sel.i - 1) } : { kind: 'lenschart' }; save(); refresh(); };
+$('#bmpBtn').onclick = () => {
+  const s = selectedScreen(); if (!s) return;
+  const l = currentLayout(), r = renderScreen(s, l, { preview: true });
+  const base = s.kind === 'card' ? `${s.card.type}_${slug(cardTitle(s.card))}` : s.kind;
+  download(encodeBmp(r.bits, r.w, r.h), `${base}${l === 'port' ? '.p' : ''}.bmp`);
+};
+$('#zipBtn').onclick = async () => download(await (await buildZip()).generateAsync({ type: 'blob' }), 'camtag.zip');
 $('#exportJson').onclick = () => download(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }), 'camtag-progetto.json');
 $('#importBtn').onclick = () => $('#importFile').click();
 $('#importFile').onchange = e => {
   const f = e.target.files[0]; if (!f) return;
-  f.text().then(t => { state = migrate(JSON.parse(t)); sel = 0; return Promise.all(state.cards.map(c => ensureImg(c.img))); }).then(() => { save(); refresh(); });
+  f.text().then(t => { state = migrate(JSON.parse(t)); sel = { kind: 'lenschart' }; return Promise.all(state.cards.map(c => ensureImg(c.img))); }).then(() => { save(); refresh(); });
 };
 
-Promise.all(state.cards.map(c => ensureImg(c.img))).then(refresh);
+// Database: servito dalla radice del repo (python3 -m http.server), quindi ../data/.
+Promise.all([
+  fetch('../data/lenses.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(d => { lensDb = d.lenses; }).catch(() => { lensDbError = 'Database lenti non trovato. Avvia il server dalla radice del progetto: python3 -m http.server 8765, poi apri /companion/.'; }),
+  fetch('../data/filters.json').then(r => r.json()).then(d => { filterDb = d.filters; }).catch(() => {}),
+  ...state.cards.map(c => ensureImg(c.img)),
+]).then(refresh);
+refresh();
 </script>
 </body>
 </html>

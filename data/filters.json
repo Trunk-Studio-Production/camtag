@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "verified": false,
+  "note": "Famiglie e gradazioni tipiche, scritte a memoria: DA VERIFICARE sui cataloghi dei produttori prima di considerarle affidabili. Nello strumento web si può sempre scrivere una gradazione libera.",
+  "filters": [
+    { "id": "tiffen-black-pro-mist", "brand": "Tiffen", "name": "Black Pro-Mist", "category": "diffusione", "strengths": ["1/8", "1/4", "1/2", "1", "2"] },
+    { "id": "tiffen-pro-mist", "brand": "Tiffen", "name": "Pro-Mist", "category": "diffusione", "strengths": ["1/8", "1/4", "1/2", "1", "2"] },
+    { "id": "tiffen-glimmerglass", "brand": "Tiffen", "name": "Glimmerglass", "category": "diffusione", "strengths": ["1", "2", "3", "4", "5"] },
+    { "id": "tiffen-black-glimmerglass", "brand": "Tiffen", "name": "Black Glimmerglass", "category": "diffusione", "strengths": ["1/8", "1/4", "1/2", "1"] },
+    { "id": "tiffen-black-satin", "brand": "Tiffen", "name": "Black Satin", "category": "diffusione", "strengths": ["1/8", "1/4", "1/2", "1"] },
+    { "id": "tiffen-pearlescent", "brand": "Tiffen", "name": "Pearlescent", "category": "diffusione", "strengths": ["1/8", "1/4", "1/2", "1"] },
+    { "id": "tiffen-soft-fx", "brand": "Tiffen", "name": "Soft/FX", "category": "diffusione", "strengths": ["1/2", "1", "2", "3"] },
+    { "id": "tiffen-smoque", "brand": "Tiffen", "name": "Smoque", "category": "effetti", "strengths": ["1", "2", "3"] },
+    { "id": "tiffen-low-contrast", "brand": "Tiffen", "name": "Low Contrast", "category": "contrasto", "strengths": ["1", "2", "3"] },
+    { "id": "tiffen-ultra-contrast", "brand": "Tiffen", "name": "Ultra Contrast", "category": "contrasto", "strengths": ["1", "2", "3"] },
+    { "id": "schneider-hollywood-black-magic", "brand": "Schneider", "name": "Hollywood Black Magic", "category": "diffusione", "strengths": ["1/8", "1/4", "1/2", "1", "2"] },
+    { "id": "schneider-classic-soft", "brand": "Schneider", "name": "Classic Soft", "category": "diffusione", "strengths": ["1/8", "1/4", "1/2", "1", "2"] },
+    { "id": "schneider-black-frost", "brand": "Schneider", "name": "Black Frost", "category": "diffusione", "strengths": ["1/8", "1/4", "1/2", "1", "2"] },
+    { "id": "generic-polarizer", "brand": "", "name": "Polarizzatore", "category": "polarizzatore", "strengths": ["lineare", "circolare"] },
+    { "id": "generic-coral", "brand": "", "name": "Coral", "category": "colore", "strengths": ["1/4", "1/2", "1", "2"] },
+    { "id": "generic-85", "brand": "", "name": "85", "category": "colore", "strengths": [] }
+  ]
+}

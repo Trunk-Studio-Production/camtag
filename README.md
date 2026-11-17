@@ -63,12 +63,25 @@ rotazione resta fissa.
 
 ## Strumento web
 
+Dalla radice del progetto (serve anche `data/`, con il database lenti):
+
 ```bash
-python3 -m http.server 8765 --directory companion
+python3 -m http.server 8766
 ```
 
-Poi apri http://localhost:8765. I dati restano nel browser; "Salva progetto"
-esporta un JSON da reimportare.
+Poi apri http://localhost:8766/companion/. I dati restano nel browser;
+"Salva progetto" esporta un JSON da reimportare.
+
+Schermate:
+- **Lens chart** (automatica): cerchi nel database e aggiungi le lenti, una
+  per una o tutta la serie; le lenti mancanti si inseriscono a mano. La lente
+  "fuori dal coro" va in negativo; si può forzare per ogni lente.
+- **Filtri** (automatica): kit ND e diottrie (i tasti +/− del dispositivo
+  scorrono solo questi), formato ND, filtri di stile dal catalogo o personalizzati.
+- **Schede manuali**: crew, note, lente singola, patch (immagine).
+
+"Scarica tutto" crea `camtag.zip`: la cartella `camtag/` va copiata nella
+radice della microSD.
 
 ## Firmware
 

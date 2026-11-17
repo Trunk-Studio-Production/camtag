@@ -9,10 +9,13 @@ sono in italiano.
 ## Struttura
 
 - `device/` — firmware PlatformIO (C++/Arduino, ESP32-C3). È il nostro codice.
-- `companion/index.html` — strumento web a file singolo: crea le card ed
-  esporta BMP 1 bit. Unica dipendenza: JSZip da cdnjs.
-- `data/` — database lenti (`lenses.json`, schema in `data/README.md`), dati
-  presi solo dalle schede dei costruttori, con la fonte per ogni lente.
+- `companion/index.html` — strumento web a file singolo: lens chart e filtri
+  generati in automatico più schede manuali (crew, note, lente singola, patch);
+  esporta uno zip di BMP 1 bit. Unica dipendenza: JSZip da cdnjs. Legge
+  `../data/*.json`, quindi va servito dalla radice del repo.
+- `data/lenses.json` — database lenti (schema in `data/README.md`), dati solo
+  dalle schede dei costruttori, con la fonte per ogni lente.
+- `data/filters.json` — catalogo filtri di stile **provvisorio, non verificato**.
 - `third_party/freeink-sdk/` — sottomodulo git bloccato su `77ae8c7`. **Non
   modificarlo**: se serve un cambiamento, aggira nel nostro codice o chiedi.
 - `reference/crosspoint/` — solo consultazione, escluso da git (come CrossPoint
@@ -32,8 +35,11 @@ git clone --depth 1 https://github.com/crosspoint-reader/crosspoint-reader refer
 
 cd device && ../.venv/bin/pio run -e x3                  # compila
 cd device && ../.venv/bin/pio run -e x3 -t upload        # carica (vedi sotto)
-python3 -m http.server 8765 --directory companion        # strumento web
+python3 -m http.server 8766    # dalla radice; poi apri http://localhost:8766/companion/
 ```
+
+Nel browser integrato usa un server avviato da Bash: `preview_start` legge
+ancora un `launch.json` vecchio e serve la cartella sbagliata.
 
 Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 è troppo vecchio per la piattaforma pioarduino.
@@ -45,15 +51,25 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   Controller UC8253 o UC8279 secondo il lotto, rilevato all'avvio.
 - microSD su SPI condiviso con il display; batteria 650 mAh con fuel gauge
   BQ27220; RTC DS3231; IMU QMI8658 (accelerometro + giroscopio).
-- Niente touch. 7 tasti: 4 in basso su un solo ingresso analogico (uno alla
-  volta), 2 laterali, power. **Solo il power risveglia** dal sonno.
+- Niente touch. Posizione naturale **verticale**: in basso due bilancieri,
+  A|B a sinistra e C|D a destra; F sul lato sinistro, E sul destro, power in
+  alto a destra. I 4 in basso sono su un solo ingresso analogico (uno alla
+  volta). **Solo il power risveglia** dal sonno.
 - Lo spegnimento porta GPIO13 basso come fa CrossPoint; l'e-paper resta visibile.
 
 ## Formato card
 
-- `/camtag/NOME.bmp` orizzontale 792×528, `/camtag/NOME.p.bmp` verticale 528×792.
-- BMP 1 bit non compresso, palette 0 = nero, 1 = bianco. Ordine = ordine alfabetico.
-- Il formato è un contratto tra `companion/` e `device/`: se cambi uno, aggiorna l'altro.
+- `/camtag/NN_nome.bmp` orizzontale 792×528, `/camtag/NN_nome.p.bmp` verticale
+  528×792. BMP 1 bit non compresso, palette 0 = nero, 1 = bianco. Ordine = nome.
+- Nomi riservati: `NN_lenschart[-2…]` (pagine da 11 righe) e `NN_filters`.
+- Schermata filtri: lo sfondo ha i riquadri dei valori vuoti; la cartella
+  `NN_filters/` contiene `screen.ini` (riquadri per orientamento, tasti,
+  etichette delle indicazioni, valori iniziali) e i riquadri `ndI[.p].bmp`,
+  `dioI[.p].bmp` (I = passo; 0 = nessuno). Il firmware compone sfondo + riquadri.
+- Sulla schermata filtri restano libere le fasce sui lati corti (40 px in
+  verticale, 64 in orizzontale) per le indicazioni dei tasti.
+- Il formato è un contratto tra `companion/` e `device/`: se cambi uno, aggiorna
+  l'altro. **Il firmware non gestisce ancora la schermata filtri.**
 
 ## Decisioni di prodotto
 
@@ -62,9 +78,12 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   solo la lente "fuori dal coro" (serie diversa dal set principale o tipo
   diverso, es. l'unica macro); con un pareggio tra serie non si evidenzia per
   serie. Si può forzare per ogni lente (auto / sempre / mai).
-- ND: +/− sul dispositivo a passi di uno stop; si mostra solo il formato scelto
-  dall'utente (densità 0.3, stop o fattore ND2).
-- Indicazioni dei tasti a schermo solo dove servono (es. ND+/−), disegnate dal
+- ND e diottrie: +/− sul dispositivo, scorrendo solo i valori del kit scelto
+  nello strumento web; si mostra solo il formato ND scelto (0,9 / 3 stop / ND8).
+- Tasti: schermata filtri A/B = diottria −/+, C/D = ND −/+; altrove A/B =
+  schermata precedente/successiva. E = salto ai filtri (dai filtri: schermata
+  successiva), F = lens chart (pagina successiva), E tenuto = blocco rotazione.
+- Indicazioni dei tasti a schermo solo dove servono (filtri), disegnate dal
   firmware sul bordo fisico dei tasti, così seguono la rotazione.
 
 ## Regole
@@ -88,5 +107,5 @@ non è più vero invece di aggiungere note.
 ## Da tarare sull'hardware (aperto)
 
 - Assi IMU: `kImuSwapXY`, `kImuSignX`, `kImuSignY` in `device/src/main.cpp`.
-- Posizione fisica dei tasti sull'X3 e loro mappatura.
+- Quale tasto logico dell'SDK (BACK/CONFIRM/LEFT/RIGHT/UP/DOWN) è A–F.
 - Ghosting (`FULL_REFRESH_EVERY`) e consumo da spento.
