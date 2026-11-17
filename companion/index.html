@@ -74,6 +74,12 @@
   .db .it .meta { color: var(--muted); font-size: 12px; flex: 2; }
   .checks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px 10px; }
   details summary { cursor: pointer; font-size: 13px; margin-top: 12px; }
+  .kit { border: 1px solid var(--line); border-radius: 6px; padding: 8px; margin-top: 8px; }
+  .kit-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 13px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chip { padding: 4px 10px; border-radius: 999px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .chip.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .chips input { width: 56px; padding: 4px 6px; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -158,7 +164,7 @@ function freshState() {
     version: 2, device: 'x3', decimal: ',', production: '',
     auto: { lenschart: true, filters: true },
     lenses: [],
-    filters: { ndFormat: 'density', ndType: 'ND', nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], dio: [], style: [], previewNd: 0, previewDio: 0 },
+    filters: { ndFormat: 'density', ndType: 'ND', nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], dio: [], effects: [], previewNd: 0, previewDio: 0 },
     cards: [DEFAULTS.crew()],
   };
 }
@@ -170,8 +176,28 @@ function migrate(s) {
   for (const k of ['decimal', 'production', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
   s.filters = Object.assign(f.filters, s.filters);
   if ('ir' in s.filters) { if (s.filters.ir) s.filters.ndType = 'IRND'; delete s.filters.ir; }  // vecchia casella IRND
+  // Vecchi "filtri di stile" (un elemento per filtro montato) -> kit con gradazioni montate.
+  if (Array.isArray(s.filters.style)) {
+    for (const o of s.filters.style) addToKit(s.filters, null, o.name, [o.strength || ''], [o.strength || '']);
+    delete s.filters.style;
+  }
   s.device = 'x3'; s.version = 2;
   return s;
+}
+
+// Kit filtri d'effetto: una voce per famiglia, ogni gradazione può essere montata o no.
+// { id, name, strengths: [{ s: '1/4', on: true }] }  — s '' = filtro senza gradazione.
+function addToKit(f, id, name, strengths, mounted = []) {
+  let e = f.effects.find(x => (id && x.id === id) || (!id && !x.id && x.name === name));
+  if (!e) { e = { id, name, strengths: [] }; f.effects.push(e); }
+  for (const s of strengths.length ? strengths : ['']) {
+    const ex = e.strengths.find(x => x.s === s);
+    if (ex) ex.on = ex.on || mounted.includes(s); else e.strengths.push({ s, on: mounted.includes(s) });
+  }
+  return e;
+}
+function mountedEffects() {
+  return state.filters.effects.flatMap(e => e.strengths.filter(x => x.on).map(x => `${e.name}${x.s ? ' ' + x.s : ''}`));
 }
 
 function load() { try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch { return null; } }
@@ -428,11 +454,11 @@ function drawFiltersBackground(ctx, W, H) {
   if (L.divider) ctx.fillRect(L.divider.x, L.divider.y, 3, L.divider.h);
   else ctx.fillRect(L.list.x, L.list.y - 10, L.list.w, 3);
 
-  // Filtri di stile: elenco fisso.
-  const items = f.style.map(s => `${s.name}${s.strength ? ' ' + s.strength : ''}`);
+  // Filtri d'effetto: solo quelli montati.
+  const items = mountedEffects();
   if (!items.length) {
     ctx.font = `600 20px ${FONT}`; ctx.fillStyle = '#000';
-    ctx.fillText('Nessun filtro di stile', L.list.x, L.list.y + 30);
+    ctx.fillText('Nessun filtro d\'effetto', L.list.x, L.list.y + 30);
     return L;
   }
   const rowH = Math.min(52, L.list.h / items.length);
@@ -1009,29 +1035,50 @@ function filtersEditor(ed) {
         ...dioSteps().map((v, i) => h('option', { value: i, selected: f.previewDio === i }, dioLabel(v)))))),
     h('p', { class: 'hint' }, 'Il dispositivo parte da qui, poi ricorda l\'ultimo valore impostato con i tasti.'));
 
-  // Filtri di stile
-  ed.append(h('h3', {}, 'Filtri di stile'));
-  if (f.style.length) ed.append(h('table', { class: 't' }, ...f.style.map((s, i) => h('tr', {},
-    h('td', {}, s.name), h('td', {}, h('input', { type: 'text', value: s.strength || '', size: 6, oninput: e => { s.strength = e.target.value; changed(); } })),
-    h('td', {}, h('button', { class: 'small danger', onclick: () => { f.style.splice(i, 1); changed(true); } }, '✕'))))));
-  else ed.append(h('p', { class: 'hint' }, 'Nessun filtro di stile.'));
+  // Filtri d'effetto: kit sul set, con le gradazioni montate evidenziate.
+  ed.append(h('h3', {}, 'Filtri d\'effetto'),
+    h('p', { class: 'hint', style: 'margin-top:0' }, 'Il kit è quello che hai sul set. Tocca una gradazione per segnarla come montata: sul dispositivo compaiono solo quelle montate.'));
+  if (!f.effects.length) ed.append(h('p', { class: 'hint' }, 'Kit vuoto.'));
+  for (const e of f.effects) {
+    const extra = h('input', { type: 'text', placeholder: '+', size: 4, title: 'Aggiungi una gradazione', onchange: ev => {
+      const v = ev.target.value.trim(); if (v) { addToKit(f, e.id, e.name, [v]); changed(true); }
+    } });
+    ed.append(h('div', { class: 'kit' },
+      h('div', { class: 'kit-head' }, h('strong', {}, e.name),
+        h('button', { class: 'small danger', title: 'Togli dal kit', onclick: () => { f.effects = f.effects.filter(x => x !== e); changed(true); } }, '✕')),
+      h('div', { class: 'chips' },
+        ...e.strengths.map(st => h('button', { class: 'chip' + (st.on ? ' on' : ''), title: st.on ? 'Montato: tocca per smontare' : 'Tocca per segnarlo montato',
+          oncontextmenu: ev => { ev.preventDefault(); e.strengths = e.strengths.filter(x => x !== st); if (!e.strengths.length) f.effects = f.effects.filter(x => x !== e); changed(true); },
+          onclick: () => { st.on = !st.on; changed(true); } }, st.s || 'montato')),
+        extra)));
+  }
+  if (f.effects.some(e => e.strengths.length > 1)) ed.append(h('p', { class: 'hint' }, 'Clic destro su una gradazione per toglierla dal kit.'));
 
+  // Aggiunta dal catalogo: tutte le gradazioni scelte in un colpo.
   const cats = [...new Set(filterDb.map(x => x.category))];
-  const fam = h('select', {}, h('option', { value: '' }, 'Scegli dal catalogo…'),
+  const picks = h('div', { class: 'checks', style: 'margin-top:8px' });
+  const fam = h('select', {}, h('option', { value: '' }, 'Scegli una famiglia dal catalogo…'),
     ...cats.map(c => h('optgroup', { label: c }, ...filterDb.filter(x => x.category === c).map(x => h('option', { value: x.id }, `${x.brand ? x.brand + ' ' : ''}${x.name}`)))));
-  const str = h('select', {}, h('option', { value: '' }, '—'));
   fam.addEventListener('change', () => {
-    const x = filterDb.find(y => y.id === fam.value); str.innerHTML = '';
-    str.append(h('option', { value: '' }, '—'), ...(x ? x.strengths : []).map(s => h('option', { value: s }, s)));
+    const x = filterDb.find(y => y.id === fam.value); picks.innerHTML = '';
+    if (x) picks.append(...x.strengths.map(s => h('label', { class: 'inline' }, h('input', { type: 'checkbox', value: s }), s)));
   });
-  const custom = h('input', { type: 'text', placeholder: 'Oppure scrivi un filtro (es. "Glimmerglass 2")' });
-  ed.append(h('div', { class: 'two', style: 'margin-top:8px' }, fam, str),
-    h('button', { class: 'small', style: 'margin-top:6px', onclick: () => {
+  ed.append(h('label', {}, 'Aggiungi al kit dal catalogo'), fam, picks,
+    h('button', { class: 'small', style: 'margin-top:8px', onclick: () => {
       const x = filterDb.find(y => y.id === fam.value); if (!x) return;
-      f.style.push({ name: `${x.name}`, strength: str.value }); changed(true);
-    } }, '+ Aggiungi dal catalogo'),
-    h('div', { class: 'two', style: 'margin-top:10px' }, custom,
-      h('button', { class: 'small', onclick: () => { if (!custom.value.trim()) return; f.style.push({ name: custom.value.trim(), strength: '' }); changed(true); } }, '+ Aggiungi personalizzato')),
+      const chosen = [...picks.querySelectorAll('input:checked')].map(i => i.value);
+      if (x.strengths.length && !chosen.length) { alert('Spunta almeno una gradazione.'); return; }
+      addToKit(f, x.id, x.name, chosen); changed(true);
+    } }, '+ Aggiungi le gradazioni spuntate'));
+
+  // Filtro personalizzato: nome e gradazioni separate da virgola.
+  const cName = h('input', { type: 'text', placeholder: 'Nome (es. "Cinebloom")' });
+  const cStr = h('input', { type: 'text', placeholder: 'Gradazioni (es. "10%, 20%")' });
+  ed.append(h('label', {}, 'Oppure un filtro personalizzato'), h('div', { class: 'two' }, cName, cStr),
+    h('button', { class: 'small', style: 'margin-top:6px', onclick: () => {
+      const n = cName.value.trim(); if (!n) return;
+      addToKit(f, null, n, cStr.value.split(',').map(s => s.trim()).filter(Boolean)); changed(true);
+    } }, '+ Aggiungi personalizzato'),
     h('p', { class: 'hint' }, 'Catalogo filtri provvisorio: le gradazioni sono da verificare.'));
 }
 

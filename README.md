@@ -77,7 +77,7 @@ Schermate:
   per una o tutta la serie; le lenti mancanti si inseriscono a mano. La lente
   "fuori dal coro" va in negativo; si può forzare per ogni lente.
 - **Filtri** (automatica): kit ND e diottrie (i tasti +/− del dispositivo
-  scorrono solo questi), formato ND, filtri di stile dal catalogo o personalizzati.
+  scorrono solo questi), formato ND, kit dei filtri d'effetto (più gradazioni per famiglia in un colpo; sul dispositivo solo quelle segnate come montate).
 - **Schede manuali**: crew, note, lente singola, patch (immagine).
 
 "Scarica tutto" crea `camtag.zip`: la cartella `camtag/` va copiata nella

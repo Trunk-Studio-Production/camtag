@@ -1,10 +1,14 @@
 # CamTag
 
-Badge e-paper per il reparto camera: card con lente,
-crew, note e immagini, montato sulla camera. MVP su **Xteink X3** con firmware
-nostro sopra **FreeInk SDK**. Il proprietario parla italiano: rispondi in
-italiano, e anche i testi visibili all'utente (UI web, messaggi a schermo)
-sono in italiano.
+Badge e-paper per il reparto camera: lens chart, filtri, crew, note e
+immagini, montato sulla camera. MVP su **Xteink X3** con firmware nostro sopra
+**FreeInk SDK**. Il proprietario parla italiano: rispondi in italiano, e anche
+i testi visibili all'utente (UI web, messaggi a schermo) sono in italiano.
+
+Il repo potrà diventare pubblico e open source: nel codice, nella
+documentazione e nei commit non citare prodotti o produttori concorrenti.
+Hardware, SDK e progetti da cui dipendiamo (Xteink, FreeInk, CrossPoint) e i
+costruttori di lenti e filtri nei dati vanno bene.
 
 ## Struttura
 
@@ -18,7 +22,7 @@ sono in italiano.
   un esemplare: le differenze (es. Ø frontale del noleggio) sono modifiche
   locali per `id` nello strumento web (localStorage `camtag.lensOverrides.v1`,
   esportabili), applicate sopra il database quando si disegna.
-- `data/filters.json` — catalogo filtri di stile **provvisorio, non verificato**.
+- `data/filters.json` — catalogo filtri d'effetto **provvisorio, non verificato**.
 - `third_party/freeink-sdk/` — sottomodulo git bloccato su `77ae8c7`. **Non
   modificarlo**: se serve un cambiamento, aggira nel nostro codice o chiedi.
 - `reference/crosspoint/` — solo consultazione, escluso da git (come CrossPoint
@@ -86,6 +90,8 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 - ND e diottrie: +/− sul dispositivo, scorrendo solo i valori del kit scelto
   nello strumento web; si mostra solo il formato ND scelto (0,9 / 3 stop / ND8).
   Tipo ND: ND, IRND o FSND (full spectrum).
+- Filtri d'effetto (diffusione, contrasto, colore…): kit per famiglia con più
+  gradazioni; ognuna è "montata" o no, e la schermata mostra solo le montate.
 - Tasti: schermata filtri A/B = diottria −/+, C/D = ND −/+; altrove A/B =
   schermata precedente/successiva. E = salto ai filtri (dai filtri: schermata
   successiva), F = lens chart (pagina successiva), E tenuto = blocco rotazione.
