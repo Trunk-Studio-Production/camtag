@@ -66,7 +66,8 @@ Un vetro può stare in un solo stadio alla volta.
 - A|B = diottria −/+, C|D = ND −/+. Ruotato di 90° in senso orario i due
   bilancieri si scambiano, così ognuno comanda il valore che gli sta accanto.
   "+" sta sempre sul capo in alto o a destra per chi guarda.
-- E = schermata successiva, F = lens chart, E tenuto = blocco rotazione.
+- E = pagina successiva, F = pagina precedente (in ciclo, su tutte le pagine),
+  E tenuto = blocco rotazione. A e B non cambiano mai pagina.
 
 ## Modifica degli stadi
 

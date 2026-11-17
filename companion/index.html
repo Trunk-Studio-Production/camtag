@@ -183,8 +183,8 @@
       <div class="simbox">
         <div class="device" id="simDevice">
           <button class="key pwr" data-key="P" title="Power"></button>
-          <button class="key side side-f" data-key="F" title="F"></button>
-          <button class="key side side-e" data-key="E" title="E (tieni premuto: blocco rotazione)"></button>
+          <button class="key side side-f" data-key="F" title="F: pagina precedente"></button>
+          <button class="key side side-e" data-key="E" title="E: pagina successiva (tieni premuto: blocco rotazione)"></button>
           <canvas id="simScreen" width="528" height="792"></canvas>
           <div class="rocker r1"><button class="key" data-key="A" title="A"></button><button class="key" data-key="B" title="B"></button></div>
           <div class="rocker r2"><button class="key" data-key="C" title="C"></button><button class="key" data-key="D" title="D"></button></div>
@@ -1302,7 +1302,7 @@ function filtersEditor(ed) {
       ...DIOPTERS.map(v => h('tr', {}, h('td', {}, DIO_LABEL[v]),
         h('td', {}, h('input', { type: 'checkbox', checked: has(v, false), onchange: e => toggle(v, false, e.target.checked) })),
         h('td', {}, h('input', { type: 'checkbox', checked: has(v, true), onchange: e => toggle(v, true, e.target.checked) }))))),
-    h('p', { class: 'hint' }, 'Con almeno una diottria nel kit, nella schermata filtri i tasti A/B diventano diottria −/+.'));
+    h('p', { class: 'hint' }, 'Con almeno una diottria nel kit, nella schermata filtri i tasti A/B sono diottria −/+ (le pagine si cambiano sempre con E e F).'));
 
   // Valori iniziali / anteprima
   ed.append(h('h3', {}, 'Valori iniziali'),
@@ -1523,26 +1523,26 @@ function simContentRot() { return sim.locked ? sim.lockRot : sim.rot; }
 //   A|B = diottria e C|D = ND, scambiati quando il dispositivo è ruotato di 90°
 //   in senso orario (A|B finisce in alto, accanto all'ND).
 // - "+" sta sempre sul capo che vedi in alto o a destra (90° e 180°: il primo tasto).
-// Restituisce { role: 'nd' | 'dio' | 'nav' | null, dir: +1 | -1 }.
+// Fuori dai filtri i bilancieri non fanno nulla: le pagine si cambiano solo con E/F.
+// Restituisce { role: 'nd' | 'dio' | null, dir: +1 | -1 }.
 function rockerAction(k, isFilters, rot) {
   if (!'ABCD'.includes(k)) return { role: null, dir: 0 };
   const rocker = k === 'A' || k === 'B' ? 1 : 2;
   const first = k === 'A' || k === 'C';
   const plusFirst = rot === 90 || rot === 180;
   const dir = first === plusFirst ? 1 : -1;
-  if (!isFilters) return { role: rocker === 1 ? 'nav' : null, dir };
+  if (!isFilters) return { role: null, dir };
   const f = state.filters;
   const near = rot === 90 ? { 1: 'nd', 2: 'dio' } : { 1: 'dio', 2: 'nd' };
   let role = near[rocker];
-  if (role === 'dio' && !f.dio.length) role = rocker === 1 ? 'nav' : null;
-  if (role === 'nd' && !f.nd.length) role = rocker === 1 ? 'nav' : null;
+  if (role === 'dio' && !f.dio.length) role = null;
+  if (role === 'nd' && !f.nd.length) role = null;
   return { role, dir };
 }
 function rockerHint(k, rot) {
   const a = rockerAction(k, true, rot);
   return a.role === 'nd' ? `${a.dir > 0 ? '+' : '-'}ND` : a.role === 'dio' ? `${a.dir > 0 ? '+' : '-'}DIO` : '';
 }
-function simGoto(pred) { const p = simPlan(), j = p.findIndex(pred); if (j >= 0) sim.i = j; return j >= 0; }
 
 // ---------- Modifica degli stadi del mattebox ----------
 // Si entra tenendo A o B nella schermata filtri; si esce con E o F, o tenendo
@@ -1619,12 +1619,9 @@ function simPress(k, long) {
     sim.nd = Math.max(0, Math.min(ndSteps().length - 1, sim.nd + act.dir));
     clearTimeout(simNdTimer);
     simNdTimer = setTimeout(() => { sim.msg = ''; simNdSettle(); renderSim(); }, ND_SETTLE_S * 1000);
-  } else if (act.role === 'nav') step(act.dir);
-  else if (k === 'E') { if (isFilters) step(1); else if (!simGoto(p => p.kind === 'filters')) sim.msg = 'Nessuna schermata filtri.'; }
-  else if (k === 'F') {
-    if (cur.kind === 'lenschart') { const pages = plan.filter(p => p.kind === 'lenschart').length; simGoto(p => p.kind === 'lenschart' && p.page === (cur.page + 1) % pages); }
-    else if (!simGoto(p => p.kind === 'lenschart')) sim.msg = 'Nessuna lens chart.';
-  } else sim.msg = 'Nessuna funzione per questo tasto qui.';
+  } else if (k === 'E') step(1);       // E (lato destro) = pagina successiva, in ciclo
+  else if (k === 'F') step(-1);        // F (lato sinistro) = pagina precedente
+  else sim.msg = 'Nessuna funzione per questo tasto qui: le pagine si cambiano con E e F.';
   renderSim();
 }
 

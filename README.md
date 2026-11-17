@@ -87,7 +87,8 @@ Schermate:
 radice della microSD.
 
 **Simulatore** (pulsante sopra l'anteprima): l'X3 disegnato con tutti i tasti
-cliccabili (anche da tastiera: A–F, P = power). Si può ruotare, bloccare la
+cliccabili (anche da tastiera: A–F, P = power). Le pagine si sfogliano
+in ciclo con E (successiva) e F (precedente); A e B non cambiano mai pagina. Si può ruotare, bloccare la
 rotazione (E tenuto premuto) e spegnere, e si comporta come è previsto per il
 firmware. Le schermate sono a risoluzione piena (792×528 e 528×792); il
 simulatore le mostra a circa metà scala, vicino alla dimensione reale.

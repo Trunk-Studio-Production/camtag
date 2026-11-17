@@ -146,9 +146,10 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   scorrono vuoto + i vetri liberi del kit, ricominciando in fondo. Selezione =
   riga in negativo, niente cursore lampeggiante; aggiornamenti parziali,
   completo all'uscita. Diottrie e ND restano su A|B e C|D fuori dalla modifica.
-- Tasti: schermata filtri A/B = diottria −/+, C/D = ND −/+; altrove A/B =
-  schermata precedente/successiva. E = salto ai filtri (dai filtri: schermata
-  successiva), F = lens chart (pagina successiva), E tenuto = blocco rotazione.
+- Tasti: le pagine si cambiano **solo** con E (successiva) e F (precedente),
+  in ciclo su tutte; A/B mai (conflitto con le diottrie). Schermata filtri A/B =
+  diottria −/+, C/D = ND −/+; altrove i bilancieri non fanno nulla. E tenuto =
+  blocco rotazione.
 - Indicazioni dei tasti a schermo solo dove servono (filtri), disegnate dal
   firmware sul bordo fisico dei tasti, così seguono la rotazione.
 
