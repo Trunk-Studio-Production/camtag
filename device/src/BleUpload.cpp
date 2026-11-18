@@ -24,11 +24,16 @@ constexpr const char* kOldDir = "/camtag.old";
 // il buffer è il doppio, così non si riempie mai mentre il display aggiorna.
 constexpr size_t kDataBufBytes = 16384;
 constexpr uint32_t kAckEvery = 2048;
+// Verso il telefono (GET) vale la stessa finestra, con i ruoli scambiati.
+constexpr uint32_t kSendWindow = 8192;
+constexpr int kSendBurst = 16;  // pacchetti al massimo per giro di loop
 constexpr size_t kCmdLen = 160;
 
 QueueHandle_t cmdQueue = nullptr;
 StreamBufferHandle_t dataBuf = nullptr;
 NimBLECharacteristic* ctrlChr = nullptr;
+NimBLECharacteristic* dataChr = nullptr;
+volatile uint16_t connHandle = BLE_HS_CONN_HANDLE_NONE;
 
 volatile bool isConnected = false;
 volatile bool connChanged = false;
@@ -36,7 +41,7 @@ volatile bool overflow = false;
 volatile uint16_t mtu = 23;
 bool running = false;
 
-enum class Phase { Idle, Session, Receiving };
+enum class Phase { Idle, Session, Receiving, Sending };
 Phase phase = Phase::Idle;
 FsFile file;
 uint32_t fileSize = 0;
@@ -45,6 +50,10 @@ uint32_t expectedCrc = 0;
 uint32_t received = 0;
 uint32_t lastAck = 0;
 uint16_t files = 0;
+uint32_t sent = 0;   // GET: byte inviati
+uint32_t acked = 0;  // GET: byte confermati dal client
+uint8_t pending[512];
+size_t pendingLen = 0;  // pacchetto letto ma non ancora accettato da NimBLE
 char error[32] = "";
 
 void reply(const char* msg) {
@@ -55,12 +64,14 @@ class ServerCallbacks : public NimBLEServerCallbacks {
   void onConnect(NimBLEServer* server, NimBLEConnInfo& info) override {
     isConnected = true;
     connChanged = true;
+    connHandle = info.getConnHandle();
     // 15-30 ms: veloce ma dentro i limiti che iOS accetta.
     server->updateConnParams(info.getConnHandle(), 12, 24, 0, 400);
   }
   void onDisconnect(NimBLEServer*, NimBLEConnInfo&, int) override {
     isConnected = false;
     connChanged = true;
+    connHandle = BLE_HS_CONN_HANDLE_NONE;
     NimBLEDevice::startAdvertising();
   }
   void onMTUChange(uint16_t value, NimBLEConnInfo&) override { mtu = value; }
@@ -96,6 +107,8 @@ void cleanup() {
   phase = Phase::Idle;
   received = fileSize = 0;
   files = 0;
+  sent = acked = 0;
+  pendingLen = 0;
   xStreamBufferReset(dataBuf);
 }
 
@@ -173,6 +186,49 @@ Event handle(const char* line) {
       reply("OK");
       return Event::Done;
 
+    // Manda al telefono un file di /camtag (es. project.json). Fuori da una
+    // sessione di caricamento: le card non cambiano.
+    case upload::Cmd::Get: {
+      if (phase != Phase::Idle) return fail("STATO", "ERRORE DI PROTOCOLLO");
+      const String path = String(kCardDir) + "/" + c.path;
+      file = SdMan.open(path.c_str(), O_RDONLY);
+      if (!file || file.isDirectory() || file.size() > upload::kMaxFileBytes) {
+        if (file) file.close();
+        reply("ERR ASSENTE");
+        return Event::None;
+      }
+      // Prima il CRC, poi da capo per l'invio.
+      fileSize = static_cast<uint32_t>(file.size());
+      fileCrc = 0;
+      uint8_t buf[512];
+      int n;
+      while ((n = file.read(buf, sizeof(buf))) > 0) fileCrc = upload::crc32(fileCrc, buf, n);
+      if (n < 0 || !file.seekSet(0)) return fail("SD", "MICROSD ILLEGGIBILE");
+      char head[kCmdLen];
+      snprintf(head, sizeof(head), "FILE %lu %lx %s", static_cast<unsigned long>(fileSize),
+               static_cast<unsigned long>(fileCrc), c.path);
+      sent = acked = 0;
+      pendingLen = 0;
+      phase = Phase::Sending;
+      reply(head);
+      if (fileSize == 0) {
+        file.close();
+        phase = Phase::Idle;
+        return Event::Sent;
+      }
+      return Event::Sending;
+    }
+
+    case upload::Cmd::Ack:
+      if (phase != Phase::Sending) return Event::None;  // conferma in ritardo: si ignora
+      if (c.size > acked) acked = std::min(c.size, sent);
+      if (acked == fileSize) {
+        file.close();
+        phase = Phase::Idle;
+        return Event::Sent;
+      }
+      return Event::None;
+
     case upload::Cmd::Abort:
       cleanup();
       reply("OK");
@@ -182,6 +238,24 @@ Event handle(const char* line) {
       break;
   }
   return fail("COMANDO", "ERRORE DI PROTOCOLLO");
+}
+
+// GET: manda pacchetti finché la finestra lo permette. Se NimBLE non ha posto,
+// il pacchetto resta in `pending` e riparte al giro dopo.
+Event pumpSend() {
+  if (phase != Phase::Sending || !isConnected) return Event::None;
+  const size_t chunk = std::max<size_t>(20, std::min<size_t>(sizeof(pending), mtu - 3));
+  for (int i = 0; i < kSendBurst && sent < fileSize && sent - acked < kSendWindow; i++) {
+    if (!pendingLen) {
+      const size_t want = std::min<size_t>(chunk, fileSize - sent);
+      if (file.read(pending, want) != static_cast<int>(want)) return fail("SD", "MICROSD ILLEGGIBILE");
+      pendingLen = want;
+    }
+    if (!dataChr->notify(pending, pendingLen, connHandle)) break;
+    sent += pendingLen;
+    pendingLen = 0;
+  }
+  return Event::None;
 }
 
 Event drainData() {
@@ -210,7 +284,7 @@ Event drainData() {
 
 bool start(const char* deviceName) {
   if (running) return true;
-  if (!cmdQueue) cmdQueue = xQueueCreate(4, kCmdLen);
+  if (!cmdQueue) cmdQueue = xQueueCreate(8, kCmdLen);
   if (!dataBuf) dataBuf = xStreamBufferCreate(kDataBufBytes, 1);
   if (!cmdQueue || !dataBuf) return false;
   xQueueReset(cmdQueue);
@@ -229,8 +303,8 @@ bool start(const char* deviceName) {
   NimBLEService* service = server->createService(kServiceUuid);
   ctrlChr = service->createCharacteristic(kCtrlUuid, NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY);
   ctrlChr->setCallbacks(&ctrlCallbacks);
-  NimBLECharacteristic* dataChr =
-      service->createCharacteristic(kDataUuid, NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR);
+  dataChr = service->createCharacteristic(kDataUuid,
+                                         NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR | NIMBLE_PROPERTY::NOTIFY);
   dataChr->setCallbacks(&dataCallbacks);
   // Il server GATT parte da solo con l'advertising.
 
@@ -253,7 +327,7 @@ void stop() {
   if (!running) return;
   if (phase != Phase::Idle) cleanup();
   NimBLEDevice::deinit(true);
-  ctrlChr = nullptr;
+  ctrlChr = dataChr = nullptr;
   isConnected = false;
   running = false;
 }
@@ -278,10 +352,14 @@ Event poll() {
   // I dati del file in corso vanno scritti prima del comando successivo.
   ev = drainData();
   if (ev == Event::Failed) return ev;
-  if (xQueueReceive(cmdQueue, line, 0) == pdTRUE) {
+  // Più comandi per giro: durante un GET arrivano gli ACK del client.
+  for (int i = 0; i < 8 && xQueueReceive(cmdQueue, line, 0) == pdTRUE; i++) {
     const Event cmdEv = handle(line);
     if (cmdEv != Event::None) ev = cmdEv;
+    if (cmdEv == Event::Failed || cmdEv == Event::Done) return ev;
+    if (phase == Phase::Receiving) break;  // i dati del FILE prima del comando dopo
   }
+  if (pumpSend() == Event::Failed) return Event::Failed;
   return ev;
 }
 

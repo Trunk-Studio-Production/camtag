@@ -29,7 +29,7 @@ git clone --depth 1 https://github.com/crosspoint-reader/crosspoint-reader refer
 1. Nello strumento web crei le card.
 2. Le mandi all'X3 in uno di due modi:
    - **Bluetooth**: sull'X3 tieni premuto **F** finché compare BLUETOOTH, poi
-     nello strumento web tocca **Invia via Bluetooth** (vedi sotto);
+     nello strumento web tocca **Bluetooth** e poi **Invia le card** (vedi sotto);
    - **microSD**: scarichi lo zip e copi la sua cartella `camtag/` nella radice
      della microSD.
 3. Sul dispositivo:
@@ -50,7 +50,7 @@ Bluetooth LE del browser (Web Bluetooth).
 
 1. Sull'X3 tieni premuto **F** per 0,8 s: compare **BLUETOOTH** con il nome
    del dispositivo (es. `CAMTAG-1A2B`).
-2. Nello strumento web tocca **Invia via Bluetooth**, poi **Cerca CamTag** e
+2. Nello strumento web tocca **Bluetooth**, poi **Invia le card** e
    scegli il dispositivo.
 3. A fine invio l'X3 mostra la prima card con **CARD AGGIORNATE**.
 
@@ -59,6 +59,13 @@ solo a invio completo e controllato: se il collegamento cade o qualcosa va
 storto, sull'X3 restano le card di prima. **E** o **F** escono dalla
 ricezione; dopo 3 minuti senza invii esce da sola. Il Bluetooth è acceso
 solo in ricezione.
+
+Con le card arriva sull'X3 anche il **progetto** (`project.json`): lo stesso
+file di "Salva progetto". Il lavoro nello strumento web resta solo nel browser,
+che può cancellarlo (Safari lo fa dopo una settimana senza visite). Per
+riprenderlo, metti l'X3 in ricezione e tocca **Bluetooth** → **Importa
+dall'X3**: le card non cambiano. In alternativa apri `camtag/project.json`
+della microSD con **Importa progetto**.
 
 Requisiti:
 - la pagina va aperta in **HTTPS** (o da `localhost`): su `http://` il browser

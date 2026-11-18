@@ -14,14 +14,14 @@ costruttori di lenti e filtri nei dati vanno bene.
 
 - `device/` — firmware PlatformIO (C++/Arduino, ESP32-C3). È il nostro codice.
   `BleUpload.cpp` riceve le card via Bluetooth (NimBLE-Arduino, acceso solo in
-  ricezione); `UploadProto.h` ha le parti provabili sull'host (`device/test/`).
+  ricezione) e rimanda al telefono `project.json` (`GET`); `UploadProto.h` ha le parti provabili sull'host (`device/test/`).
 - `companion/index.html` — strumento web a file singolo: lens chart e filtri
   generati in automatico più schede manuali (crew, note, lente singola, patch);
   esporta uno zip di BMP 1 bit o manda gli stessi file all'X3 via Web Bluetooth
-  (`bleSend`). Dipendenze esterne: JSZip da cdnjs (i font
+  (`bleSend`; `bleGet` riprende il progetto dall'X3). Dipendenze esterne: JSZip da cdnjs (i font
   Inter sono nel repo). Legge
   `../data/*.json`, quindi va servito dalla radice del repo. Ha un
-  **simulatore** (`simPress`/`renderSim`) con tasti, rotazione, blocco e power:
+  **simulatore** (`simPress`/`renderSim`, solo da computer: sotto 700 px è nascosto) con tasti, rotazione, blocco e power:
   è la specifica di comportamento per il firmware, e i due devono restare allineati.
 - `data/lenses.json` — database lenti (schema in `data/README.md`), dati solo
   dalle schede dei costruttori, con la fonte per ogni lente. Mai modificarlo per
@@ -91,6 +91,9 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 - `/camtag/NN_nome.bmp` orizzontale 792×528, `/camtag/NN_nome.p.bmp` verticale
   528×792. BMP 1 bit non compresso, palette 0 = nero, 1 = bianco. Ordine = nome.
 - Nomi riservati: `NN_lenschart[-2…]` (pagine da 11 righe) e `NN_filters`.
+- `/camtag/project.json`: il progetto dello strumento web, inviato con le card
+  (anche nello zip) e riletto con "Importa dall'X3". Il firmware lo ignora. Il
+  lavoro nel browser sta solo nel localStorage: questo file è la copia che resta.
 - Schermata filtri (specifica completa in `docs/filtri.md`): lo sfondo ha vuoti
   i riquadri dei valori e l'area degli stadi. La cartella `NN_filters/` contiene
   `screen.ini` v2 (riquadri e area stadi per orientamento, tasti e indicazioni

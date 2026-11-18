@@ -42,5 +42,15 @@ int main() {
   assert(parse("FILE 99999999 1a a.bmp").cmd == Cmd::Unknown);
   assert(parse("FILE x 1a a.bmp").cmd == Cmd::Unknown);
   assert(parse("hello").cmd == Cmd::Unknown);
+
+  Command g = parse("GET project.json");
+  assert(g.cmd == Cmd::Get && std::string(g.path) == "project.json");
+  assert(parse("GET ../segreto").cmd == Cmd::Unknown);
+  assert(parse("GET ").cmd == Cmd::Unknown);
+  Command a = parse("ACK 4096");
+  assert(a.cmd == Cmd::Ack && a.size == 4096);
+  assert(parse("ACK").cmd == Cmd::Unknown);
+  assert(parse("ACK 12x").cmd == Cmd::Unknown);
+  assert(parse("ACK 99999999").cmd == Cmd::Unknown);
   puts("upload_proto_test: ok");
 }

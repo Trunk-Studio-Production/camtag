@@ -9,7 +9,7 @@
 
 namespace upload {
 
-constexpr int kProtocolVersion = 1;
+constexpr int kProtocolVersion = 2;
 constexpr size_t kMaxPath = 96;
 constexpr uint32_t kMaxFileBytes = 2u * 1024u * 1024u;
 
@@ -45,23 +45,34 @@ inline bool validPath(const char* p) {
   return true;
 }
 
-enum class Cmd { Unknown, Hello, Begin, File, Commit, Abort };
+enum class Cmd { Unknown, Hello, Begin, File, Commit, Abort, Get, Ack };
 
 struct Command {
   Cmd cmd = Cmd::Unknown;
-  uint32_t size = 0;
+  uint32_t size = 0;  // FILE: byte del file; ACK: byte ricevuti dal client
   uint32_t crc = 0;
   char path[kMaxPath + 1] = {0};
 };
 
 // "HELLO" | "BEGIN" | "FILE <byte> <crc32 esadecimale> <percorso>" | "COMMIT" | "ABORT"
+// | "GET <percorso>" | "ACK <byte>"
 inline Command parse(const char* line) {
   Command c;
   if (strcmp(line, "HELLO") == 0) c.cmd = Cmd::Hello;
   else if (strcmp(line, "BEGIN") == 0) c.cmd = Cmd::Begin;
   else if (strcmp(line, "COMMIT") == 0) c.cmd = Cmd::Commit;
   else if (strcmp(line, "ABORT") == 0) c.cmd = Cmd::Abort;
-  else if (strncmp(line, "FILE ", 5) == 0) {
+  else if (strncmp(line, "GET ", 4) == 0) {
+    if (!validPath(line + 4)) return c;
+    c.cmd = Cmd::Get;
+    strncpy(c.path, line + 4, kMaxPath);
+  } else if (strncmp(line, "ACK ", 4) == 0) {
+    char* end = nullptr;
+    const unsigned long n = strtoul(line + 4, &end, 10);
+    if (end == line + 4 || *end != '\0' || n > kMaxFileBytes) return c;
+    c.cmd = Cmd::Ack;
+    c.size = static_cast<uint32_t>(n);
+  } else if (strncmp(line, "FILE ", 5) == 0) {
     const char* s = line + 5;
     char* end = nullptr;
     const unsigned long size = strtoul(s, &end, 10);

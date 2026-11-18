@@ -345,6 +345,14 @@ void loopReceive() {
       lastActivityMs = millis();
       drawReceive("ERRORE", bleupload::lastError(), false);
       break;
+    case bleupload::Event::Sending:
+      lastActivityMs = millis();
+      drawReceive("INVIO DEL PROGETTO", nullptr, false);
+      break;
+    case bleupload::Event::Sent:
+      lastActivityMs = millis();
+      drawReceive("PROGETTO INVIATO", "CARD INVARIATE", false);
+      break;
     case bleupload::Event::Aborted:
       lastActivityMs = millis();
       drawReceive("ANNULLATO", "CARD INVARIATE", false);
