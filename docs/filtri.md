@@ -68,6 +68,9 @@ Un vetro può stare in un solo stadio alla volta.
   "+" sta sempre sul capo in alto o a destra per chi guarda.
 - E = pagina successiva, F = pagina precedente (in ciclo, su tutte le pagine),
   E tenuto = blocco rotazione. A e B non cambiano mai pagina.
+- Le pressioni lunghe (0,8 s) scattano allo scadere del tempo, con il tasto
+  ancora premuto: si vede subito l'effetto e il rilascio che segue non conta.
+  Le pressioni brevi si leggono al rilascio.
 
 ## Modifica degli stadi
 

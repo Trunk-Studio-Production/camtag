@@ -160,8 +160,10 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 - Tasti: le pagine si cambiano **solo** con E (successiva) e F (precedente),
   in ciclo su tutte; A/B mai (conflitto con le diottrie). Schermata filtri A/B =
   diottria −/+, C/D = ND −/+; altrove i bilancieri non fanno nulla. E tenuto =
-  blocco rotazione. F tenuto = ricezione via Bluetooth (E o F escono). E e F si
-  leggono al rilascio.
+  blocco rotazione. F tenuto = ricezione via Bluetooth (E o F escono). La
+  pressione breve si legge al rilascio; quella lunga (0,8 s, anche A o B per la
+  modifica) scatta allo scadere del tempo con il tasto ancora giù, e il
+  rilascio che segue non conta (`holdFired` nel firmware, `simDown`/`simUp`).
 - Indicazioni dei tasti a schermo solo dove servono (filtri), disegnate dal
   firmware sul bordo fisico dei tasti, così seguono la rotazione.
 

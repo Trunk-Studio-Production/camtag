@@ -37,6 +37,8 @@ git clone --depth 1 https://github.com/crosspoint-reader/crosspoint-reader refer
      in ciclo
    - **E tenuto premuto (0,8 s)**: blocca/sblocca la rotazione
    - **F tenuto premuto (0,8 s)**: ricezione delle card via Bluetooth
+   - le pressioni lunghe scattano mentre tieni premuto, allo scadere del
+     tempo: non serve rilasciare per vedere l'effetto
    - A, B, C, D non cambiano card
    - **power**: spegne subito
    - dopo 20 s senza tasti si spegne da solo; l'e-paper continua a mostrare la card

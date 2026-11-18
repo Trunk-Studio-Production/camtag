@@ -104,6 +104,7 @@
   .device .key { position: absolute; padding: 0; border: none; background: #c4c3bd; cursor: pointer; }
   .device .key:hover { background: #b7b6af; }
   .device .key.down { background: #8f8e88; }
+  .device .key.held { background: #5a5954; }
   .device .pwr { top: -7px; right: 50px; width: 46px; height: 9px; border-radius: 4px 4px 0 0; }
   .device .side { top: 110px; width: 8px; height: 92px; border-radius: 4px; }
   .device .side-f { left: -7px; }
@@ -210,7 +211,7 @@
       <div class="simbox">
         <div class="device" id="simDevice">
           <button class="key pwr" data-key="P" title="Power"></button>
-          <button class="key side side-f" data-key="F" title="F: pagina precedente"></button>
+          <button class="key side side-f" data-key="F" title="F: pagina precedente (tieni premuto: Bluetooth)"></button>
           <button class="key side side-e" data-key="E" title="E: pagina successiva (tieni premuto: blocco rotazione)"></button>
           <canvas id="simScreen" width="528" height="792"></canvas>
           <div class="rocker r1"><button class="key" data-key="A" title="A"></button><button class="key" data-key="B" title="B"></button></div>
@@ -218,7 +219,7 @@
         </div>
       </div>
       <p class="sim-status" id="simStatus"></p>
-      <p class="hint">Clic sui tasti come sul dispositivo. Tenuto premuto (o Maiusc+clic): E blocca la rotazione, A o B nei filtri apre la modifica degli stadi (E o F la chiudono).
+      <p class="hint">Clic sui tasti come sul dispositivo. Tenuto premuto 0,8 s (o Maiusc+clic): E blocca la rotazione, F apre il Bluetooth, A o B nei filtri aprono la modifica degli stadi (E o F la chiudono). L'azione scatta mentre tieni premuto, senza aspettare il rilascio.
         Da tastiera: A B C D E F, P = power. Le funzioni seguono il comportamento previsto per il firmware.</p>
     </div>
   </section>
@@ -1968,17 +1969,39 @@ phoneMq.addEventListener('change', leaveSimOnPhone);
 addEventListener('resize', leaveSimOnPhone);
 $('#rotL').onclick = () => { sim.rot = (sim.rot + 270) % 360; sim.msg = ''; renderSim(); };
 $('#rotR').onclick = () => { sim.rot = (sim.rot + 90) % 360; sim.msg = ''; renderSim(); };
+// Come sul dispositivo: la pressione lunga scatta allo scadere del tempo, con il
+// tasto ancora giù, e il rilascio che segue non conta; quella breve al rilascio.
+// Maiusc = pressione lunga subito. simHold: tasto giù → timer (0 = nessuno, -1 = già scattata).
+const LONG_PRESS_MS = 800, simHold = {};
+const simCanHold = k => 'EF'.includes(k) || ('AB'.includes(k) && simPlan()[sim.i]?.kind === 'filters');
+const simKeyEl = k => document.querySelector(`#simDevice .key[data-key="${k}"]`);
+function simDown(k, shift) {
+  if (k in simHold) return;
+  simKeyEl(k).classList.add('down');
+  const fire = () => { simHold[k] = -1; simKeyEl(k).classList.add('held'); simPress(k, true); };
+  simHold[k] = 0;
+  if (shift) fire(); else if (simCanHold(k)) simHold[k] = setTimeout(fire, LONG_PRESS_MS);
+}
+function simUp(k, cancel) {
+  if (!(k in simHold)) return;
+  const t = simHold[k];
+  clearTimeout(t); delete simHold[k]; simKeyEl(k).classList.remove('down', 'held');
+  if (t !== -1 && !cancel) simPress(k, false);
+}
 document.querySelectorAll('#simDevice .key').forEach(b => {
-  let t0 = 0;
-  b.addEventListener('pointerdown', () => { t0 = Date.now(); b.classList.add('down'); });
-  b.addEventListener('pointerleave', () => b.classList.remove('down'));
-  b.addEventListener('pointerup', e => { b.classList.remove('down'); simPress(b.dataset.key, e.shiftKey || Date.now() - t0 >= 800); });
+  const k = b.dataset.key;
+  b.addEventListener('pointerdown', e => simDown(k, e.shiftKey));
+  b.addEventListener('pointerup', () => simUp(k));
+  b.addEventListener('pointerleave', () => simUp(k, true));
+  b.addEventListener('pointercancel', () => simUp(k, true));
 });
+const simKeyOf = e => { const k = e.key.toUpperCase(); return k.length === 1 && 'ABCDEFP'.includes(k) ? k : ''; };
 document.addEventListener('keydown', e => {
   if (!simOn || e.repeat || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
-  const k = e.key.toUpperCase();
-  if ('ABCDEFP'.includes(k) && k.length === 1) { e.preventDefault(); simPress(k, e.shiftKey); }
+  const k = simKeyOf(e);
+  if (k) { e.preventDefault(); simDown(k, e.shiftKey); }
 });
+document.addEventListener('keyup', e => { const k = simKeyOf(e); if (k) simUp(k, !simOn); });
 
 // Database: servito dalla radice del repo (python3 -m http.server), quindi ../data/.
 Promise.all([

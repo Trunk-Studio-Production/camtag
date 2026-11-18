@@ -9,6 +9,8 @@
 //         F (lato sinistro)         = card precedente, in ciclo
 //         E tenuto premuto          = blocca/sblocca la rotazione
 //         F tenuto premuto          = ricezione delle card via Bluetooth
+//         La pressione lunga scatta allo scadere di LONG_PRESS_MS, con il tasto
+//         ancora giù; quella breve al rilascio.
 //         A B C D (bilancieri)      = nessuna funzione qui: mai cambio pagina
 //         power                     = spegni subito
 // Dopo IDLE_SLEEP_MS senza input si spegne da solo: l'e-paper resta visibile.
@@ -103,6 +105,8 @@ bool sdReady = false;
 
 // Modalità ricezione via Bluetooth.
 bool receiving = false;
+// Una pressione lunga ha già fatto la sua azione: il rilascio che segue non conta.
+bool holdFired = false;
 char bleName[16] = "";
 uint16_t drawnFiles = 0;
 uint32_t lastReceiveDrawMs = 0;
@@ -313,9 +317,9 @@ void receiveDone() {
 
 [[noreturn]] void goToSleep();
 
-void loopReceive() {
+void loopReceive(bool afterHold) {
   if (input.wasPressed(InputManager::BTN_POWER)) goToSleep();
-  if (input.wasReleased(kKeyE) || input.wasReleased(kKeyF)) {
+  if (!afterHold && (input.wasReleased(kKeyE) || input.wasReleased(kKeyF))) {
     exitReceive();
     return;
   }
@@ -466,9 +470,11 @@ void setup() {
 
 void loop() {
   input.update();
+  const bool afterHold = holdFired;
+  if (holdFired && !input.isPressed(kKeyE) && !input.isPressed(kKeyF)) holdFired = false;
 
   if (receiving) {
-    loopReceive();
+    loopReceive(afterHold);
     if (input.wasAnyPressed() || input.wasAnyReleased()) lastActivityMs = millis();
     // Corto: i dati arrivano in coda e vanno scritti in fretta sulla microSD.
     delay(2);
@@ -477,19 +483,21 @@ void loop() {
 
   if (input.wasPressed(InputManager::BTN_POWER)) goToSleep();
 
-  // F si legge al rilascio, come E: tenuto premuto apre la ricezione.
-  if (input.wasReleased(kKeyF) && input.getHeldTime() >= LONG_PRESS_MS) {
-    enterReceive();
-  } else if (!cards.empty()) {
+  // Pressione lunga: scatta subito allo scadere del tempo, senza aspettare il
+  // rilascio. Quella breve si legge al rilascio (prima non si sa quale delle due è).
+  const bool eDown = input.isPressed(kKeyE), fDown = input.isPressed(kKeyF);
+  if (!holdFired && (eDown || fDown) && input.getHeldTime() >= LONG_PRESS_MS) {
+    holdFired = true;
+    if (fDown)
+      enterReceive();
+    else if (!cards.empty())
+      toggleRotationLock();
+  } else if (!afterHold && !cards.empty()) {
     int step = 0;
     if (input.wasReleased(kKeyF))
       step = -1;
-    else if (input.wasReleased(kKeyE)) {
-      if (input.getHeldTime() >= LONG_PRESS_MS)
-        toggleRotationLock();
-      else
-        step = 1;
-    }
+    else if (input.wasReleased(kKeyE))
+      step = 1;
     if (step != 0) {
       bannerUntilMs = 0;
       showCard(current + step, false);
