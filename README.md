@@ -186,3 +186,14 @@ ripristino restano compatibili.
    l'IMU e ridisegnare solo se è cambiato il verso. Da valutare dopo aver
    misurato i consumi reali.
 3. **Supporto** stampato in 3D per il montaggio sulla camera.
+
+## Licenza
+
+CamTag (firmware e strumento web) è software libero, distribuito con la
+licenza **GNU GPL v3.0**: testo completo in [`LICENSE`](LICENSE). Puoi usarlo,
+studiarlo, modificarlo e ridistribuirlo; chi distribuisce una versione
+modificata deve renderne disponibile il codice con la stessa licenza.
+
+Restano con le loro licenze:
+- FreeInk SDK (`third_party/freeink-sdk/`): MIT;
+- font Inter (`companion/fonts/`): SIL Open Font License 1.1.
