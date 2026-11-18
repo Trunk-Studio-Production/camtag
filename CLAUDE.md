@@ -162,6 +162,8 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 
 ## Regole
 
+- Unità di misura sempre minuscole ("MOD m", "Ø mm"), anche nelle etichette
+  in maiuscolo: mai passare le unità a `toUpperCase()`.
 - Firmware piccolo: niente allocazioni grandi o librerie nuove senza motivo.
   `Canvas` disegna in coordinate logiche; la rotazione la gestisce lui.
 - Dopo una modifica al firmware: compila. Per la logica di disegno c'è un test

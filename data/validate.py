@@ -12,10 +12,10 @@ from datetime import date
 from pathlib import Path
 
 TYPES = {"prime", "macro", "zoom", "anamorphic", "probe", "specialty"}
-COVERAGES = {"S35", "FF", "LF"}
+COVERAGES = {"S35", "S35+", "FF", "LF", "65"}
 FIELDS = [
     "id", "brand", "series", "seriesCode", "name", "type",
-    "focal", "focalMin", "focalMax", "tstop", "tstopLong",
+    "focal", "focalMin", "focalMax", "tstop", "tstopLong", "stopType",
     "mod_m", "front_mm", "filterThread", "coverage", "imageCircle_mm",
     "squeeze", "sources", "checked", "notes",
 ]
@@ -72,6 +72,8 @@ def check_lens(l, errs, warns):
     ts = l.get("tstop")
     if not (num(ts) and 0.7 <= ts <= 16):
         e("tstop mancante o fuori scala")
+    if l.get("stopType") not in ("T", "f"):
+        e("stopType deve essere 'T' o 'f'")
 
     mod = l.get("mod_m")
     if mod is not None and not (num(mod) and 0.01 <= mod <= 10):
@@ -92,8 +94,11 @@ def check_lens(l, errs, warns):
     if t == "anamorphic":
         if not (num(sq) and 1 < sq <= 2.5):
             e("anamorfica senza squeeze valido")
+    elif t == "zoom":
+        if sq is not None and not (num(sq) and 1 < sq <= 2.5):
+            e("zoom anamorfico con squeeze non valido")
     elif sq is not None:
-        e("squeeze solo per le anamorfiche")
+        e("squeeze solo per le anamorfiche e gli zoom anamorfici")
 
     src = l.get("sources")
     if not (isinstance(src, list) and src and all(isinstance(s, str) and s.startswith("http") for s in src)):

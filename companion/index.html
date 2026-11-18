@@ -385,7 +385,8 @@ function fmt(n, max = 2) {
 }
 function focalText(l) { return l.focal != null ? fmt(l.focal, 1) : `${fmt(l.focalMin, 1)}-${fmt(l.focalMax, 1)}`; }
 function focalSort(l) { return l.focal != null ? l.focal : (l.focalMin ?? 0); }
-function tText(l) { return l.tstop == null ? '—' : (l.tstopLong ? `${fmt(l.tstop)}-${fmt(l.tstopLong)}` : fmt(l.tstop)); }
+// Apertura: T, oppure f per le lenti di cui il costruttore pubblica solo l'f (stopType 'f').
+function tText(l) { return l.tstop == null ? '—' : (l.stopType === 'f' ? 'f' : '') + (l.tstopLong ? `${fmt(l.tstop)}-${fmt(l.tstopLong)}` : fmt(l.tstop)); }
 
 function ndLabel(d) {
   if (!d) return '—';
@@ -444,6 +445,7 @@ function effective(l) {
   if (!base) return l;
   const tech = {};
   for (const [k] of OVR_FIELDS) tech[k] = base[k];
+  tech.stopType = base.stopType;
   const o = lensOverrides[l.dbId] || {};
   // _mod: campi diversi dalla scheda, segnati con * sulla lens chart.
   return { ...l, ...tech, ...o, _mod: new Set(Object.keys(o).filter(k => k !== 'note')) };
@@ -583,7 +585,7 @@ function drawLensChart(ctx, W, H, rows, pageIdx, pageCount) {
       if (tag(l)) { ctx.font = `800 ${ts}px ${FONT}`; ctx.fillText(tag(l), pad + fw + 32, line1 + fs * 0.12); }
       specs(l).forEach(([k, v], j) => {
         const x = pad + 10 + j * groupW;
-        ctx.font = `600 ${ls}px ${FONT}`; ctx.fillText(k.toUpperCase(), x, labelY);
+        ctx.font = `600 ${ls}px ${FONT}`; ctx.fillText(k, x, labelY); // unità minuscole: "MOD m", "Ø mm"
         ctx.font = `800 ${j === 2 ? smallSize(vs) : vs}px ${FONT}`; ctx.fillText(v, x, valueY);
       });
     });
@@ -1245,8 +1247,8 @@ function keepScroll(fn) {
 
 function addDbLens(l) {
   if (state.lenses.some(x => x.dbId === l.id)) return;
-  const { id, brand, series, seriesCode, type, focal, focalMin, focalMax, tstop, tstopLong, mod_m, front_mm, filterThread, squeeze } = l;
-  state.lenses.push({ uid: 'db-' + id, dbId: id, brand, series, seriesCode, type, focal, focalMin, focalMax, tstop, tstopLong, mod_m, front_mm, filterThread, squeeze, highlight: 'auto' });
+  const { id, brand, series, seriesCode, type, focal, focalMin, focalMax, tstop, tstopLong, stopType, mod_m, front_mm, filterThread, squeeze } = l;
+  state.lenses.push({ uid: 'db-' + id, dbId: id, brand, series, seriesCode, type, focal, focalMin, focalMax, tstop, tstopLong, stopType, mod_m, front_mm, filterThread, squeeze, highlight: 'auto' });
 }
 
 function renderDbResults(box, query, brand, type) {
@@ -1272,7 +1274,7 @@ function renderDbResults(box, query, brand, type) {
     for (const l of ls) {
       shown++;
       const v = effective({ dbId: l.id });
-      const meta = `T${tText(v)}${star(v, 'tstop', 'tstopLong')} · MOD ${fmt(v.mod_m)}${star(v, 'mod_m')} m · Ø ${v.front_mm != null ? fmt(v.front_mm, 1) : '—'}${star(v, 'front_mm')}${l.type !== 'prime' ? ' · ' + LENS_TYPES[l.type] : ''}`;
+      const meta = `${v.stopType === 'f' ? '' : 'T'}${tText(v)}${star(v, 'tstop', 'tstopLong')} · MOD ${fmt(v.mod_m)}${star(v, 'mod_m')} m · Ø ${v.front_mm != null ? fmt(v.front_mm, 1) : '—'}${star(v, 'front_mm')}${l.type !== 'prime' ? ' · ' + LENS_TYPES[l.type] : ''}${v.squeeze && l.type !== 'anamorphic' ? ` ×${fmt(v.squeeze)}` : ''}`;
       box.append(h('div', { class: 'it' }, h('span', {}, `${focalText(l)} mm`), h('span', { class: 'meta' }, meta),
         chosen.has(l.id) ? h('button', { class: 'small', disabled: true }, '✓') :
         h('button', { class: 'small', onclick: () => { addDbLens(l); keepScroll(() => changed(true)); } }, '+')));
