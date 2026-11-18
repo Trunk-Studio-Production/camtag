@@ -66,6 +66,9 @@
   .frame.actual canvas#preview { max-width: none; max-height: none; image-rendering: pixelated; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: center; }
   label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  input.tslider { width: 100%; accent-color: var(--ink); }
+  label .tval { color: var(--ink); font-variant-numeric: tabular-nums; }
+  label .hint { opacity: .7; }
   label.inline { display: inline-flex; gap: 6px; align-items: center; margin: 0; color: var(--ink); font-size: 13px; }
   input[type=text], input[type=number], input[type=search], textarea, select { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; }
   textarea { min-height: 110px; resize: vertical; }
@@ -135,8 +138,8 @@
   <span class="hint" id="dims"></span>
   <span class="sp"></span>
   <select id="decimal" title="Separatore decimale">
-    <option value=",">Decimali: 0,9</option>
     <option value=".">Decimali: 0.9</option>
+    <option value=",">Decimali: 0,9</option>
   </select>
   <select id="typoFont" title="Font delle schermate"></select>
   <select id="typoT" title="Soglia del testo: più scura = tratti più pieni"></select>
@@ -258,7 +261,7 @@ const TYPE_LABEL = { lens: 'Lente', crew: 'Crew', notes: 'Note', patch: 'Patch' 
 
 function freshState() {
   return {
-    version: 4, device: 'x3', decimal: ',', production: '', typo: { font: 'inter', threshold: 128 },
+    version: 5, device: 'x3', decimal: '.', production: '', typo: { font: 'inter', threshold: 128 },
     auto: { lenschart: true, filters: true },
     lenses: [],
     filters: { ndFormat: 'density', ndType: 'ND', nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], ndCombos: [], dio: [], effects: [], stages: [null, null, null], previewNd: 0, previewDio: 0 },
@@ -289,7 +292,9 @@ function migrate(s) {
   if (s.filters.previewNd > 0 && s.filters.nd.length) makeRoomForNd(s.filters.stages);
   // v3: Inter con soglia normale è la tipografia scelta (prima: font di sistema).
   if ((s.version || 0) < 3) s.typo = { font: 'inter', threshold: 128 };
-  s.device = 'x3'; s.version = 4;
+  // v5: il punto è il separatore decimale predefinito (prima la virgola, mai scelta apposta).
+  if ((s.version || 0) < 5) s.decimal = '.';
+  s.device = 'x3'; s.version = 5;
   return s;
 }
 
@@ -1389,12 +1394,17 @@ function filtersEditor(ed) {
     if (x) picks.append(...x.strengths.map(s => h('label', { class: 'inline' }, h('input', { type: 'checkbox', value: s }), s)));
   });
   ed.append(h('label', {}, 'Aggiungi al kit dal catalogo'), fam, picks,
-    h('button', { class: 'small', style: 'margin-top:8px', onclick: () => {
-      const x = filterDb.find(y => y.id === fam.value); if (!x) return;
-      const chosen = [...picks.querySelectorAll('input:checked')].map(i => i.value);
-      if (x.strengths.length && !chosen.length) { alert('Spunta almeno una gradazione.'); return; }
-      addToKit(f, x.id, x.name, chosen); changed(true);
-    } }, '+ Aggiungi le gradazioni spuntate'));
+    h('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin-top:8px' },
+      h('button', { class: 'small', onclick: () => {
+        const x = filterDb.find(y => y.id === fam.value); if (!x) return;
+        const chosen = [...picks.querySelectorAll('input:checked')].map(i => i.value);
+        if (x.strengths.length && !chosen.length) { alert('Spunta almeno una gradazione.'); return; }
+        addToKit(f, x.id, x.name, chosen); changed(true);
+      } }, '+ Aggiungi le gradazioni spuntate'),
+      h('button', { class: 'small', onclick: () => {
+        const x = filterDb.find(y => y.id === fam.value); if (!x) return;
+        addToKit(f, x.id, x.name, [...x.strengths]); changed(true);
+      } }, '+ Aggiungi tutte le gradazioni')));
 
   // Filtro personalizzato: nome e gradazioni separate da virgola.
   const cName = h('input', { type: 'text', placeholder: 'Nome (es. "Cinebloom")' });
@@ -1443,9 +1453,16 @@ function cardEditor(ed, c, idx) {
       r.readAsDataURL(file);
     } });
     ed.append(h('label', {}, 'Immagine'), inp);
-    pair(field(c, 'Adattamento', 'fit', 'select', [['contain', 'Intera'], ['cover', 'Riempi']]),
-         field(c, 'Retinatura', 'dither', 'select', [['atkinson', 'Atkinson'], ['fs', 'Floyd–Steinberg'], ['none', 'Soglia']]));
-    ed.append(field(c, 'Soglia (solo "Soglia")', 'threshold', 'number'), field(c, 'Inverti colori', 'invert', 'checkbox'), field(c, 'Didascalia (opzionale)', 'caption'));
+    const dither = field(c, 'Retinatura', 'dither', 'select', [['atkinson', 'Atkinson'], ['fs', 'Floyd–Steinberg'], ['none', 'Soglia']]);
+    pair(field(c, 'Adattamento', 'fit', 'select', [['contain', 'Intera'], ['cover', 'Riempi']]), dither);
+    // Soglia con uno slider: l'anteprima si aggiorna mentre lo si trascina. Visibile solo con "Soglia".
+    const tVal = h('span', { class: 'tval' }, String(c.threshold ?? 128));
+    const slider = h('input', { type: 'range', min: 1, max: 254, step: 1, value: c.threshold ?? 128, class: 'tslider',
+      oninput: e => { c.threshold = Number(e.target.value); tVal.textContent = e.target.value; changed(); } });
+    const tWrap = h('div', {}, h('label', {}, 'Soglia: ', tVal, h('span', { class: 'hint' }, ' · più a destra = più nero')), slider);
+    const showT = () => { tWrap.style.display = c.dither === 'none' ? '' : 'none'; };
+    dither.querySelector('select').addEventListener('change', showT); showT();
+    ed.append(tWrap, field(c, 'Inverti colori', 'invert', 'checkbox'), field(c, 'Didascalia (opzionale)', 'caption'));
   }
 }
 

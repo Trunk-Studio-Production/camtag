@@ -119,6 +119,8 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 ## Decisioni di prodotto
 
 - Solo X3 per ora; l'X4 è un futuro lontano.
+- Decimali sulle schermate: punto predefinito (0.9), virgola selezionabile dal
+  menu nell'intestazione (`state.decimal`).
 - Lens chart: focale, T, MOD, Ø frontale (più piccolo, dato secondario). Niente
   colonna serie: in basso un riquadro con il nome per esteso del set principale
   e "Serie (SIGLA)" per le altre; la sigla piccola compare accanto alla focale
