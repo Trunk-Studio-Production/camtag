@@ -33,7 +33,7 @@ Ogni lente ha **tutti** i campi qui sotto (quelli non pertinenti valgono `null`)
 | Campo | Tipo | Significato |
 |---|---|---|
 | `id` | stringa | Stabile, minuscolo, `marca-serie-focale` (zoom: `...-30-105`). Può contenere un punto nelle focali decimali (`canon-flex-zoom-31.5-95`). Non cambiarlo mai: lo strumento lo salva nelle produzioni. |
-| `brand` | stringa | Come la scrive il costruttore: `ARRI`, `Cooke`, `ZEISS`, `Leitz`, `Sigma`, `Canon`, `DZOFilm`, `Atlas`, `Angénieux`, `Fujinon`, `Tokina`, `Laowa`, `Sirui`, `Blazar`. |
+| `brand` | stringa | Come la scrive il costruttore: `ARRI`, `Cooke`, `ZEISS`, `Leitz`, `Sigma`, `Canon`, `DZOFilm`, `Atlas`, `Angénieux`, `Fujinon`, `Tokina`, `Laowa`, `Sirui`, `Blazar`, `Xeen`. |
 | `series` | stringa | Nome della serie. |
 | `seriesCode` | stringa | Sigla di 2–4 caratteri maiuscoli (inizia con una lettera), uguale per tutta la serie e unica tra le serie. Va sulla chart. |
 | `name` | stringa | Nome commerciale della lente, per la ricerca. |
@@ -200,8 +200,12 @@ chiavi mancanti.
 | Blazar | Beetle 1.33X | BTL | 3 | FF |
 | Blazar | Sentinel 1.33X Zoom | SEN | 1 | FF |
 | Blazar | Apex 1.33X AF | APX | 2 | S35 |
+| Xeen | Classic | XEN | 8 | FF |
+| Xeen | CF | XCF | 6 | FF |
+| Xeen | Meister | XMS | 5 | FF |
+| Xeen | Anamorphic | XAN | 1 | FF |
 
-Totale: 640 lenti, 106 serie. Verificate il 2026-11-17 le prime 32 serie, il 2026-11-18 le altre.
+Totale: 660 lenti, 110 serie. Verificate il 2026-11-17 le prime 32 serie, il 2026-11-18 le altre.
 
 Gli Angénieux EZ cambiano focale e T secondo il blocco posteriore montato
 (S35 o FF/VistaVision): ogni zoom compare due volte, una voce per
@@ -252,6 +256,7 @@ come scheda tecnica ufficiale:
   un'immagine nella pagina laowacine.com ospitata su c1.iggcdn.com.
 - Sirui: store.sirui.com (il negozio è il sito prodotti di Sirui)
 - Blazar: blazarlens.com
+- Xeen: www.xeenglobal.com (pagine delle serie e manuali PDF linkati)
 
 Gli URL esatti sono in `sources` per ogni lente.
 
