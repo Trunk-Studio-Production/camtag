@@ -38,8 +38,10 @@ costruttori di lenti e filtri nei dati vanno bene.
 
 ## Repo e comandi
 
-Repo privato `Trunk-Studio-Production/camtag`, branch `main`. Commit e push
-solo quando l'utente lo chiede.
+Repo pubblico `Trunk-Studio-Production/camtag`, branch `main`. Commit e push
+solo quando l'utente lo chiede. Ogni push su `main` che tocca `companion/` o
+`data/` pubblica lo strumento web su GitHub Pages
+(`.github/workflows/pages.yml`): https://trunk-studio-production.github.io/camtag/
 
 ```bash
 # dopo un clone: sottomodulo, PlatformIO isolato, riferimento CrossPoint

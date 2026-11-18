@@ -95,6 +95,10 @@ rotazione resta fissa.
 
 ## Strumento web
 
+Online: **https://trunk-studio-production.github.io/camtag/** (GitHub Pages,
+aggiornato a ogni push su `main`). È anche l'indirizzo da aprire sul telefono
+per l'invio via Bluetooth.
+
 Le schermate usano il font **Inter** (© The Inter Project Authors, licenza SIL
 Open Font License 1.1), incluso in `companion/fonts/` insieme alla sua licenza.
 

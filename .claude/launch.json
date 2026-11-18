@@ -4,7 +4,7 @@
     {
       "name": "companion",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "/Users/iacopo/Developer/trunk/camtag"],
+      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "."],
       "port": 8765
     }
   ]

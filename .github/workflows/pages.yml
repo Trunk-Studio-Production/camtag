@@ -1,0 +1,46 @@
+# Pubblica lo strumento web su GitHub Pages a ogni push su main.
+# Solo companion/ e data/ (la pagina legge ../data/*.json); in radice un
+# rimando a companion/.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths: [companion/**, data/**, .github/workflows/pages.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}companion/
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepara il sito
+        run: |
+          mkdir -p _site
+          cp -R companion data _site/
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <title>CamTag</title>
+          <meta http-equiv="refresh" content="0; url=companion/">
+          <a href="companion/">CamTag</a>
+          HTML
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
