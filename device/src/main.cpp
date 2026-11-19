@@ -57,6 +57,12 @@ constexpr uint32_t BANNER_MS = 1500;
 // monitor seriale stampa il tasto logico di ogni pressione.
 constexpr uint8_t kKeyE = InputManager::BTN_DOWN;
 constexpr uint8_t kKeyF = InputManager::BTN_UP;
+// Bilancieri in basso: A|B a sinistra, C|D a destra (dispositivo verticale).
+// Quale tasto logico è quale è DA TARARE come E/F; qui conta solo il bilanciere.
+constexpr uint8_t kKeyA = InputManager::BTN_BACK;
+constexpr uint8_t kKeyB = InputManager::BTN_CONFIRM;
+constexpr uint8_t kKeyC = InputManager::BTN_LEFT;
+constexpr uint8_t kKeyD = InputManager::BTN_RIGHT;
 
 // --- Orientamento -----------------------------------------------------------
 // Mappatura assi IMU -> pannello. DA TARARE sull'X3: con CAMTAG_DEBUG il monitor
@@ -68,6 +74,9 @@ constexpr float kImuSignY = 1.0f;
 constexpr float kMinTiltG = 0.5f;     // sotto questa inclinazione non decide
 constexpr float kMarginG = 0.25f;     // isteresi tra i due assi
 constexpr float kFlatG = 0.85f;       // appoggiato piatto: tiene l'orientamento
+// Rotazione fisica, in quarti di giro in senso orario dalla posizione naturale
+// (verticale, tasti in basso), per ogni Canvas::Rotation. DA TARARE insieme agli assi IMU.
+constexpr uint8_t kQuarterTurns[4] = {3, 0, 1, 2};  // ROT_0, ROT_90, ROT_180, ROT_270
 constexpr uint32_t IMU_POLL_MS = 150;
 constexpr uint32_t ROTATE_STABLE_MS = 600;
 
@@ -235,6 +244,33 @@ void showCard(int index, bool forceFull, const char* banner = nullptr) {
   prefs.putInt("idx", current);
   prefs.putString("shown", card.base);
   prefs.putUChar("shownRot", rot);
+}
+
+// Le pagine della lens chart si chiamano NN_lenschart, NN_lenschart-2, …
+bool isLensChart(const Card& c) {
+  const int us = c.base.indexOf('_');
+  if (us < 0) return false;
+  const String rest = c.base.substring(us + 1);
+  return rest == "lenschart" || rest.startsWith("lenschart-");
+}
+
+// Su una lens chart di più pagine A–D sfogliano solo quelle, in ciclo. I due tasti di
+// un bilanciere fanno la stessa cosa: avanza il bilanciere che chi guarda vede a destra
+// o in basso, arretra quello a sinistra o in alto (A|B: sinistra a 0°, in alto a 90°,
+// a destra a 180°, in basso a 270°). Specifica: lensPageDir nello strumento web.
+void stepLensChart(bool rockerAB, Canvas::Rotation physical) {
+  std::vector<int> pages;
+  for (int i = 0; i < static_cast<int>(cards.size()); i++)
+    if (isLensChart(cards[i])) pages.push_back(i);
+  const auto it = std::find(pages.begin(), pages.end(), current);
+  if (pages.size() < 2 || it == pages.end()) return;
+  const uint8_t q = kQuarterTurns[physical];
+  const bool abForward = q == 2 || q == 3;
+  const int dir = rockerAB == abForward ? 1 : -1;
+  const int n = static_cast<int>(pages.size());
+  const int at = static_cast<int>(it - pages.begin());
+  bannerUntilMs = 0;
+  showCard(pages[((at + dir) % n + n) % n], false);
 }
 
 void toggleRotationLock() {
@@ -501,6 +537,11 @@ void loop() {
     if (step != 0) {
       bannerUntilMs = 0;
       showCard(current + step, false);
+    } else if (isLensChart(cards[current])) {
+      const bool ab = input.wasReleased(kKeyA) || input.wasReleased(kKeyB);
+      const bool cd = input.wasReleased(kKeyC) || input.wasReleased(kKeyD);
+      // Con la rotazione bloccata `rotation` non segue il dispositivo: si legge l'IMU.
+      if (ab || cd) stepLensChart(ab, rotationLocked ? readOrientation(rotation) : rotation);
     }
   }
   if (input.wasAnyPressed() || input.wasAnyReleased()) lastActivityMs = millis();

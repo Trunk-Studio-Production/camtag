@@ -18,6 +18,7 @@
     { "id": "schneider-black-frost", "brand": "Schneider", "name": "Black Frost", "category": "diffusione", "strengths": ["1/8", "1/4", "1/2", "1", "2"] },
     { "id": "generic-nd-grad-soft-h", "brand": "", "name": "ND Grad Soft Oriz.", "category": "degradante", "strengths": ["0.3", "0.6", "0.9", "1.2"] },
     { "id": "generic-polarizer", "brand": "", "name": "Polarizzatore", "category": "polarizzatore", "strengths": ["lineare", "circolare"] },
+    { "id": "generic-rota-pola", "brand": "", "name": "Rota Pola", "category": "polarizzatore", "strengths": [], "slots": 2 },
     { "id": "generic-coral", "brand": "", "name": "Coral", "category": "colore", "strengths": ["1/4", "1/2", "1", "2"] },
     { "id": "generic-85", "brand": "", "name": "85", "category": "colore", "strengths": [] }
   ]

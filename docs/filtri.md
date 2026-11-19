@@ -9,14 +9,43 @@ il simulatore e per il firmware (`device/`), che devono restare allineati.
   valori del kit ND e le coppie scelte (vedi sotto), nel formato scelto
   (densità, stop o fattore) e con il tipo scelto (ND, IRND, FSND).
 - **Diottria**: un valore solo, fra quelli del kit diottrie (intere o split).
+  Una diottria occupa di solito **due stadi**; quelle che ne occupano uno solo
+  (per esempio una +1/2 a lastra) si segnano nello strumento web.
 - **Kit dei vetri**: i vetri che ci sono nella valigetta, esclusi gli ND pieni.
   Ogni voce è una famiglia con una gradazione (es. "Black Pro-Mist 1/4"), o un
-  vetro senza gradazione. Uno per tipo: non ci sono doppioni.
-- **Stadi**: i cassetti del mattebox, da 1 a 4, numerati da **1 = lato lente**
-  verso il fronte. Ogni stadio contiene un vetro del kit oppure è vuoto.
+  vetro senza gradazione. Uno per tipo: non ci sono doppioni. Una famiglia può
+  essere segnata "2 stadi": è il caso del Rota Pola, che nel catalogo lo è già.
+- **Stadi**: i cassetti del mattebox, di solito da 1 a 4, numerati da
+  **1 = lato lente** verso il fronte. Ogni stadio contiene un vetro del kit
+  oppure è vuoto. Si arriva fino a 6: il 5 e il 6 servono per un vetro montato
+  fuori dal mattebox (per esempio fissato con il nastro), e sono stadi come gli
+  altri.
 
 Non esiste più il concetto di "montato": un vetro è montato se sta in uno stadio.
-Un vetro può stare in un solo stadio alla volta.
+Un vetro sta in un posto solo; uno da due stadi ne occupa due di seguito.
+
+### Chi sta dove
+
+- **L'ND** occupa i primi stadi, dal lato lente: uno, o due per una coppia.
+- **La diottria** occupa gli ultimi, davanti a tutto: è sempre il vetro più
+  lontano dalla camera. Due stadi, o uno.
+- **Gli altri vetri** hanno gli stadi in mezzo.
+- Se ND e diottria insieme non entrano negli stadi (es. coppia di ND e diottria
+  da due su 3 stadi), l'ND ha la precedenza: la diottria resta solo nel
+  riquadro grande e i suoi stadi sono liberi per gli altri vetri.
+
+### Quando manca posto
+
+Una regola sola, ogni volta che ND o diottria cambiano gli stadi che occupano
+(o cambia il numero di stadi, o un vetro diventa da due):
+
+- I vetri restano nello stesso ordine e si spostano il meno possibile: chi si
+  trova sotto l'ND scala verso il fronte, chi si trova sotto la diottria scala
+  verso la lente, e gli stadi vuoti in mezzo si chiudono solo quanto serve.
+- Se non c'è posto per tutti, **escono i vetri più avanti** (i più lontani
+  dalla lente), uno alla volta, finché gli altri entrano.
+- Quando l'ND libera stadi i vetri tornano indietro verso la lente (vedi
+  sotto). Quando è la diottria a liberarli, i vetri restano dove sono.
 
 ### L'ND occupa lo stadio 1
 
@@ -26,7 +55,7 @@ Un vetro può stare in un solo stadio alla volta.
 - Quando l'ND è tolto, lo stadio 1 è libero e può ospitare un altro vetro.
 - Quando l'ND rientra e lo stadio 1 è occupato, i vetri **scalano di uno stadio
   verso il fronte**: il vetro dello stadio 1 passa al 2, e così via finché uno
-  trova uno stadio vuoto. Se non c'è posto, l'ultimo vetro esce dal mattebox.
+  trova uno stadio vuoto. Se non c'è posto, esce il vetro più avanti.
 - Quando l'ND è tolto, gli altri vetri **tornano indietro verso la lente** di
   tanti stadi quanti ne occupava l'ND (es. `ND 0,6 / BPM / Pola` diventa
   `BPM / Pola / —`).
@@ -47,9 +76,10 @@ Un vetro può stare in un solo stadio alla volta.
   `ND 1,2 / BPM / —`). È la stessa regola di quando l'ND è tolto: i vetri
   tornano indietro di tanti stadi quanti l'ND ne libera, tutti insieme, quindi
   uno stadio lasciato vuoto fra due vetri resta vuoto.
-- Il riquadro grande dell'ND cambia a ogni tocco. Gli stadi si riordinano solo
-  quando il valore resta **fermo per 2 secondi** (o al primo tasto che non è
-  ±ND): passare da una coppia mentre si scorre non sposta e non toglie nulla.
+- I riquadri grandi di ND e diottria cambiano a ogni tocco. Gli stadi si
+  riordinano solo quando i valori restano **fermi per 2 secondi** (o al primo
+  tasto che non è ±ND o ±diottria): passare da una coppia, o da una diottria,
+  mentre si scorre non sposta e non toglie nulla.
 
 ## Schermata sul dispositivo
 
@@ -59,6 +89,9 @@ Un vetro può stare in un solo stadio alla volta.
   dipende dal numero di stadi, così entrano sempre tutte senza scorrere. Il
   testo dei vetri ha una misura sola, la più grande che fa entrare tutti i
   nomi del kit.
+- Un vetro da due stadi è una casella alta due righe: i due numeri a sinistra,
+  il nome al centro, nessun separatore in mezzo. Vale anche per la diottria,
+  che nella sua riga si chiama per esteso (`Diottria +1`).
 - Se il kit dei vetri è vuoto la lista degli stadi non compare.
 
 ## Tasti nella schermata filtri
@@ -78,11 +111,13 @@ Un vetro può stare in un solo stadio alla volta.
   sulla stessa schermata (ND e diottria restano visibili). Si parte dal primo
   stadio selezionabile. Niente cursori lampeggianti.
 - **A/B** spostano la selezione fra gli stadi (si ferma al primo e all'ultimo).
-  Gli stadi occupati dall'ND non si selezionano: si parte dal primo libero. Se
-  l'ND li occupa tutti, la modifica non si apre.
+  Gli stadi di ND e diottria non si selezionano: si parte dal primo libero. Se
+  li occupano tutti, la modifica non si apre. Un vetro da due stadi si seleziona
+  intero (due righe in negativo) e la selezione lo salta in un passo.
 - **C/D** cambiano il vetro dello stadio selezionato. L'ordine è: vuoto, poi
   tutti i vetri del kit nell'ordine del kit (per famiglia), saltando quelli già
-  in un altro stadio. Arrivati in fondo si ricomincia dall'inizio.
+  in un altro stadio. Un vetro da due stadi compare solo se anche lo stadio
+  dopo è libero. Arrivati in fondo si ricomincia dall'inizio.
 - **E o F** per uscire, con un tocco solo; vale anche tenere di nuovo A o B.
   In modifica E e F fanno soltanto questo: non cambiano schermata e non
   bloccano la rotazione.
@@ -98,12 +133,20 @@ Un vetro può stare in un solo stadio alla volta.
 
 - **ND** e **Diottrie**: kit, formato, tipo e valori iniziali. Sotto il kit ND,
   "Combinazioni di due ND": i totali possibili con i loro due vetri, da spuntare.
+  Sotto il kit diottrie, "Occupano un solo stadio": le diottrie da spuntare
+  quando non ne occupano due.
 - **Vetri nel kit**: famiglie dal catalogo (`data/filters.json`) o
   personalizzate, con le loro gradazioni. Ogni gradazione e ogni famiglia ha
   una ✕ per toglierla. Togliere un vetro che sta in uno stadio svuota lo stadio.
+  Ogni famiglia ha la casella "2 stadi" (nel catalogo: `"slots": 2`).
 - **Mattebox**: numero di stadi e, per ogni stadio, il vetro di partenza scelto
-  da un menu (i vetri già in un altro stadio non sono selezionabili). Gli stadi
-  occupati dall'ND di partenza (uno, o due per una coppia) non si scelgono.
+  da un menu (i vetri già in un altro stadio non sono selezionabili). Il
+  selettore mostra 1–4 e un `+`: con il `+` si passa a 5 e compaiono anche 5 e
+  6; tornando a 4 o meno si richiude. Gli stadi
+  di ND e diottria di partenza non si scelgono, e così il secondo stadio di un
+  vetro da due. Quando un cambio fa uscire un vetro dagli stadi resta un avviso
+  che dice quale; un altro avviso segnala quando ND e diottria possono non
+  entrare insieme negli stadi.
 - Il simulatore tiene il suo stato (ND, diottria, stadi), come il dispositivo:
   quello che cambi con i tasti non tocca i valori di partenza. Riparte da
   quelli quando cambi i filtri nello strumento.
@@ -115,18 +158,22 @@ Un vetro può stare in un solo stadio alla volta.
 Cartella `NN_filters/`, accanto allo sfondo `NN_filters.bmp` / `.p.bmp`. Lo
 sfondo ha vuoti i riquadri di ND e diottria e l'area degli stadi.
 
-`screen.ini` (versione 2):
+`screen.ini` (versione 3):
 
 - `nd.*`, `dio.*`, `keys.<gradi>`, `hints.<gradi>`: ND, diottria e tasti fuori
   dalla modifica. `nd.labels` è la scala (passo 0 = nessuno), coppie comprese.
   `nd.glasses` sono i vetri ND del kit; `nd.parts` dice per ogni passo quali
   vetri lo fanno (indici da 1 in `nd.glasses`, `4+1` per una coppia con il
-  primo nello stadio 1, `-` = nessuno). `nd.settle`: secondi di valore fermo
-  prima di riordinare gli stadi.
-- `kit.count`, `kit.labels`: i vetri, nell'ordine in cui si scorrono.
-- `stages.count`, `stages.start`: numero di stadi e vetro di partenza di ognuno
-  (indice nel kit, `-` = vuoto). `stages.nd`: il primo stadio dell'ND (1); gli
-  stadi occupati dall'ND di partenza sono vuoti in `stages.start`.
+  primo nello stadio 1, `-` = nessuno).
+- `dio.slots`: stadi occupati da ogni passo della diottria (0 = nessuna).
+- `kit.count`, `kit.labels`, `kit.slots`: i vetri, nell'ordine in cui si
+  scorrono, e quanti stadi occupa ognuno (1 o 2).
+- `stages.count`, `stages.start`: numero di stadi (da 1 a 6) e vetro di partenza di ognuno
+  (indice nel kit del vetro che comincia lì; `-` = nessuno: stadio vuoto, di
+  ND o diottria, o secondo stadio di un vetro da due). `stages.nd`: il primo
+  stadio dell'ND (1). La diottria occupa gli ultimi `dio.slots` stadi, se ci
+  sta tutta dopo l'ND. `stages.settle`: secondi di valori fermi prima di
+  rimettere a posto i vetri (regola in "Quando manca posto").
 - `<verso>.list` (x, y, larghezza, altezza dell'area), `<verso>.listRow`
   (altezza di una riga), `<verso>.listNum` (larghezza della colonna del numero).
 - `edit.keys.<gradi>`, `edit.hints.<gradi>`, `edit.timeout` (secondi).
@@ -136,9 +183,17 @@ Pezzi, tutti `.bmp` con `.p.bmp` per il verticale:
 - `ndI`, `dioI`: riquadri dei valori (I = passo).
 - `stN`, `stsN`: colonna del numero dello stadio N (da 1), normale e selezionata.
 - `fxG`, `fxsG`: vetro G (indice nel kit, `n` = vuoto), normale e selezionato.
+  Alto `kit.slots` righe.
 - `fxdK`: il vetro ND K (da 1, come in `nd.glasses`) per le righe degli stadi
   dell'ND; solo normale, perché quelle righe non si selezionano.
+- `fxoI`: la diottria al passo I (da 1) per i suoi stadi, alta `dio.slots`
+  righe; solo normale.
 
-Una riga si compone con `stN` a sinistra e `fxG` (o `fxdK`) subito a destra; fra una riga
-e la successiva il firmware disegna un separatore nero da 2 px, in cima alla
-riga. Comporre i pezzi deve dare l'anteprima dello strumento web pixel per pixel.
+Ogni riga ha `stN` a sinistra. Nello stadio in cui un vetro comincia, subito a
+destra va il suo pezzo (`fxG`, `fxdK` o `fxoI`), che copre tutte le righe che
+occupa; nel secondo stadio di un vetro da due non si disegna altro. Fra una
+riga e la successiva il firmware disegna un separatore nero da 2 px, in cima
+alla riga: largo tutta la lista, ma solo quanto la colonna del numero
+(`listNum`) nel secondo stadio di un vetro da due. Un vetro selezionato ha in
+negativo il suo pezzo e i numeri di tutti i suoi stadi. Comporre i pezzi deve
+dare l'anteprima dello strumento web pixel per pixel.

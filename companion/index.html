@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#121212">
 <title>CamTag Cards</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <!-- Inter (font delle schermate) è incluso nel repo: funziona offline e uguale su ogni computer.
@@ -12,24 +14,14 @@
                font-weight: 100 900; font-style: normal; font-display: block; }
 </style>
 <style>
+  /* Un solo tema, scuro. */
   :root {
-    --bg: #f4f3ef; --panel: #ffffff; --ink: #161616; --muted: #6b6b66; --line: #dcdad3;
-    --sel: #ecebe5; --danger: #a3261a; --track: #b4b2aa;
-    /* Accento: arancio da nastro camera, usato con parsimonia (primario, selezione, fuoco). */
-    --accent: #c2410c; --accent-ink: #ffffff; --accent-soft: #fbe7dc;
-    --r-s: 6px; --r-m: 8px; --r-l: 14px; --gap: 16px; --bar-h: 52px;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #121212; --panel: #1c1c1b; --ink: #ecebe6; --muted: #9a9993; --line: #33332f;
-      --sel: #2a2a27; --danger: #e0705f; --track: #5a5954;
-      --accent: #ff9255; --accent-ink: #1b0d04; --accent-soft: #3a2518;
-    }
-  }
-  :root[data-theme="dark"] {
+    color-scheme: dark;
     --bg: #121212; --panel: #1c1c1b; --ink: #ecebe6; --muted: #9a9993; --line: #33332f;
-    --sel: #2a2a27; --danger: #e0705f; --track: #5a5954;
-    --accent: #ff9255; --accent-ink: #1b0d04; --accent-soft: #3a2518;
+    --sel: #2a2a27; --danger: #f25f54; --track: #5a5954;
+    /* Accento: acid lime, usato con parsimonia (primario, selezione, fuoco). */
+    --accent: #bbff00; --accent-ink: #161a00; --accent-soft: #314107;
+    --r-s: 6px; --r-m: 8px; --r-l: 14px; --gap: 16px; --bar-h: 52px;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
@@ -68,8 +60,10 @@
   .tip { padding: 10px 12px; font-size: 13px; line-height: 1.45; white-space: pre-line; }
   .info { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0;
           border: 0; border-radius: 50%; background: none; color: var(--muted); vertical-align: middle; }
-  .info::before { content: "i"; display: block; width: 16px; height: 16px; border: 1.5px solid currentColor; border-radius: 50%;
-                  font: italic 700 11px/13px Georgia, "Times New Roman", serif; text-align: center; text-transform: none; letter-spacing: 0; }
+  /* Disegnata, non scritta: una lettera nel cerchio non si centra mai bene (dipende dal font). */
+  .info::before { content: ""; display: block; width: 16px; height: 16px; background: currentColor;
+                  -webkit-mask: var(--info-icon) center / contain no-repeat; mask: var(--info-icon) center / contain no-repeat;
+                  --info-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7.25' fill='none' stroke='%23000' stroke-width='1.5'/%3E%3Ccircle cx='8' cy='4.6' r='1.1'/%3E%3Crect x='7.1' y='6.6' width='1.8' height='5' rx='.5'/%3E%3C/svg%3E"); }
   .info:hover, .info[aria-expanded="true"] { color: var(--accent); }
 
   /* ---------- Disposizione: tre colonne, schermate e anteprima fisse ---------- */
@@ -118,6 +112,9 @@
   .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--panel); overflow: hidden; }
   .seg button { flex: 1; border: 0; border-radius: 0; background: none; padding: 7px 12px; white-space: nowrap; }
   .seg button + button { border-left: 1px solid var(--line); }
+  /* Gli angoli esterni seguono quelli del contenitore, così il bordo del selezionato non viene tagliato. */
+  .seg button:first-child { border-top-left-radius: calc(var(--r-s) - 1px); border-bottom-left-radius: calc(var(--r-s) - 1px); }
+  .seg button:last-child { border-top-right-radius: calc(var(--r-s) - 1px); border-bottom-right-radius: calc(var(--r-s) - 1px); }
   .seg button.on { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 600; }
   .seg button:focus-visible { outline-offset: -2px; }
   .pills { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -131,7 +128,7 @@
   .switch .track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff;
                           box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
   .switch:has(:checked) .track { background: var(--accent); }
-  .switch:has(:checked) .track::after { transform: translateX(14px); }
+  .switch:has(:checked) .track::after { transform: translateX(14px); background: var(--accent-ink); }
   .sw-row { display: flex; align-items: center; gap: 4px; margin-top: 10px; }
   /* Sezione richiudibile, con il riepilogo a destra nella riga del titolo. */
   .sec { border-top: 1px solid var(--line); margin: 14px calc(-1 * var(--pad)) 0; padding: 0 var(--pad); }
@@ -185,7 +182,8 @@
   .db { max-height: 420px; overflow: auto; border: 1px solid var(--line); border-radius: var(--r-s); margin-top: 8px; }
   .db .grp { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--sel); position: sticky; top: 0; font-weight: 600; font-size: 13px; }
   .db .grp .tog { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; background: none; border: 0; border-radius: 0; padding: 0; text-align: left; font-weight: 600; }
-  .db .grp .tog .n { color: var(--muted); font-weight: 400; font-size: 12px; }
+  .db .grp .tog .n { margin-left: auto; color: var(--muted); font-weight: 400; font-size: 12px; }
+  .db .grp > button.small { flex: none; min-width: 7.5em; text-align: center; }  /* "+ tutte (n)" tutti larghi uguale */
   .db .grp .tog::before { content: "▸"; width: 12px; color: var(--muted); }
   .db .grp .tog[aria-expanded="true"]::before { content: "▾"; }
   .db .it { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-top: 1px solid var(--line); font-size: 13px; }
@@ -193,6 +191,7 @@
   .db .it .meta { color: var(--muted); font-size: 12px; flex: 2; }
   .kit { border: 1px solid var(--line); border-radius: var(--r-s); padding: 8px; margin-top: 8px; }
   .kit-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 13px; }
+  .kit-head .pill { margin-left: auto; margin-right: 8px; padding: 2px 9px; font-size: 12px; min-height: 0; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px;
           font-size: 13px; font-variant-numeric: tabular-nums; }
@@ -279,6 +278,9 @@
     .sec:not(.sub) > summary { flex-wrap: wrap; row-gap: 0; }
     .sec:not(.sub) > summary > .sec-s { flex: 1 0 100%; text-align: left; padding-left: 18px; margin-top: -4px; }
     #editor input[type=text], #editor input[type=number], #editor input[type=search], #editor textarea, #editor select { background: var(--panel); }
+    /* Le liste del database (lenti, vetri) non scorrono per conto loro: sotto il dito scorre sempre la pagina. */
+    .db { max-height: none; overflow: visible; }
+    .db .grp { position: static; }
     /* Anteprima a tutto schermo (si apre toccandola). */
     .stagecol.full { position: fixed; inset: 0; z-index: 100; padding: 56px 12px 12px; background: var(--bg); }
     .stagecol.full .pbar { display: flex; order: 2; }  /* comandi in basso, a portata di pollice */
@@ -462,8 +464,7 @@ function migrate(s) {
     s.filters.stages = [...st, ...Array(Math.max(0, 3 - st.length)).fill(null)];
   }
   for (const e of s.filters.effects) for (const x of e.strengths) delete x.on;
-  normalizeStages(s.filters);
-  if (s.filters.previewNd > 0 && s.filters.nd.length) makeRoomForNd(s.filters.stages);
+  normalizeStages(s.filters);  // i vetri vanno al loro posto dopo, con lo stato pronto (fitStart)
   // v6: font, soglia del testo e separatore decimale non sono più opzioni (Inter, 128, punto).
   delete s.typo; delete s.decimal;
   s.device = 'x3'; s.version = 6;
@@ -483,17 +484,27 @@ function addToKit(f, id, name, strengths, mounted = []) {
   }
   return e;
 }
-// Stadi del mattebox: filters.stages[i] = chiave del vetro nello stadio i+1
-// (1 = lato lente) oppure null = vuoto. Un vetro sta in un solo stadio.
-// L'ND, quando c'è, occupa lo stadio 1 (due ND insieme: stadi 1 e 2): lì stages[i]
-// resta null e la riga mostra l'ND. Qui ci sono i valori di partenza; il simulatore ne tiene una copia sua
-// (sim.stages, sim.nd), come farà il dispositivo.
-const MAX_STAGES = 4;
+// Stadi del mattebox: filters.stages[i] = chiave del vetro che comincia nello
+// stadio i+1 (1 = lato lente) oppure null. Un vetro sta in un posto solo; uno da
+// due stadi (glassSlots, es. un Rota Pola) occupa anche lo stadio dopo, che resta null.
+// L'ND, quando c'è, occupa i primi stadi (uno, o due per una coppia) e la diottria
+// gli ultimi (due, o uno: dioSlots), davanti a tutto: lì stages[i] resta null e la
+// riga mostra l'ND o la diottria. Ai vetri restano gli stadi in mezzo (stageRange).
+// Qui ci sono i valori di partenza; il simulatore ne tiene una copia sua
+// (sim.stages, sim.nd, sim.dio), come farà il dispositivo.
+// Il selettore mostra gli stadi di un mattebox (BOX_STAGES); oltre, dietro un "+",
+// ci sono quelli per un vetro montato fuori (caso raro), fino a MAX_STAGES.
+const MAX_STAGES = 6, BOX_STAGES = 4;
 function glassKey(e, s) { return `${e.id || 'c:' + e.name}|${s}`; }
 // I vetri nell'ordine in cui si scorrono sul dispositivo (per famiglia).
+// slots = stadi occupati: 1, oppure 2 se la famiglia è segnata così (e.slots).
 function kitGlasses(f = state.filters) {
-  return f.effects.flatMap(e => e.strengths.map(x => ({ key: glassKey(e, x.s), label: `${e.name}${x.s ? ' ' + x.s : ''}` })));
+  return f.effects.flatMap(e => e.strengths.map(x => ({ key: glassKey(e, x.s), label: `${e.name}${x.s ? ' ' + x.s : ''}`, slots: e.slots === 2 ? 2 : 1 })));
 }
+// Una diottria occupa due stadi, uno solo se segnata così (d.slots === 1).
+function dioSlots(d) { return d ? (d.slots === 1 ? 1 : 2) : 0; }
+// Nella riga dello stadio la diottria porta il suo nome: "+1" da solo non si capirebbe.
+function dioStageLabel(d) { return `Diottria ${dioLabel(d)}`; }
 // Svuota gli stadi che puntano a un vetro tolto dal kit o già usato in un altro stadio.
 function normalizeStages(f) {
   const keys = new Set(kitGlasses(f).map(g => g.key)), seen = new Set();
@@ -504,46 +515,73 @@ function normalizeStages(f) {
 function stageCount() { return state.filters.effects.length ? state.filters.stages.length : 0; }
 // Quanti stadi occupa l'ND a quel passo: 0 = nessuno, 1 = un vetro, 2 = una coppia.
 function ndUsed(ndIdx = state.filters.previewNd) { return ndParts(ndSteps()[ndIdx] || 0).length; }
-// L'ND entra nei primi n stadi: i vetri che c'erano scalano verso il fronte, e
-// così i successivi finché non trovano uno stadio vuoto; se non c'è posto gli
-// ultimi escono dal mattebox. Restituisce { moved, out: [vetri usciti] }.
-function makeRoomForNd(stages, n = 1) {
-  const out = []; let moved = false;
-  n = Math.min(n, stages.length);
-  for (let k = n - 1; k >= 0; k--) {
-    let carry = stages[k]; if (!carry) continue;
-    stages[k] = null; moved = true;
-    for (let i = n; i < stages.length && carry; i++) [stages[i], carry] = [carry, stages[i]];
-    if (carry) out.push(carry);
+// Quanti ne occupa la diottria a quel passo: 0 = nessuna, poi 2 o 1.
+function dioUsed(dioIdx = state.filters.previewDio) { return dioSlots(dioSteps()[dioIdx]); }
+// Gli stadi per i vetri, su n: [lo, hi). Prima c'è l'ND, dopo la diottria. La
+// diottria entra negli stadi solo se ci sta tutta dopo l'ND: altrimenti hi = n e
+// resta soltanto nel riquadro grande.
+function stageRange(n, ndIdx = state.filters.previewNd, dioIdx = state.filters.previewDio) {
+  const lo = Math.min(n, ndUsed(ndIdx)), d = dioUsed(dioIdx);
+  return { lo, hi: d && lo + d <= n ? n - d : n };
+}
+// Rimette i vetri negli stadi [lo, hi), in ordine e spostandoli il meno possibile:
+// chi sta sotto l'ND scala verso il fronte, chi sta sotto la diottria (o oltre
+// l'ultimo stadio) scala verso la lente, e gli spazi vuoti si chiudono solo quanto
+// serve. Se non c'è posto per tutti escono i vetri più avanti, uno alla volta.
+// back = stadi che l'ND ha liberato (da due a uno, o tolto): prima i vetri
+// tornano indietro di altrettanti, così restano accanto all'ND.
+// Restituisce { moved, out: [vetri usciti] }.
+function fitStages(stages, lo, hi, back = 0, f = state.filters) {
+  const size = new Map(kitGlasses(f).map(g => [g.key, g.slots])), old = [...stages], out = [], items = [];
+  stages.forEach((k, i) => { if (k) items.push({ k, pos: i - back, n: size.get(k) || 1 }); });
+  let p = [];
+  for (;;) {
+    p = items.map(it => it.pos);
+    let cur = lo; items.forEach((it, j) => { p[j] = Math.max(p[j], cur); cur = p[j] + it.n; });
+    cur = hi; for (let j = items.length - 1; j >= 0; j--) { p[j] = Math.min(p[j], cur - items[j].n); cur = p[j]; }
+    if (!items.length || p[0] >= lo) break;
+    out.push(items.pop().k);
   }
-  return { moved, out };
+  stages.fill(null); items.forEach((it, j) => { stages[p[j]] = it.k; });
+  return { moved: stages.some((k, i) => k !== old[i]), out };
 }
-// L'ND passa da `from` a `to` stadi occupati. Se ne servono di più i vetri
-// scalano verso il fronte (makeRoomForNd). Se ne libera (da due ND a uno, o ND
-// tolto) i vetri tornano indietro di altrettanti stadi, verso la lente.
-function ndStagesChanged(stages, from, to) {
-  if (to >= from) return makeRoomForNd(stages, to);
-  const d = from - to, old = [...stages];
-  for (let i = to; i < stages.length; i++) stages[i] = old[i + d] ?? null;
-  return { moved: stages.some((k, i) => k !== old[i]), out: [] };
-}
+// ND, diottria e vetri di partenza al loro posto (all'avvio e dopo un'importazione).
+function fitStart() { const f = state.filters, { lo, hi } = stageRange(f.stages.length); fitStages(f.stages, lo, hi); }
 // Testo dell'ND nella riga dello stadio 1 (il fattore porta già il tipo: "IRND8").
 function ndStageLabel(v) { const f = state.filters; return f.ndFormat === 'factor' ? ndLabel(v) : `${f.ndType} ${ndLabel(v)}`; }
-function stageLabels(stages = state.filters.stages, ndIdx = state.filters.previewNd) {
-  const g = new Map(kitGlasses().map(x => [x.key, x.label]));
-  const nd = ndParts(ndSteps()[ndIdx] || 0);
-  return stages.map((k, i) => (i < nd.length ? ndStageLabel(nd[i]) : (k && g.get(k)) || '—'));
+// Cosa c'è in ogni stadio: { kind, label, span } con kind 'nd', 'dio', 'glass'
+// (più key) o 'empty'; span = stadi occupati. Lo stadio dopo, per chi ne occupa
+// due, è { kind: 'cont', of: stadio in cui comincia }.
+function stageCells(stages = state.filters.stages, ndIdx = state.filters.previewNd, dioIdx = state.filters.previewDio) {
+  const n = stages.length, { lo, hi } = stageRange(n, ndIdx, dioIdx), kit = new Map(kitGlasses().map(g => [g.key, g]));
+  const nd = ndParts(ndSteps()[ndIdx] || 0), cells = [];
+  for (let i = 0, cont = 0; i < n; i++) {
+    const g = i >= lo && i < hi && stages[i] ? kit.get(stages[i]) : null;
+    if (i < lo) cells.push({ kind: 'nd', label: ndStageLabel(nd[i]), span: 1 });
+    else if (i >= hi) cells.push(i === hi ? { kind: 'dio', label: dioStageLabel(dioSteps()[dioIdx]), span: n - hi } : { kind: 'cont', of: hi });
+    else if (i < cont) cells.push({ kind: 'cont', of: i - 1 });
+    else if (g) { const span = Math.min(g.slots, hi - i); cells.push({ kind: 'glass', key: g.key, label: g.label, span }); cont = i + span; }
+    else cells.push({ kind: 'empty', label: '—', span: 1 });
+  }
+  return cells;
 }
-// Scelte per uno stadio: vuoto, poi i vetri del kit non usati negli altri stadi.
-function stageOptions(i, stages = state.filters.stages) {
+// Gli stadi in cui si può scegliere un vetro: non quelli di ND e diottria, né il
+// secondo stadio di un vetro da due.
+function editableStages(stages, ndIdx, dioIdx) {
+  return stageCells(stages, ndIdx, dioIdx).map((c, i) => (c.kind === 'glass' || c.kind === 'empty' ? i : -1)).filter(i => i >= 0);
+}
+// Scelte per uno stadio: vuoto, poi i vetri del kit non usati altrove; uno da due
+// stadi solo se anche lo stadio dopo è libero (hi = primo stadio non disponibile).
+function stageOptions(i, stages = state.filters.stages, hi = stageRange(stages.length).hi) {
   const used = new Set(stages.filter((k, j) => k && j !== i));
-  return [null, ...kitGlasses().map(g => g.key).filter(k => !used.has(k))];
+  return [null, ...kitGlasses().filter(g => !used.has(g.key) && (g.slots < 2 || (i + 1 < hi && !stages[i + 1]))).map(g => g.key)];
 }
 
 function load() { try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch { return null; } }
 function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch {} }
 
 let state = migrate(load()) || freshState();
+fitStart();
 let sel = { kind: 'lenschart' };
 let view = 'land';
 let page = 0;
@@ -901,7 +939,8 @@ function filtersLayout(W, H) {
     L.divider = { x: area.x + colW - 2, y: area.y + barH + 16, h: area.h - barH - 32 };
   }
   for (const k of ['nd', 'dio', 'list']) if (L[k]) for (const p of ['x', 'y', 'w', 'h']) L[k][p] = Math.round(L[k][p]);
-  // Una riga per stadio, ad altezza fissa: entrano sempre tutte. Il firmware
+  // Una riga per stadio, tutte alte uguali (80 px al massimo, meno se gli stadi
+  // sono tanti): entrano sempre tutte. Il firmware
   // compone ogni riga con due pezzi: colonna del numero (listNum) + vetro.
   const n = stageCount();
   L.listRow = n ? Math.min(80, Math.floor(L.list.h / n)) : 0;
@@ -917,11 +956,11 @@ function drawStageNum(ctx, x, y, w, h, n, selected) {
   const m = Math.round(h * 0.22); ctx.fillRect(x + w - 2, y + m, 2, h - 2 * m);
 }
 // Il vetro di uno stadio ("—" = vuoto); selezionato = in negativo.
-// Una sola misura del testo per tutti i vetri del kit (e per l'ND nello stadio 1):
-// la più grande che entra ovunque.
+// Una sola misura del testo per tutti i vetri del kit (e per ND e diottrie nei
+// loro stadi): la più grande che entra ovunque, in una riga da uno stadio.
 function stageFontSize(w, h) {
   const [, c] = newCanvas(1, 1);
-  const labels = [...kitGlasses().map(g => g.label), ...state.filters.nd.map(ndStageLabel)];
+  const labels = [...kitGlasses().map(g => g.label), ...state.filters.nd.map(ndStageLabel), ...state.filters.dio.map(dioStageLabel)];
   return Math.min(...labels.map(t => fitFont(c, t, 800, w - 16, h * 0.55)));
 }
 function drawStageGlass(ctx, x, y, w, h, label, selected, size) {
@@ -929,15 +968,19 @@ function drawStageGlass(ctx, x, y, w, h, label, selected, size) {
   ctx.fillStyle = selected ? '#fff' : '#000'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
   ctx.font = `800 ${size}px ${FONT}`; ctx.fillText(label, x + 12, y + Math.round(h / 2) + 1);
 }
-// Gli stadi come li compone il firmware: pezzi affiancati, poi un separatore
-// da 2 px in cima a ogni riga dopo la prima. sel = stadio selezionato in modifica.
-function drawStages(ctx, L, labels, sel = -1) {
-  const gw = L.list.w - L.listNum, fs = stageFontSize(gw, L.listRow);
-  labels.forEach((t, i) => {
-    const y = L.list.y + i * L.listRow;
-    drawStageNum(ctx, L.list.x, y, L.listNum, L.listRow, i + 1, i === sel);
-    drawStageGlass(ctx, L.list.x + L.listNum, y, gw, L.listRow, t, i === sel, fs);
-    if (i > 0) { ctx.fillStyle = '#000'; ctx.fillRect(L.list.x, y, L.list.w, 2); }
+// Gli stadi come li compone il firmware (cells = stageCells): in ogni riga la
+// colonna del numero; accanto il pezzo del vetro, alto quanti stadi occupa (chi ne
+// occupa due ha il nome al centro delle due righe, e nella seconda non c'è altro
+// pezzo). Poi un separatore da 2 px in cima a ogni riga dopo la prima: nel secondo
+// stadio di un vetro da due solo sotto la colonna del numero.
+// sel = stadio selezionato in modifica (in negativo per tutti gli stadi che occupa).
+function drawStages(ctx, L, cells, sel = -1) {
+  const gw = L.list.w - L.listNum, fs = stageFontSize(gw, L.listRow), selEnd = sel >= 0 ? sel + (cells[sel]?.span || 1) : -1;
+  cells.forEach((c, i) => {
+    const y = L.list.y + i * L.listRow, on = i >= sel && i < selEnd;
+    drawStageNum(ctx, L.list.x, y, L.listNum, L.listRow, i + 1, on);
+    if (c.kind !== 'cont') drawStageGlass(ctx, L.list.x + L.listNum, y, gw, L.listRow * c.span, c.label, on, fs);
+    if (i > 0) { ctx.fillStyle = '#000'; ctx.fillRect(L.list.x, y, c.kind === 'cont' ? L.listNum : L.list.w, 2); }
   });
 }
 
@@ -1174,7 +1217,7 @@ function renderScreen(s, layout, opts = {}) {
       const f = state.filters;
       drawTile(ctx, L.nd.x, L.nd.y, L.nd.w, L.nd.h, ndLabel(ndSteps()[opts.nd ?? f.previewNd] || 0));
       if (L.dio) drawTile(ctx, L.dio.x, L.dio.y, L.dio.w, L.dio.h, dioLabel(dioSteps()[opts.dio ?? f.previewDio] || null));
-      if (stageCount()) drawStages(ctx, L, stageLabels(opts.stages ?? f.stages, opts.ndStages ?? opts.nd ?? f.previewNd), opts.sel ?? -1);
+      if (stageCount()) drawStages(ctx, L, stageCells(opts.stages ?? f.stages, opts.ndStages ?? opts.nd ?? f.previewNd, opts.dioStages ?? opts.dio ?? f.previewDio), opts.sel ?? -1);
       if (!opts.noHints) drawHintsPreview(ctx, W, H);
     }
   } else {
@@ -1215,16 +1258,16 @@ function exportPlan() {
 
 // Descrive al firmware dove comporre i valori e quali tasti li cambiano.
 function filtersIni() {
-  const out = ['# camtag screen v2', 'type=filters'];
+  const out = ['# camtag screen v3', 'type=filters'];
   const nd = ndSteps(), dio = dioSteps();
   out.push(`nd.count=${nd.length}`, `nd.labels=${nd.map(ndLabel).join('|')}`);
   // Vetri ND del kit e, per ogni passo, quali vetri lo fanno (indici da 1, "+" per
-  // una coppia, il primo nello stadio 1). Gli stadi si riordinano quando il valore
-  // resta fermo per nd.settle secondi.
+  // una coppia, il primo nello stadio 1).
   const ndGlasses = [...state.filters.nd].sort((a, b) => a - b);
-  out.push(`nd.glasses=${ndGlasses.map(ndStageLabel).join('|')}`, `nd.parts=${nd.map(v => ndParts(v).map(g => ndGlasses.indexOf(g) + 1).join('+') || '-').join('|')}`, `nd.settle=${ND_SETTLE_S}`);
+  out.push(`nd.glasses=${ndGlasses.map(ndStageLabel).join('|')}`, `nd.parts=${nd.map(v => ndParts(v).map(g => ndGlasses.indexOf(g) + 1).join('+') || '-').join('|')}`);
   out.push(`dio.count=${state.filters.dio.length ? dio.length : 0}`);
-  if (state.filters.dio.length) out.push(`dio.labels=${dio.map(dioLabel).join('|')}`);
+  // dio.slots: stadi occupati da ogni passo della diottria (0 = nessuna), gli ultimi.
+  if (state.filters.dio.length) out.push(`dio.labels=${dio.map(dioLabel).join('|')}`, `dio.slots=${dio.map(dioSlots).join('|')}`);
   for (const layout of ['land', 'port']) {
     const [W, H] = dims(layout), L = filtersLayout(W, H);
     out.push(`${layout}.nd=${L.nd.x},${L.nd.y},${L.nd.w},${L.nd.h}`);
@@ -1238,14 +1281,19 @@ function filtersIni() {
   }
   out.push(`nd.start=${state.filters.previewNd}`, `dio.start=${state.filters.previewDio}`);
 
-  // Stadi del mattebox: i vetri del kit nell'ordine in cui si scorrono, e il vetro
-  // di partenza di ogni stadio (indice nel kit, "-" = vuoto). Pezzi: stN / stsN =
-  // colonna del numero dello stadio N (normale / selezionata); fxG / fxsG = vetro G
-  // (indice nel kit, n = vuoto); fxdK = il vetro ND K (vedi nd.glasses, nd.parts),
-  // per gli stadi dell'ND a partire da stages.nd. Tutti con .p per il verticale.
+  // Stadi del mattebox: i vetri del kit nell'ordine in cui si scorrono, quanti
+  // stadi occupa ognuno (kit.slots) e il vetro che comincia in ogni stadio alla
+  // partenza (indice nel kit, "-" = nessuno: vuoto, di ND o diottria, o secondo
+  // stadio di un vetro da due). L'ND occupa i primi stadi da stages.nd, la
+  // diottria gli ultimi se ci sta tutta dopo l'ND; i vetri si rimettono a posto
+  // quando ND e diottria restano fermi per stages.settle secondi.
+  // Pezzi: stN / stsN = colonna del numero dello stadio N (normale / selezionata);
+  // fxG / fxsG = vetro G (indice nel kit, n = vuoto), alto kit.slots righe;
+  // fxdK = il vetro ND K (vedi nd.glasses, nd.parts); fxoI = la diottria al
+  // passo I, alta dio.slots righe. Tutti con .p per il verticale.
   const kit = kitGlasses(), stages = stageCount() ? state.filters.stages : [];
-  out.push(`kit.count=${kit.length}`, `kit.labels=${kit.map(g => g.label).join('|')}`);
-  out.push(`stages.count=${stages.length}`, `stages.nd=1`, `stages.start=${stages.map(k => (k ? kit.findIndex(g => g.key === k) : '-')).join('|')}`);
+  out.push(`kit.count=${kit.length}`, `kit.labels=${kit.map(g => g.label).join('|')}`, `kit.slots=${kit.map(g => g.slots).join('|')}`);
+  out.push(`stages.count=${stages.length}`, `stages.nd=1`, `stages.settle=${SETTLE_S}`, `stages.start=${stages.map(k => (k ? kit.findIndex(g => g.key === k) : '-')).join('|')}`);
   for (const layout of ['land', 'port']) {
     const [W, H] = dims(layout), L = filtersLayout(W, H);
     out.push(`${layout}.list=${L.list.x},${L.list.y},${L.list.w},${L.list.h}`, `${layout}.listRow=${L.listRow}`, `${layout}.listNum=${L.listNum}`);
@@ -1281,12 +1329,16 @@ async function buildZip() {
         for (const sel of [false, true]) {
           for (let n = 1; n <= stageCount(); n++)
             sub.file(`${sel ? 'sts' : 'st'}${n}${ext}`, bits(L.listNum, L.listRow, c => drawStageNum(c, 0, 0, L.listNum, L.listRow, n, sel)));
-          if (stageCount()) [['n', '—'], ...kitGlasses().map((g, i) => [i, g.label])].forEach(([i, label]) =>
-            sub.file(`${sel ? 'fxs' : 'fx'}${i}${ext}`, bits(gw, L.listRow, c => drawStageGlass(c, 0, 0, gw, L.listRow, label, sel, fs))));
+          // Un vetro da due stadi ha il pezzo alto due righe.
+          if (stageCount()) [['n', '—', 1], ...kitGlasses().map((g, i) => [i, g.label, g.slots])].forEach(([i, label, n]) =>
+            sub.file(`${sel ? 'fxs' : 'fx'}${i}${ext}`, bits(gw, L.listRow * n, c => drawStageGlass(c, 0, 0, gw, L.listRow * n, label, sel, fs))));
         }
         // I vetri ND negli stadi: mai selezionati, quindi solo la versione normale.
         if (stageCount()) [...state.filters.nd].sort((a, b) => a - b).forEach((v, i) =>
           sub.file(`fxd${i + 1}${ext}`, bits(gw, L.listRow, c => drawStageGlass(c, 0, 0, gw, L.listRow, ndStageLabel(v), false, fs))));
+        // La diottria negli ultimi stadi: come l'ND non si seleziona.
+        if (stageCount()) dioSteps().forEach((d, i) => { if (d) { const hh = L.listRow * dioSlots(d);
+          sub.file(`fxo${i}${ext}`, bits(gw, hh, c => drawStageGlass(c, 0, 0, gw, hh, dioStageLabel(d), false, fs))); } });
       }
     }
   }
@@ -1627,7 +1679,7 @@ function renderDbResults(box, query, brand, type, searching = false) {
     const missing = ls.filter(l => !chosen.has(l.id)), open = dbOpen.has(name);
     box.append(h('div', { class: 'grp' },
       h('button', { class: 'tog', 'aria-expanded': String(open), onclick: () => toggle(name) },
-        h('span', {}, `${name} · ${ls[0].seriesCode}`), h('span', { class: 'n' }, ls.length === 1 ? '1 lente' : `${ls.length} lenti`)),
+        h('span', {}, `${name} · ${ls[0].seriesCode}`)),
       h('button', { class: 'small', disabled: !missing.length, onclick: () => { missing.forEach(addDbLens); keepScroll(() => changed(true)); } }, missing.length ? `+ tutte (${missing.length})` : 'aggiunte')));
     if (!open) continue;
     for (const l of ls) {
@@ -1642,10 +1694,55 @@ function renderDbResults(box, query, brand, type, searching = false) {
 
 // ---------- editor: filtri ----------
 // Prima "cosa hai" (ND, diottrie, vetri), poi "come parte" (mattebox e valori di partenza).
-let kitAdding = false;  // hai appena aggiunto un vetro: "+ Aggiungi vetri" resta aperto per il prossimo
+const FILTER_LATE = ['colore', 'degradante'];  // in fondo al catalogo vetri
+let fltSearch = { q: '', brand: '', cat: '' };
+let stageNote = '';  // avviso dopo un cambio che ha fatto uscire dei vetri dagli stadi
+const fltOpen = new Set();  // famiglie aperte nel catalogo vetri (id)
+// Risultati del catalogo vetri, raggruppati per famiglia come le serie del database lenti.
+function renderFilterResults(box, searching = false) {
+  const f = state.filters, { q, brand, cat } = fltSearch;
+  box.innerHTML = '';
+  const terms = searchFold(q).split(/\s+/).filter(Boolean);
+  const hits = filterDb.filter(x => {
+    if (brand && (x.brand || 'Generico') !== brand) return false;
+    if (cat && x.category !== cat) return false;
+    const hay = searchFold(`${x.brand} ${x.name} ${x.category} ${x.strengths.join(' ')}`);
+    return terms.every(t => hay.includes(t));
+  });
+  if (!hits.length) { box.append(h('div', { class: 'empty' }, 'Nessun vetro trovato')); return; }
+  if (searching && hits.length === 1) fltOpen.add(hits[0].id);
+  const toggle = id => {
+    fltOpen.has(id) ? fltOpen.delete(id) : fltOpen.add(id);
+    const top = box.scrollTop; renderFilterResults(box); box.scrollTop = top;
+  };
+  const add = (x, list) => { const had = f.effects.some(e => e.id === x.id), e = addToKit(f, x.id, x.name, list); if (!had && x.slots === 2) e.slots = 2; keepScroll(() => changed(true)); };
+  // In ordine alfabetico, ma colore e degradanti (usati meno) in fondo.
+  const late = x => (FILTER_LATE.includes(x.category) ? 1 : 0);
+  const sorted = [...hits].sort((a, b) => late(a) - late(b) || `${a.brand} ${a.name}`.localeCompare(`${b.brand} ${b.name}`, 'it', { sensitivity: 'base', numeric: true }));
+  for (const x of sorted) {
+    const e = f.effects.find(y => y.id === x.id), have = new Set(e ? e.strengths.map(y => y.s) : []);
+    const all = x.strengths.length ? x.strengths : [''], missing = all.filter(s => !have.has(s)), open = fltOpen.has(x.id);
+    box.append(h('div', { class: 'grp' },
+      h('button', { class: 'tog', 'aria-expanded': String(open), onclick: () => toggle(x.id) },
+        h('span', {}, `${x.brand ? x.brand + ' ' : ''}${x.name}`), h('span', { class: 'n' }, x.category)),
+      h('button', { class: 'small', disabled: !missing.length, onclick: () => add(x, missing) }, missing.length ? (all.length > 1 ? `+ tutte (${missing.length})` : '+') : 'aggiunto')));
+    if (!open) continue;
+    for (const st of all) box.append(h('div', { class: 'it' }, h('span', {}, st || 'senza gradazione'),
+      have.has(st) ? h('button', { class: 'small', disabled: true }, '✓') : h('button', { class: 'small', onclick: () => add(x, [st]) }, '+')));
+  }
+}
 function filtersEditor(ed) {
   const f = state.filters;
-  const clampPreview = (was = ndUsed()) => { f.previewNd = Math.min(f.previewNd, ndSteps().length - 1); f.previewDio = Math.min(f.previewDio, dioSteps().length - 1); ndStagesChanged(f.stages, was, ndUsed()); };
+  // Dopo ogni cambio che sposta ND o diottria, o gli stadi occupati da un vetro: i
+  // vetri tornano al loro posto (fitStages) e, se qualcuno esce, resta un avviso.
+  // was = stadi dell'ND prima del cambio; n = numero di stadi (quando cambia).
+  const refit = (was = ndUsed(), n = f.stages.length) => {
+    const { lo, hi } = stageRange(n), names = new Map(kitGlasses().map(g => [g.key, g.label]));
+    const r = fitStages(f.stages, lo, hi, Math.max(0, was - ndUsed()));
+    f.stages = Array.from({ length: n }, (_, i) => f.stages[i] ?? null);
+    stageNote = r.out.length ? `Non c'è posto per tutti: ${r.out.map(k => names.get(k)).join(', ')} ${r.out.length > 1 ? 'escono' : 'esce'} dagli stadi.` : '';
+  };
+  const clampPreview = (was = ndUsed()) => { f.previewNd = Math.min(f.previewNd, ndSteps().length - 1); f.previewDio = Math.min(f.previewDio, dioSteps().length - 1); refit(was); };
   // Cambia il kit ND o le coppie tenendo fermo il valore di partenza (non il suo indice).
   const editNd = fn => {
     const v = ndSteps()[f.previewNd], was = ndUsed(); fn();
@@ -1677,13 +1774,17 @@ function filtersEditor(ed) {
   const dioRow = (name, split) => h('div', { class: 'srow' }, lab(name),
     h('div', { class: 'pills' }, ...DIOPTERS.map(v => pill(DIO_LABEL[v], has(v, split), on => toggleDio(v, split, on)))));
   const dioNames = split => dioSteps().filter(d => d && d.split === split).map(d => DIO_LABEL[d.v]).join(', ');
-  ed.append(section('flt.dio', 'Diottrie', f.dio.length ? [dioNames(false), dioNames(true) && `split ${dioNames(true)}`].filter(Boolean).join(' · ') : 'nessuna',
-    [dioRow('Intere', false), dioRow('Split', true)], f.dio.length > 0,
-    { tip: 'Con almeno una diottria nel kit, nella schermata filtri i tasti A/B sono diottria −/+ (le pagine si cambiano sempre con E e F).' }));
+  const dioBody = [dioRow('Intere', false), dioRow('Split', true)];
+  if (f.dio.length) dioBody.push(lab('Occupano un solo stadio', 'Una diottria occupa di solito due stadi, gli ultimi: sta sempre davanti a tutti gli altri vetri. Spunta quelle che ne occupano uno solo, per esempio una +1/2 a lastra.'),
+    h('div', { class: 'pills' }, ...dioSteps().filter(Boolean).map(d => pill(dioLabel(d), d.slots === 1, on => { if (on) d.slots = 1; else delete d.slots; refit(); changed(true); }))));
+  const oneSlot = f.dio.filter(d => d.slots === 1).length;
+  ed.append(section('flt.dio', 'Diottrie', f.dio.length ? [dioNames(false), dioNames(true) && `split ${dioNames(true)}`, oneSlot && `${oneSlot} da uno stadio`].filter(Boolean).join(' · ') : 'nessuna',
+    dioBody, f.dio.length > 0,
+    { tip: 'Con almeno una diottria nel kit, nella schermata filtri i tasti A/B sono diottria −/+ (le pagine si cambiano sempre con E e F). La diottria occupa gli ultimi stadi del mattebox.' }));
 
   // Kit: i vetri che hai nella valigetta (gli ND pieni stanno nel kit ND qui sopra).
   const kit = kitGlasses(), kitBody = [];
-  if (!f.effects.length) kitBody.push(h('p', { class: 'hint' }, 'Kit vuoto.'));
+  if (!f.effects.length) kitBody.push(h('p', { class: 'hint' }, 'Cerca nel catalogo qui sotto e aggiungi i vetri della valigetta.'));
   const dropStrength = (e, st) => {
     e.strengths = e.strengths.filter(x => x !== st); if (!e.strengths.length) f.effects = f.effects.filter(x => x !== e);
     normalizeStages(f); changed(true);
@@ -1692,75 +1793,83 @@ function filtersEditor(ed) {
     const extra = h('input', { type: 'text', placeholder: '+', size: 4, title: 'Aggiungi una gradazione', 'aria-label': 'Aggiungi una gradazione', onchange: ev => {
       const v = ev.target.value.trim(); if (v) { addToKit(f, e.id, e.name, [v]); changed(true); }
     } });
+    const two = pill('2 stadi', e.slots === 2, on => { if (on) e.slots = 2; else delete e.slots; refit(); changed(true); });
+    two.title = 'Questo vetro occupa due stadi del mattebox (per esempio un Rota Pola)';
     kitBody.push(h('div', { class: 'kit' },
-      h('div', { class: 'kit-head' }, h('strong', {}, e.name),
+      h('div', { class: 'kit-head' }, h('strong', {}, e.name), two,
         h('button', { class: 'small danger', title: 'Togli la famiglia dal kit', 'aria-label': 'Togli la famiglia dal kit', onclick: () => { f.effects = f.effects.filter(x => x !== e); normalizeStages(f); changed(true); } }, '✕')),
       h('div', { class: 'chips' },
         ...e.strengths.map(st => h('span', { class: 'chip' }, st.s || 'senza gradazione',
           h('button', { class: 'chip-x', title: 'Togli dal kit', 'aria-label': 'Togli dal kit', onclick: () => dropStrength(e, st) }, '✕'))),
         extra)));
   }
-  // Aggiunta dal catalogo (tutte le gradazioni scelte in un colpo) o di un filtro personalizzato.
-  const added = () => { kitAdding = true; changed(true); };
-  const cats = [...new Set(filterDb.map(x => x.category))];
-  const picks = h('div', { class: 'pills mt' });
-  const fam = h('select', { 'aria-label': 'Famiglia dal catalogo' }, h('option', { value: '' }, 'Scegli una famiglia dal catalogo…'),
-    ...cats.map(c => h('optgroup', { label: c }, ...filterDb.filter(x => x.category === c).map(x => h('option', { value: x.id }, `${x.brand ? x.brand + ' ' : ''}${x.name}`)))));
-  fam.addEventListener('change', () => {
-    const x = filterDb.find(y => y.id === fam.value); picks.innerHTML = '';
-    if (x) picks.append(...x.strengths.map(s => pill(s, false, () => {}, s)));
-  });
-  // Filtro personalizzato: nome e gradazioni separate da virgola.
+  ed.append(section('flt.kit', 'Vetri nel kit', f.effects.length ? `${plural(f.effects.length, 'famiglia', 'famiglie')} · ${plural(kit.length, 'vetro', 'vetri')}` : 'vuoto', kitBody, true,
+    { tip: 'Quello che hai nella valigetta, ND pieni esclusi: diffusione, polarizzatori, degradanti, colore… Sono i vetri che puoi mettere negli stadi. Un vetro che ne occupa due, come un Rota Pola, si segna con "2 stadi".' }));
+
+  // Catalogo: si cerca come nel database lenti; le famiglie si aprono e mostrano le gradazioni.
+  const cat = [h('p', { class: 'warn' }, 'Catalogo provvisorio: le gradazioni sono da verificare.')];
+  if (!filterDb.length) cat.push(h('p', { class: 'warn' }, 'Catalogo vetri non trovato.'));
+  else {
+    const brands = [...new Set(filterDb.map(x => x.brand || 'Generico'))].sort((a, b) => a.localeCompare(b, 'it'));
+    const cats = [...new Set(filterDb.map(x => x.category))].sort((a, b) => a.localeCompare(b, 'it'));
+    const q = h('input', { type: 'search', 'aria-label': 'Cerca nel catalogo', value: fltSearch.q, placeholder: 'Cerca: marca, nome, tipo, gradazione (es. "mist 1/4")' });
+    const fb = h('select', { 'aria-label': 'Marca' }, h('option', { value: '' }, 'Tutte le marche'), ...brands.map(b => h('option', { value: b, selected: fltSearch.brand === b }, b)));
+    const fc = h('select', { 'aria-label': 'Tipo' }, h('option', { value: '' }, 'Tutti i tipi'), ...cats.map(c => h('option', { value: c, selected: fltSearch.cat === c }, c[0].toUpperCase() + c.slice(1))));
+    const box = h('div', { class: 'db' });
+    const run = searching => { fltSearch = { q: q.value, brand: fb.value, cat: fc.value }; renderFilterResults(box, searching === true); };
+    q.addEventListener('input', () => run(true)); fb.addEventListener('change', () => run(true)); fc.addEventListener('change', () => run(true));
+    cat.push(q, h('div', { class: 'two mt' }, fb, fc), box);
+    run();
+  }
+  // Vetro personalizzato: nome e gradazioni separate da virgola.
   const cName = h('input', { type: 'text', placeholder: 'Nome (es. "Cinebloom")', 'aria-label': 'Nome del filtro' });
   const cStr = h('input', { type: 'text', placeholder: 'Gradazioni (es. "10%, 20%")', 'aria-label': 'Gradazioni' });
-  kitBody.push(section('flt.add', '+ Aggiungi vetri', null, [
-    lab('Dal catalogo'), fam, picks,
-    h('div', { class: 'acts' },
-      h('button', { class: 'small', onclick: () => {
-        const x = filterDb.find(y => y.id === fam.value); if (!x) return;
-        const chosen = [...picks.querySelectorAll('input:checked')].map(i => i.value);
-        if (x.strengths.length && !chosen.length) { alert('Spunta almeno una gradazione.'); return; }
-        addToKit(f, x.id, x.name, chosen); added();
-      } }, '+ Aggiungi le gradazioni spuntate'),
-      h('button', { class: 'small', onclick: () => {
-        const x = filterDb.find(y => y.id === fam.value); if (!x) return;
-        addToKit(f, x.id, x.name, [...x.strengths]); added();
-      } }, '+ Aggiungi tutte le gradazioni')),
-    lab('Oppure un filtro personalizzato'), h('div', { class: 'two' }, cName, cStr),
-    h('div', { class: 'acts' }, h('button', { class: 'small', onclick: () => {
-      const n = cName.value.trim(); if (!n) return;
-      addToKit(f, null, n, cStr.value.split(',').map(s => s.trim()).filter(Boolean)); added();
-    } }, '+ Aggiungi personalizzato')),
-    h('p', { class: 'hint' }, 'Catalogo filtri provvisorio: le gradazioni sono da verificare.'),
-  ], !f.effects.length || kitAdding, { sub: true }));
-  ed.append(section('flt.kit', 'Vetri nel kit', f.effects.length ? `${plural(f.effects.length, 'famiglia', 'famiglie')} · ${plural(kit.length, 'vetro', 'vetri')}` : 'vuoto', kitBody, true,
-    { tip: 'Quello che hai nella valigetta, ND pieni esclusi: diffusione, polarizzatori, degradanti, colore… Sono i vetri che puoi mettere negli stadi.' }));
+  cat.push(section('flt.manual', 'Aggiungi un vetro a mano', null, [
+    h('div', { class: 'two' }, cName, cStr),
+    h('div', { class: 'acts' }, h('button', { class: 'primary', onclick: () => {
+      const n = cName.value.trim(); if (!n) { alert('Serve almeno il nome.'); return; }
+      addToKit(f, null, n, cStr.value.split(',').map(s => s.trim()).filter(Boolean)); changed(true);
+    } }, 'Aggiungi'))], false, { sub: true }));
+  ed.append(section('flt.db', 'Catalogo vetri', filterDb.length ? plural(filterDb.length, 'famiglia', 'famiglie') : null, cat, true,
+    { tip: 'Famiglie di vetri con le loro gradazioni. Una gradazione che manca si aggiunge nel kit con il campo "+".' }));
 
   // Mattebox: quanti stadi, da che ND e diottria si parte e cosa c'è in ogni stadio all'avvio.
-  const setStages = n => { f.stages = Array.from({ length: n }, (_, i) => f.stages[i] ?? null); changed(true); };
-  const ndV = ndSteps()[f.previewNd] || 0, ndStart = ndParts(ndV);  // l'ND di partenza occupa i primi stadi
+  const setStages = n => { refit(ndUsed(), n); changed(true); };
+  const ndV = ndSteps()[f.previewNd] || 0, cells = stageCells(), range = stageRange(f.stages.length);
   const mb = [
     h('div', { class: 'srow' },
-      lab('Stadi', 'L\'ND, quando c\'è, sta nello stadio 1 (due ND insieme: stadi 1 e 2). Gli stadi che l\'ND non usa sono liberi per gli altri vetri; quando l\'ND ne ha bisogno, i vetri scalano verso il fronte e, se non c\'è posto, l\'ultimo esce. Quando l\'ND libera uno stadio (da due ND a uno, o ND tolto) i vetri tornano indietro verso la lente.'),
-      seg(Array.from({ length: MAX_STAGES }, (_, i) => [i + 1, String(i + 1)]), f.stages.length, setStages, 'Numero di stadi')),
+      lab('Stadi', 'L\'ND, quando c\'è, sta nei primi stadi (uno, o due per una coppia) e la diottria negli ultimi, davanti a tutto (due, o uno). Gli stadi in mezzo sono per gli altri vetri; un vetro segnato "2 stadi" nel kit ne occupa due di seguito. Quando ND o diottria hanno bisogno di posto i vetri si stringono: scalano verso il fronte per l\'ND, verso la lente per la diottria. Se non c\'è posto per tutti escono i vetri più avanti. Quando l\'ND libera uno stadio i vetri tornano indietro verso la lente. Con il + si va oltre il 4, fino a 6: serve per un vetro montato fuori dal mattebox. Sul dispositivo le righe degli stadi si abbassano per farle entrare tutte.'),
+      seg(f.stages.length > BOX_STAGES
+        ? Array.from({ length: MAX_STAGES }, (_, i) => [i + 1, String(i + 1)])
+        : [...Array.from({ length: BOX_STAGES }, (_, i) => [i + 1, String(i + 1)]), [BOX_STAGES + 1, '+', 'Uno stadio in più, per un vetro fuori dal mattebox']],
+        f.stages.length, setStages, 'Numero di stadi')),
     h('div', { class: 'two' },
       h('div', {}, lab('ND di partenza', 'Il dispositivo parte da qui, poi ricorda l\'ultimo valore impostato con i tasti.'),
-        h('select', { 'aria-label': 'ND di partenza', onchange: e => { const was = ndUsed(); f.previewNd = +e.target.value; ndStagesChanged(f.stages, was, ndUsed()); changed(true); } },
+        h('select', { 'aria-label': 'ND di partenza', onchange: e => { const was = ndUsed(); f.previewNd = +e.target.value; refit(was); changed(true); } },
           ...ndSteps().map((v, i) => h('option', { value: i, selected: f.previewNd === i }, ndLabel(v))))),
       h('div', {}, lab('Diottria di partenza'),
-        h('select', { 'aria-label': 'Diottria di partenza', disabled: !f.dio.length, onchange: e => { f.previewDio = +e.target.value; changed(); } },
+        h('select', { 'aria-label': 'Diottria di partenza', disabled: !f.dio.length, onchange: e => { f.previewDio = +e.target.value; refit(); changed(true); } },
           ...dioSteps().map((v, i) => h('option', { value: i, selected: f.previewDio === i }, dioLabel(v)))))),
     lab('Vetro in ogni stadio', kit.length ? 'Il dispositivo parte da qui. Per cambiare i vetri sul dispositivo: nella schermata filtri tieni A o B, scegli lo stadio con A/B e il vetro con C/D. Dopo 5 secondi senza tocchi la modifica è accettata; per uscire subito premi E o F.' : null),
-    ...f.stages.map((k, i) => {
-      const opts = stageOptions(i), name = `${i + 1}${i === 0 ? ' · lato lente' : ''}`;
-      if (i < ndStart.length) return h('div', { class: 'strow' }, name, h('select', { disabled: true, 'aria-label': `Stadio ${i + 1}` }, h('option', {}, `${ndStageLabel(ndStart[i])} · l'ND di partenza`)));
+    ...cells.map((c, i) => {
+      const name = `${i + 1}${i === 0 ? ' · lato lente' : ''}`, head = c.kind === 'cont' ? cells[c.of] : c;
+      const fixed = t => h('div', { class: 'strow' }, name, h('select', { disabled: true, 'aria-label': `Stadio ${i + 1}` }, h('option', {}, t)));
+      if (head.kind === 'nd') return fixed(`${head.label} · l'ND di partenza`);
+      if (head.kind === 'dio') return fixed(`${head.label} · la diottria di partenza`);
+      if (c.kind === 'cont') return fixed(`${head.label} · occupa due stadi`);
+      const opts = stageOptions(i, f.stages, range.hi);
       return h('div', { class: 'strow' }, name,
-        h('select', { 'aria-label': `Stadio ${i + 1}`, disabled: !kit.length, onchange: e => { f.stages[i] = e.target.value || null; changed(true); } },
-          h('option', { value: '', selected: !k }, '— vuoto'),
-          ...kit.map(g => h('option', { value: g.key, selected: g.key === k, disabled: !opts.includes(g.key) }, g.label))));
+        h('select', { 'aria-label': `Stadio ${i + 1}`, disabled: !kit.length, onchange: e => { f.stages[i] = e.target.value || null; stageNote = ''; changed(true); } },
+          h('option', { value: '', selected: !c.key }, '— vuoto'),
+          ...kit.map(g => h('option', { value: g.key, selected: g.key === c.key, disabled: !opts.includes(g.key) }, g.slots > 1 ? `${g.label} · 2 stadi` : g.label))));
     }),
   ];
   if (!kit.length) mb.push(h('p', { class: 'hint' }, 'Aggiungi dei vetri al kit qui sopra per riempire gli stadi.'));
+  // Avvisi: un vetro appena uscito, e ND + diottria che non entrano negli stadi.
+  if (stageNote) mb.push(h('p', { class: 'warn' }, stageNote));
+  const need = Math.max(...ndSteps().map(v => ndParts(v).length)) + Math.max(0, ...f.dio.map(dioSlots));
+  if (dioUsed() && range.hi === f.stages.length) mb.push(h('p', { class: 'warn' }, `La diottria di partenza non entra negli stadi: con l'ND ne servono ${ndUsed() + dioUsed()}. Resta solo nel riquadro grande.`));
+  else if (f.dio.length && need > f.stages.length) mb.push(h('p', { class: 'warn' }, `ND e diottria insieme possono occupare ${need} stadi: quando non ci stanno, la diottria resta solo nel riquadro grande.`));
   const ndSum = ndV ? (f.ndFormat === 'factor' ? ndLabel(ndV) : `ND ${ndLabel(ndV)}`) : 'senza ND';
   ed.append(section('flt.mb', 'Mattebox e valori di partenza', `${plural(f.stages.length, 'stadio', 'stadi')} · ${ndSum} · ${plural(f.stages.filter(Boolean).length, 'vetro', 'vetri')}`, mb));
 }
@@ -2158,7 +2267,7 @@ async function applyProject(d) {
   d = { ...d };
   if (d.lensOverrides) { Object.assign(lensOverrides, d.lensOverrides); saveOverrides(); }
   delete d.lensOverrides; delete d.savedAt;
-  state = migrate(d); sel = { kind: 'lenschart' };
+  state = migrate(d); fitStart(); sel = { kind: 'lenschart' };
   await Promise.all(state.cards.map(c => ensureImg(c.img)));
   save(); refresh();
 }
@@ -2173,7 +2282,7 @@ $('#importFile').onchange = e => {
 // Simulatore: dispositivo con i tasti, comportamento previsto per il firmware
 // ============================================================================
 // rot = rotazione fisica del dispositivo in gradi, in senso orario (0 = verticale, tasti in basso).
-const sim = { i: 0, rot: 0, locked: false, lockRot: 0, asleep: false, nd: null, ndShown: 0, dio: null, stages: [], sig: '', msg: '' };
+const sim = { i: 0, rot: 0, locked: false, lockRot: 0, asleep: false, nd: null, ndShown: 0, dio: null, dioShown: 0, stages: [], sig: '', msg: '' };
 let simOn = false;
 
 function simPlan() { return exportPlan(); }
@@ -2183,7 +2292,7 @@ function simContentRot() { return sim.locked ? sim.lockRot : sim.rot; }
 //   A|B = diottria e C|D = ND, scambiati quando il dispositivo è ruotato di 90°
 //   in senso orario (A|B finisce in alto, accanto all'ND).
 // - "+" sta sempre sul capo che vedi in alto o a destra (90° e 180°: il primo tasto).
-// Fuori dai filtri i bilancieri non fanno nulla: le pagine si cambiano solo con E/F.
+// Fuori dai filtri i bilancieri non fanno nulla, tranne sulla lens chart (lensPageDir).
 // Restituisce { role: 'nd' | 'dio' | null, dir: +1 | -1 }.
 function rockerAction(k, isFilters, rot) {
   if (!'ABCD'.includes(k)) return { role: null, dir: 0 };
@@ -2199,6 +2308,14 @@ function rockerAction(k, isFilters, rot) {
   if (role === 'nd' && !f.nd.length) role = null;
   return { role, dir };
 }
+// Lens chart con più pagine: A–D sfogliano solo le sue pagine, in ciclo. I due tasti
+// di un bilanciere fanno la stessa cosa: avanza il bilanciere che chi guarda vede a
+// destra o in basso, arretra quello a sinistra o in alto. A|B sta a sinistra a 0°,
+// in alto a 90°, a destra a 180°, in basso a 270°. Restituisce +1 o -1.
+function lensPageDir(k, rot) {
+  const ab = k === 'A' || k === 'B', abForward = rot === 180 || rot === 270;
+  return ab === abForward ? 1 : -1;
+}
 function rockerHint(k, rot) {
   const a = rockerAction(k, true, rot);
   return a.role === 'nd' ? `${a.dir > 0 ? '+' : '-'}ND` : a.role === 'dio' ? `${a.dir > 0 ? '+' : '-'}DIO` : '';
@@ -2208,7 +2325,7 @@ function rockerHint(k, rot) {
 // Si entra tenendo A o B nella schermata filtri; si esce con E o F, o tenendo
 // di nuovo A o B (o da soli dopo EDIT_TIMEOUT_S). Lo stadio selezionato
 // è in negativo sulla stessa schermata: A/B cambiano stadio, C/D cambiano vetro.
-// Gli stadi occupati dall'ND non si selezionano.
+// Gli stadi di ND e diottria non si selezionano; un vetro da due stadi si seleziona intero.
 const EDIT_TIMEOUT_S = 5;  // senza tocchi la modifica è accettata e si esce da soli
 let simEditTimer = 0;
 // Direzione "+" del tasto (in alto o a destra per chi guarda), come in rockerAction.
@@ -2225,10 +2342,11 @@ function simEditPress(k, long) {
   const ed = sim.edit, st = sim.stages;
   if (k === 'E' || k === 'F' || (long && (k === 'A' || k === 'B'))) { sim.edit = null; sim.msg = 'Stadi salvati.'; return; }
   if (k === 'A' || k === 'B') {
-    ed.i = Math.max(ndUsed(sim.ndShown), Math.min(st.length - 1, ed.i + editNavStep(k, sim.rot)));
+    const ok = editableStages(st, sim.ndShown, sim.dioShown);
+    ed.i = ok[Math.max(0, Math.min(ok.length - 1, ok.indexOf(ed.i) + editNavStep(k, sim.rot)))];
   } else if (k === 'C' || k === 'D') {
-    // Vuoto, poi i vetri liberi del kit; in fondo si ricomincia.
-    const opts = stageOptions(ed.i, st), j = opts.indexOf(st[ed.i]);
+    // Vuoto, poi i vetri liberi del kit che ci stanno; in fondo si ricomincia.
+    const opts = stageOptions(ed.i, st, stageRange(st.length, sim.ndShown, sim.dioShown).hi), j = opts.indexOf(st[ed.i]);
     st[ed.i] = opts[(j + keyDir(k, sim.rot) + opts.length) % opts.length];
   }
 }
@@ -2237,34 +2355,40 @@ function simEditArm() {
   if (sim.edit) simEditTimer = setTimeout(() => { sim.edit = null; sim.msg = `Stadi salvati: ${EDIT_TIMEOUT_S} secondi senza tocchi.`; renderSim(); }, EDIT_TIMEOUT_S * 1000);
 }
 
-// L'ND cambia subito nel riquadro grande; gli stadi si riordinano (ND nei primi
-// stadi, vetri che scalano) solo quando il valore resta fermo, così passare da
-// una coppia mentre scorri non sposta nulla (regole in ndStagesChanged). sim.ndShown = il passo già applicato.
-const ND_SETTLE_S = 2;
-let simNdTimer = 0;
-function simNdSettle() {
-  clearTimeout(simNdTimer);
-  if (sim.ndShown === sim.nd) return;
-  const was = ndUsed(sim.ndShown), now = ndUsed(sim.nd);
-  sim.ndShown = sim.nd;
-  const r = stageCount() ? ndStagesChanged(sim.stages, was, now) : { moved: false, out: [] };
-  if (r.moved) sim.msg = now < was ? (now ? 'Un ND in meno: i vetri tornano accanto all\'ND.' : 'ND tolto: i vetri tornano verso la lente.')
-    : 'L\'ND prende il suo posto: i vetri scalano verso il fronte.' + (r.out.length ? ` Usciti: ${r.out.map(k => kitGlasses().find(g => g.key === k)?.label).join(', ')}.` : '');
+// ND e diottria cambiano subito nei riquadri grandi; gli stadi si riordinano (ND
+// nei primi, diottria negli ultimi, vetri che si stringono: fitStages) solo quando
+// i valori restano fermi, così passare da una coppia o da una diottria mentre scorri
+// non sposta nulla. sim.ndShown, sim.dioShown = i passi già applicati agli stadi.
+const SETTLE_S = 2;
+let simSettleTimer = 0;
+function simSettle() {
+  clearTimeout(simSettleTimer);
+  if (sim.ndShown === sim.nd && sim.dioShown === sim.dio) return;
+  const was = ndUsed(sim.ndShown), now = ndUsed(sim.nd), dioNew = sim.dioShown !== sim.dio;
+  sim.ndShown = sim.nd; sim.dioShown = sim.dio;
+  if (!stageCount()) return;
+  const { lo, hi } = stageRange(sim.stages.length, sim.nd, sim.dio), names = new Map(kitGlasses().map(g => [g.key, g.label]));
+  const r = fitStages(sim.stages, lo, hi, Math.max(0, was - now));
+  const noDio = dioUsed(sim.dio) && hi === sim.stages.length ? 'La diottria non entra negli stadi: resta solo nel riquadro grande.' : '';
+  if (r.out.length) sim.msg = `Non c'è posto per tutti: ${r.out.map(k => names.get(k)).join(', ')} ${r.out.length > 1 ? 'escono' : 'esce'} dagli stadi.`;
+  else if (r.moved) sim.msg = now < was ? (now ? 'Un ND in meno: i vetri tornano accanto all\'ND.' : 'ND tolto: i vetri tornano verso la lente.')
+    : now > was ? 'L\'ND prende il suo posto: i vetri scalano verso il fronte.' : 'La diottria prende gli ultimi stadi: i vetri scalano verso la lente.';
+  else if (dioNew && noDio) sim.msg = noDio;
 }
 
 function simPress(k, long) {
   const plan = simPlan(), cur = plan[sim.i] || plan[0], isFilters = cur?.kind === 'filters';
-  // Qualsiasi tasto che non sia ±ND applica subito il riordino in sospeso.
-  if (!(isFilters && !sim.edit && !sim.asleep && !(long && (k === 'A' || k === 'B')) && rockerAction(k, true, sim.rot).role === 'nd')) simNdSettle();
+  // Qualsiasi tasto che non sia ±ND o ±diottria applica subito il riordino in sospeso.
+  if (!(isFilters && !sim.edit && !sim.asleep && !(long && (k === 'A' || k === 'B')) && rockerAction(k, true, sim.rot).role)) simSettle();
   if (k === 'P') { sim.asleep = !sim.asleep; sim.edit = null; sim.msg = sim.asleep ? 'Spento: l\'e-paper resta visibile. Power per riaccendere.' : 'Acceso.'; return renderSim(); }
   if (sim.asleep) { sim.msg = 'È spento: solo il power lo riaccende.'; return renderSim(); }
   if (!plan.length) return;
   if (sim.edit) { sim.msg = ''; simEditPress(k, long); simEditArm(); return renderSim(); }
   if (isFilters && long && (k === 'A' || k === 'B')) {
     if (!stageCount()) { sim.msg = 'Nessun vetro nel kit: aggiungili nello strumento web.'; return renderSim(); }
-    const first = ndUsed(sim.ndShown);
-    if (first >= sim.stages.length) { sim.msg = 'Tutti gli stadi sono occupati dall\'ND.'; return renderSim(); }
-    sim.edit = { i: first }; sim.msg = `Modifica stadi: A/B stadio, C/D vetro. Si chiude da sola dopo ${EDIT_TIMEOUT_S} s, o subito con E o F.`; simEditArm();
+    const ok = editableStages(sim.stages, sim.ndShown, sim.dioShown);
+    if (!ok.length) { sim.msg = 'Tutti gli stadi sono occupati da ND e diottria.'; return renderSim(); }
+    sim.edit = { i: ok[0] }; sim.msg = `Modifica stadi: A/B stadio, C/D vetro. Si chiude da sola dopo ${EDIT_TIMEOUT_S} s, o subito con E o F.`; simEditArm();
     return renderSim();
   }
   const act = rockerAction(k, isFilters, sim.rot);
@@ -2275,12 +2399,15 @@ function simPress(k, long) {
     sim.msg = sim.locked ? 'ROTAZIONE BLOCCATA' : 'ROTAZIONE AUTOMATICA';
   } else if (k === 'F' && long) {
     sim.msg = 'BLUETOOTH: in attesa dello strumento ("Bluetooth"). E o F per uscire.';
-  } else if (act.role === 'dio') {
-    sim.dio = Math.max(0, Math.min(dioSteps().length - 1, sim.dio + act.dir));
-  } else if (act.role === 'nd') {
-    sim.nd = Math.max(0, Math.min(ndSteps().length - 1, sim.nd + act.dir));
-    clearTimeout(simNdTimer);
-    simNdTimer = setTimeout(() => { sim.msg = ''; simNdSettle(); renderSim(); }, ND_SETTLE_S * 1000);
+  } else if (act.role === 'dio' || act.role === 'nd') {
+    if (act.role === 'dio') sim.dio = Math.max(0, Math.min(dioSteps().length - 1, sim.dio + act.dir));
+    else sim.nd = Math.max(0, Math.min(ndSteps().length - 1, sim.nd + act.dir));
+    clearTimeout(simSettleTimer);
+    simSettleTimer = setTimeout(() => { sim.msg = ''; simSettle(); renderSim(); }, SETTLE_S * 1000);
+  } else if (cur.kind === 'lenschart' && 'ABCD'.includes(k)) {
+    const lens = plan.map((p, i) => (p.kind === 'lenschart' ? i : -1)).filter(i => i >= 0);
+    if (lens.length < 2) sim.msg = 'La lens chart ha una sola pagina: A–D non fanno nulla. Le schermate si cambiano con E e F.';
+    else sim.i = lens[(lens.indexOf(sim.i) + lensPageDir(k, sim.rot) + lens.length) % lens.length];
   } else if (k === 'E') step(1);       // E (lato destro) = pagina successiva, in ciclo
   else if (k === 'F') step(-1);        // F (lato sinistro) = pagina precedente
   else sim.msg = 'Nessuna funzione per questo tasto qui: le pagine si cambiano con E e F.';
@@ -2291,7 +2418,7 @@ function renderSim() {
   const plan = simPlan(), f = state.filters;
   // Se cambiano i filtri nello strumento, il dispositivo riparte dai valori iniziali.
   const sig = JSON.stringify(f);
-  if (sig !== sim.sig) { sim.sig = sig; sim.nd = Math.min(f.previewNd, ndSteps().length - 1); sim.dio = Math.min(f.previewDio, dioSteps().length - 1); sim.stages = [...f.stages]; sim.ndShown = sim.nd; clearTimeout(simNdTimer); }
+  if (sig !== sim.sig) { sim.sig = sig; sim.nd = Math.min(f.previewNd, ndSteps().length - 1); sim.dio = Math.min(f.previewDio, dioSteps().length - 1); sim.stages = [...f.stages]; sim.ndShown = sim.nd; sim.dioShown = sim.dio; clearTimeout(simSettleTimer); }
   if (sim.i >= plan.length) sim.i = 0;
   const dev = $("#simDevice"), cv = $('#simScreen'), ctx = cv.getContext('2d');
   dev.style.transform = `rotate(${sim.rot}deg)`;
@@ -2299,9 +2426,10 @@ function renderSim() {
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
   const item = plan[sim.i];
   if (sim.edit && (item?.kind !== 'filters' || !stageCount())) sim.edit = null;
-  const first = ndUsed(sim.ndShown);
-  if (sim.edit && first >= sim.stages.length) sim.edit = null;
-  if (sim.edit) sim.edit.i = Math.max(first, Math.min(sim.edit.i, sim.stages.length - 1));
+  if (sim.edit) {
+    const ok = editableStages(sim.stages, sim.ndShown, sim.dioShown);
+    if (!ok.length) sim.edit = null; else if (!ok.includes(sim.edit.i)) sim.edit.i = ok.findLast(i => i < sim.edit.i) ?? ok[0];
+  }
   if (!item) {
     ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.font = `700 28px ${FONT}`;
     ctx.fillText('NESSUNA CARD', cv.width / 2, cv.height / 2);
@@ -2311,7 +2439,7 @@ function renderSim() {
     let layout = angle % 180 === 90 ? 'land' : 'port';
     const avail = item.kind === 'card' ? layoutsOf(item.card) : ['land', 'port'];
     if (!avail.includes(layout)) { layout = layout === 'land' ? 'port' : 'land'; angle = (angle + 270) % 360; }
-    const r = renderScreen(item, layout, { preview: true, noHints: true, nd: sim.nd, ndStages: sim.ndShown, dio: sim.dio, stages: sim.stages, sel: sim.edit ? sim.edit.i : -1 });
+    const r = renderScreen(item, layout, { preview: true, noHints: true, nd: sim.nd, ndStages: sim.ndShown, dio: sim.dio, dioStages: sim.dioShown, stages: sim.stages, sel: sim.edit ? sim.edit.i : -1 });
     const [tmp, tctx] = newCanvas(r.w, r.h), img = tctx.createImageData(r.w, r.h);
     for (let i = 0; i < r.w * r.h; i++) { const c = r.bits[i] ? 255 : 0; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = c; img.data[i * 4 + 3] = 255; }
     tctx.putImageData(img, 0, 0);

@@ -23,6 +23,7 @@ costruttori di lenti e filtri nei dati vanno bene.
   `../data/*.json`, quindi va servito dalla radice del repo. Ha un
   **simulatore** (`simPress`/`renderSim`, solo da computer: sotto 700 px è nascosto) con tasti, rotazione, blocco e power:
   è la specifica di comportamento per il firmware, e i due devono restare allineati.
+  Un solo tema colore, scuro (variabili su `:root`).
   Barra e anteprima restano fisse mentre l'editor scorre: tre colonne da 1100 px,
   due da 700 (striscia delle schermate e anteprima a sinistra), sotto i 700
   anteprima compatta in alto che si apre a tutto schermo; `fitStage` tiene
@@ -101,17 +102,21 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   lavoro nel browser sta solo nel localStorage: questo file è la copia che resta.
 - Schermata filtri (specifica completa in `docs/filtri.md`): lo sfondo ha vuoti
   i riquadri dei valori e l'area degli stadi. La cartella `NN_filters/` contiene
-  `screen.ini` v2 (riquadri e area stadi per orientamento, tasti e indicazioni
+  `screen.ini` v3 (riquadri e area stadi per orientamento, tasti e indicazioni
   per verso `keys.<gradi>`, `hints.<gradi>`, `edit.keys.<gradi>`,
-  `edit.hints.<gradi>`, `edit.timeout`, vetri `kit.*`, `stages.count`,
-  `stages.nd`, `stages.start`, e per l'ND `nd.glasses`, `nd.parts`, `nd.settle`) e i pezzi: `ndI`, `dioI` (I = passo, 0 =
+  `edit.hints.<gradi>`, `edit.timeout`, vetri `kit.*` con `kit.slots`,
+  `stages.count`, `stages.nd`, `stages.start`, `stages.settle`, `dio.slots`, e
+  per l'ND `nd.glasses`, `nd.parts`) e i pezzi: `ndI`, `dioI` (I = passo, 0 =
   nessuno); `stN`/`stsN` colonna del numero dello stadio N, normale e
   selezionata; `fxG`/`fxsG` vetro G (indice nel kit, `n` = vuoto), normale e
-  selezionato; `fxdK` il vetro ND K nelle righe degli stadi dell'ND. Tutti `.bmp`, con
-  `.p.bmp` per il verticale. Una riga = `stN` + `fxG` affiancati (`listNum` =
-  larghezza del numero), altezza fissa `listRow`; in cima a ogni riga dopo la
-  prima il firmware disegna un separatore da 2 px. Comporre i pezzi deve dare
-  l'anteprima pixel per pixel (verificato, anche con una riga selezionata).
+  selezionato; `fxdK` il vetro ND K e `fxoI` la diottria al passo I nelle righe
+  dei loro stadi. Tutti `.bmp`, con `.p.bmp` per il verticale. Una riga = `stN`
+  + pezzo del vetro affiancati (`listNum` = larghezza del numero), altezza
+  `listRow`; il pezzo di un vetro da due stadi è alto due righe e nella seconda
+  non si disegna altro. In cima a ogni riga dopo la prima il firmware disegna
+  un separatore da 2 px (nel secondo stadio di un vetro da due solo sotto il
+  numero). Comporre i pezzi deve dare l'anteprima pixel per pixel (verificato,
+  anche con un vetro da due stadi selezionato).
 - Sulla schermata filtri il contenuto lascia libere le fasce sui lati corti
   (40 px in verticale, 64 in orizzontale) per le indicazioni dei tasti; la barra
   del titolo invece arriva ai bordi, e le indicazioni vi si disegnano sopra in
@@ -153,19 +158,26 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   nello strumento web. Nella scala dell'ND entrano anche i totali fatti con
   **due vetri** spuntati nello strumento (`ndCombos`, `ndComboList`: mai un
   totale che il kit ha già, coppia con il vetro più denso, che va nello stadio
-  1); gli stadi si riordinano solo a valore fermo da 2 s (`simNdSettle`). Si
+  1); gli stadi si riordinano solo con ND e diottria fermi da 2 s (`simSettle`). Si
   mostra solo il formato ND scelto (0,9 / 3 stop / ND8). Tipo ND: ND, IRND o
   FSND (full spectrum).
 - Gli altri vetri (diffusione, polarizzatori, colore…) seguono il mattebox
-  (`docs/filtri.md`): un **kit** di vetri, uno per tipo, e da 1 a 4 **stadi**
+  (`docs/filtri.md`): un **kit** di vetri, uno per tipo, e da 1 a 6 **stadi**
+  (`MAX_STAGES`; nello strumento il selettore mostra 1–4 e un `+`,
+  `BOX_STAGES`: il 5 e il 6 servono per un vetro fuori dal mattebox, caso raro)
   numerati da 1 = lato lente; ogni stadio ha un vetro o è vuoto (`—`), e un
-  vetro sta in un solo stadio. Non esiste "montato": la schermata mostra sempre
-  tutti gli stadi sotto ND e diottria. **L'ND, quando c'è, occupa lo stadio 1**
-  (una coppia: stadi 1 e 2; le sue righe non si selezionano); senza ND lo stadio 1 è libero, e
-  quando l'ND rientra i vetri scalano di uno stadio verso il fronte
-  (`makeRoomForNd`; se non c'è posto l'ultimo esce); quando l'ND libera
-  stadi (da due a uno, o tolto) tornano indietro di altrettanti verso la lente
-  (`ndStagesChanged`). Il simulatore tiene il suo
+  vetro sta in un posto solo. Non esiste "montato": la schermata mostra sempre
+  tutti gli stadi sotto ND e diottria. Un vetro occupa uno stadio, o due se la
+  famiglia è segnata così (`e.slots`, `glassSlots`; il Rota Pola lo è già nel
+  catalogo): sulla schermata è una casella alta due righe. **L'ND, quando c'è,
+  occupa i primi stadi** (uno, o due per una coppia) **e la diottria gli
+  ultimi**, davanti a tutto (due, o uno se segnata: `dioSlots`); le loro righe
+  non si selezionano. Se insieme non entrano, la diottria resta solo nel
+  riquadro grande (`stageRange`). Una regola sola rimette a posto i vetri
+  (`fitStages`): restano in ordine, scalano verso il fronte per l'ND e verso la
+  lente per la diottria chiudendo i vuoti solo quanto serve, e se non c'è posto
+  escono i più avanti; quando l'ND libera stadi tornano indietro di altrettanti
+  verso la lente. Il simulatore tiene il suo
   stato (`sim.nd`, `sim.dio`, `sim.stages`) separato dai valori di partenza. Sul dispositivo si cambiano in
   **modifica** (`simEditPress`), sulla stessa schermata: tieni A o B per
   entrare; dopo 5 s senza tocchi la modifica è accettata e si esce da soli
@@ -173,9 +185,12 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   scorrono vuoto + i vetri liberi del kit, ricominciando in fondo. Selezione =
   riga in negativo, niente cursore lampeggiante; aggiornamenti parziali,
   completo all'uscita. Diottrie e ND restano su A|B e C|D fuori dalla modifica.
-- Tasti: le pagine si cambiano **solo** con E (successiva) e F (precedente),
-  in ciclo su tutte; A/B mai (conflitto con le diottrie). Schermata filtri A/B =
-  diottria −/+, C/D = ND −/+; altrove i bilancieri non fanno nulla. E tenuto =
+- Tasti: E (successiva) e F (precedente) cambiano pagina in ciclo su tutte.
+  Schermata filtri A/B = diottria −/+, C/D = ND −/+. Lens chart di più pagine:
+  A–D sfogliano solo le sue pagine, in ciclo; i due tasti di un bilanciere fanno
+  lo stesso, avanza quello a destra o in basso per chi guarda, arretra quello a
+  sinistra o in alto (`lensPageDir`, `stepLensChart`). Altrove i bilancieri non
+  fanno nulla. E tenuto =
   blocco rotazione. F tenuto = ricezione via Bluetooth (E o F escono). La
   pressione breve si legge al rilascio; quella lunga (0,8 s, anche A o B per la
   modifica) scatta allo scadere del tempo con il tasto ancora giù, e il
@@ -208,5 +223,6 @@ non è più vero invece di aggiungere note.
 
 - Assi IMU: `kImuSwapXY`, `kImuSignX`, `kImuSignY` in `device/src/main.cpp`.
 - Tasti: A–D sono BACK/CONFIRM/LEFT/RIGHT (ingresso analogico 1), E/F sono
-  UP/DOWN (ingresso 2); da verificare quale è quale (`kKeyE`, `kKeyF`).
+  UP/DOWN (ingresso 2); da verificare quale è quale (`kKeyA`…`kKeyF`).
+- Verso fisico di ogni `Canvas::Rotation` (`kQuarterTurns`), insieme agli assi IMU.
 - Ghosting (`FULL_REFRESH_EVERY`) e consumo da spento.
