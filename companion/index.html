@@ -40,6 +40,7 @@
   input[type=text], input[type=number], input[type=search], textarea, select { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-s); padding: 7px 8px; }
   textarea { min-height: 110px; resize: vertical; }
   input.tslider { width: 100%; accent-color: var(--accent); }
+  .tscale { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
 
   /* ---------- Barra: sempre in vista, una riga sola ---------- */
   header.bar { position: sticky; top: 0; z-index: 30; height: var(--bar-h); display: flex; align-items: center; gap: 8px;
@@ -434,7 +435,7 @@ const DEFAULTS = {
   lens:  () => ({ formats: 'both', type: 'lens', brand: 'MARCA', series: 'Serie', focal: '35', tstop: '1.8', mod: '0.35 m', front: '95 mm', thread: '', notes: '' }),
   crew:  () => ({ formats: 'both', type: 'crew', title: 'CAMERA DEPT', lines: 'DOP: Nome Cognome\n1st AC: Nome Cognome\n2nd AC: Nome Cognome\nDIT: Nome Cognome\nGaffer: Nome Cognome' }),
   notes: () => ({ formats: 'both', type: 'notes', title: 'NOTE', body: 'CH 1 Camera\nCH 2 Elettrici\n\nScena 12 — Steadicam' }),
-  patch: () => ({ formats: 'both', type: 'patch', img: null, fit: 'contain', dither: 'atkinson', threshold: 128, invert: false, caption: '' }),
+  patch: () => ({ formats: 'both', type: 'patch', img: null, fit: 'contain', dither: 'atkinson', threshold: 128, contrast: 0, invert: false, caption: '' }),
 };
 const TYPE_LABEL = { lens: 'Lente', crew: 'Crew', notes: 'Note', patch: 'Patch' };
 
@@ -1161,6 +1162,8 @@ function drawPatch(ctx, W, H, c) {
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, areaH); ctx.clip();
     ctx.drawImage(img, (W - w) / 2, (areaH - h) / 2, w, h);
     ctx.restore();
+    if (c.contrast) applyContrast(ctx, Math.max(0, Math.floor((W - w) / 2)), Math.max(0, Math.floor((areaH - h) / 2)),
+      Math.min(W, Math.ceil(w)), Math.min(areaH, Math.ceil(h)), c.contrast);
   } else {
     ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = `600 ${Math.round(H * 0.06)}px ${FONT}`;
@@ -1172,6 +1175,14 @@ function drawPatch(ctx, W, H, c) {
     fitFont(ctx, c.caption.toUpperCase(), 800, W * 0.9, capH * 0.55);
     ctx.fillText(c.caption.toUpperCase(), W / 2, H - capH / 2);
   }
+}
+// Contrasto da -100 a +100 attorno al grigio medio, solo sul riquadro dell'immagine (i bordi
+// bianchi di "Intera" restano bianchi). +100 = 4 volte, -100 = tutto grigio.
+function applyContrast(ctx, x, y, w, h, amount) {
+  const f = amount >= 0 ? 1 + amount * 3 / 100 : 1 + amount / 100;
+  const im = ctx.getImageData(x, y, w, h), d = im.data;
+  for (let i = 0; i < d.length; i += 4) for (let k = 0; k < 3; k++) d[i + k] = (d[i + k] - 128) * f + 128;
+  ctx.putImageData(im, x, y);
 }
 
 // ============================================================================
@@ -1996,6 +2007,15 @@ function cardEditor(ed, c, idx) {
     const tWrap = h('label', { class: 'fld' }, h('span', { class: 'lab' }, 'Soglia: ', tVal, ' · più a destra = più nero'), slider);
     const showT = () => { tWrap.hidden = c.dither !== 'none'; };
     dither.querySelector('select').addEventListener('change', showT); showT();
+    // Contrasto: 0 al centro, doppio clic per tornare a 0.
+    const cFmt = v => (v > 0 ? '+' : '') + v;
+    const cVal = h('span', { class: 'tval' }, cFmt(c.contrast ?? 0));
+    const cSet = v => { c.contrast = v; cVal.textContent = cFmt(v); cSlider.value = v; changed(); };
+    const cSlider = h('input', { type: 'range', min: -100, max: 100, step: 1, value: c.contrast ?? 0, class: 'tslider', 'aria-label': 'Contrasto',
+      oninput: e => cSet(Number(e.target.value)), ondblclick: () => cSet(0) });
+    ed.append(h('div', { class: 'fld' },
+      h('span', { class: 'lab' }, 'Contrasto: ', cVal, ' ', info('Verso destra più contrasto, verso sinistra meno; 0 è l\'immagine com\'è. Doppio clic sul cursore per tornare a 0.')),
+      cSlider, h('div', { class: 'tscale' }, h('span', {}, '−100'), h('span', {}, '0'), h('span', {}, '+100'))));
     ed.append(tWrap, field(c, 'Inverti colori', 'invert', 'checkbox'), field(c, 'Didascalia (opzionale)', 'caption'));
   }
 }
