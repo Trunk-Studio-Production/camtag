@@ -12,12 +12,15 @@ from datetime import date
 from pathlib import Path
 
 TYPES = {"prime", "macro", "zoom", "anamorphic", "probe", "specialty"}
-COVERAGES = {"S35", "S35+", "FF", "LF", "65"}
+COVERAGES = {"MFT", "S35", "S35+", "FF", "LF", "65"}
+# Attacchi: stesse sigle di MOUNTS in companion/index.html.
+MOUNTS = {"PL", "LPL", "EF", "RF", "E", "L", "Z", "X", "G", "MFT", "F", "M", "EF-M",
+          "SA", "A", "K", "PV", "SP70", "PV65", "B4"}
 FIELDS = [
     "id", "brand", "series", "seriesCode", "name", "type",
     "focal", "focalMin", "focalMax", "tstop", "tstopLong", "stopType",
     "mod_m", "front_mm", "filterThread", "coverage", "imageCircle_mm",
-    "squeeze", "sources", "checked", "notes",
+    "squeeze", "mounts", "sources", "checked", "notes",
 ]
 ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9.]+)*$")
 CODE_RE = re.compile(r"^[A-Z][A-Z0-9]{1,3}$")
@@ -99,6 +102,10 @@ def check_lens(l, errs, warns):
             e("zoom anamorfico con squeeze non valido")
     elif sq is not None:
         e("squeeze solo per le anamorfiche e gli zoom anamorfici")
+
+    mo = l.get("mounts")
+    if mo is not None and not (isinstance(mo, list) and mo and len(set(mo)) == len(mo) and all(m in MOUNTS for m in mo)):
+        e(f"mounts {mo} non è null o una lista di sigle tra {sorted(MOUNTS)}")
 
     src = l.get("sources")
     if not (isinstance(src, list) and src and all(isinstance(s, str) and s.startswith("http") for s in src)):

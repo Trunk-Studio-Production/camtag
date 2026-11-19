@@ -50,11 +50,11 @@ Ogni lente ha **tutti** i campi qui sotto (quelli non pertinenti valgono `null`)
 | `focalMin`, `focalMax` | numero, mm | Solo per gli zoom. |
 | `tstop` | numero | Apertura massima (negli zoom: alla focale corta): T, oppure f se `stopType` è `f`. |
 | `tstopLong` | numero | Solo per gli zoom con ramping: T alla focale lunga. `null` se l'apertura è costante. |
-| `stopType` | stringa | `T` di norma; `f` quando il costruttore pubblica solo l'apertura f (Leitz M 0.8). Sulla lens chart il valore compare come `f1,4`. |
+| `stopType` | stringa | `T` di norma; `f` quando il costruttore pubblica solo l'apertura f (Leitz M 0.8, tutte le ottiche fotografiche). Sulla lens chart il valore compare come `f1,4`. |
 | `mod_m` | numero, m | Distanza minima di messa a fuoco **dal piano focale**, come pubblicata. |
 | `front_mm` | numero, mm | Diametro esterno frontale, quello che serve per l'anello del mattebox. |
 | `filterThread` | stringa | Filettatura filtri come pubblicata: `M82`, oppure con passo `M105x0.75`. `null` se non c'è o non è pubblicata. |
-| `coverage` | stringa | Classe: `S35`, `S35+`, `FF`, `LF`, `65` (vedi convenzioni). |
+| `coverage` | stringa | Classe: `MFT`, `S35`, `S35+`, `FF`, `LF`, `65` (vedi convenzioni). |
 | `imageCircle_mm` | numero, mm | Cerchio immagine se pubblicato in mm. |
 | `squeeze` | numero | Anamorfiche fisse e zoom anamorfici (es. `2`); `null` sugli altri. Sulla lens chart va accanto al nome della serie (`×2`). |
 | `sources` | lista di URL | Le pagine o i PDF del costruttore da cui sono stati letti i valori. |
@@ -80,8 +80,9 @@ chiavi mancanti.
   - Usate le unità metriche pubblicate. Dove la fonte dà solo piedi e pollici
     (Panavision in parte, TLS, serie vintage) il valore è convertito e
     `notes` riporta l'originale.
-- **Copertura.** È la classe dichiarata dal costruttore, ricondotta a cinque
-  valori: `S35`; `S35+`, più grande del Super 35 ma non full frame (classe
+- **Copertura.** È la classe dichiarata dal costruttore, ricondotta a sei
+  valori: `MFT` (Micro Quattro Terzi, solo ottiche fotografiche); `S35` (anche
+  l'APS-C delle ottiche fotografiche, classe approssimata); `S35+`, più grande del Super 35 ma non full frame (classe
   nostra: Tokina 25-75 "super35+", Blazar Cato 40 e 55 con formato 28,8×24);
   `FF` (fino a ~46,5 mm, compresi "FF+", "VV/FF", "Full Frame and beyond");
   `LF` (ARRI Large Format); `65` (formato 65 mm, cerchio ~60 mm: ZEISS
@@ -99,6 +100,13 @@ chiavi mancanti.
   Laowa Probe Zoom sono `zoom`, non `probe`.
 - **Solo mirrorless.** Sono incluse anche le ottiche cine (T-stop, ghiere a
   ingranaggi) senza attacco PL; l'attacco è in `notes`.
+- **Ottiche fotografiche** (dal 2026-11-19: Sony, Panasonic LUMIX, Sigma,
+  Voigtländer): catalogo attuale del costruttore, `stopType: "f"`, zoom ad
+  apertura variabile con `tstopLong`. `front_mm` è il diametro massimo del
+  barile pubblicato (non un anello per mattebox); `filterThread` è la
+  filettatura frontale. La stessa ottica in più attacchi è una voce sola, con
+  gli attacchi in `notes`. L'id aggiunge l'apertura (`sony-fe-50-f1.4-gm`)
+  perché nella stessa serie ci sono più ottiche con la stessa focale.
 - **Ordine** nel file: raggruppato per marca e serie. L'ordine di
   visualizzazione lo decide lo strumento web.
 
@@ -300,8 +308,26 @@ chiavi mancanti.
 | Vantage | HAWK V-Plus 1.3x Zoom | HPZ3 | 3 | S35 |
 | Vantage | HAWK V-Plus Vintage'74 1.3x Zoom | HZV3 | 3 | S35 |
 | Vantage | HAWK V-Series | HVS | 13 | S35 |
+| Sigma | Reflex (foto) | SRX | 44 | FF/S35 |
+| Sigma | Art (reflex) (foto) | SRA | 19 | FF/S35 |
+| Sigma | Sports (reflex) (foto) | SRS | 5 | FF |
+| Sigma | Contemporary (reflex) (foto) | SRC | 5 | FF/S35 |
+| Sigma | DG Art (foto) | SGA | 19 | FF |
+| Sigma | DG Contemporary (foto) | SGC | 15 | FF |
+| Sigma | DG Sports (foto) | SGS | 6 | FF |
+| Sigma | DC Contemporary (foto) | SDC | 10 | S35 |
+| Sigma | DC Art (foto) | SDA | 1 | S35 |
+| Sony | FE (foto) | SFE | 58 | FF |
+| Sony | E PZ (foto) | SEP | 6 | S35 |
+| Sony | FE PZ (foto) | SPZ | 2 | FF |
+| Panasonic | LUMIX G Leica DG (foto) | LDG | 15 | MFT |
+| Panasonic | LUMIX G (foto) | LMG | 14 | MFT |
+| Panasonic | LUMIX S PRO (foto) | LSP | 5 | FF |
+| Panasonic | LUMIX S (foto) | LMS | 17 | FF |
+| Voigtländer | Nokton (foto) | VNK | 33 | FF/S35/MFT |
+| Voigtländer | Super Nokton (foto) | VSN | 1 | MFT |
 
-Totale: 1269 lenti, 192 serie. Verificate il 2026-11-17 le prime 32 serie, il 2026-11-18 le altre fino a Xeen, il 2026-11-19 le 82 serie aggiunte in fondo alla tabella.
+Totale: 1544 lenti, 210 serie. Verificate il 2026-11-17 le prime 32 serie, il 2026-11-18 le altre fino a Xeen, il 2026-11-19 le serie aggiunte in fondo alla tabella (cine, poi le ottiche fotografiche).
 
 Gli Angénieux EZ cambiano focale e T secondo il blocco posteriore montato
 (S35 o FF/VistaVision): ogni zoom compare due volte, una voce per
@@ -358,7 +384,10 @@ come scheda tecnica ufficiale:
 - Panavision: www.panavision.com (pagine prodotto con la tabella della serie;
   copie del sito 2019-2020 su web.archive.org solo come conferma)
 - Vantage: www.vantagefilm.com (pagine prodotto, data sheet PDF, Lens Table)
-- Sigma (Aizu, Classic, AF Cine): www.sigma-global.com
+- Sigma (Aizu, Classic, AF Cine e ottiche foto, anche fuori produzione): www.sigma-global.com
+- Sony: www.sony.jp (schede spec.html)
+- Panasonic: panasonic.jp (LUMIX S), panasonic.com UK e Canada (LUMIX G)
+- Voigtländer: www.cosina.co.jp/voigtlander/en/
 - NiSi: en.nisioptics.com e la brochure NiSi 2024
 - Whitepoint Optics, TLS, Schneider-Kreuznach, P+S Technik: siti dei
   rispettivi costruttori (brochure Cine-Xenar III dalla copia su lensrentals.com)
