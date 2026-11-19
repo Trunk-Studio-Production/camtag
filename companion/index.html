@@ -109,13 +109,14 @@
   .fbtn, .full-only { display: none; }
 
   /* ---------- Componenti ---------- */
-  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--panel); overflow: hidden; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--panel); }
   .seg button { flex: 1; border: 0; border-radius: 0; background: none; padding: 7px 12px; white-space: nowrap; }
-  .seg button + button { border-left: 1px solid var(--line); }
-  /* Gli angoli esterni seguono quelli del contenitore, così il bordo del selezionato non viene tagliato. */
+  /* Separatori e bordo del selezionato sono ombre esterne da 1 px: cadono proprio sul bordo
+     del contenitore e sul separatore, invece di affiancarli (a mezzo pixel si vedevano due righe). */
+  .seg button + button { box-shadow: -1px 0 0 var(--line); }
   .seg button:first-child { border-top-left-radius: calc(var(--r-s) - 1px); border-bottom-left-radius: calc(var(--r-s) - 1px); }
   .seg button:last-child { border-top-right-radius: calc(var(--r-s) - 1px); border-bottom-right-radius: calc(var(--r-s) - 1px); }
-  .seg button.on { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 600; }
+  .seg button.on { position: relative; background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent); font-weight: 600; }
   .seg button:focus-visible { outline-offset: -2px; }
   .pills { display: flex; flex-wrap: wrap; gap: 6px; }
   .pill { position: relative; display: inline-flex; align-items: center; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px;
