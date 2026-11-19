@@ -87,7 +87,7 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 
 - `/camtag/NN_nome.bmp` orizzontale 792×528, `/camtag/NN_nome.p.bmp` verticale
   528×792. BMP 1 bit non compresso, palette 0 = nero, 1 = bianco. Ordine = nome.
-- Nomi riservati: `NN_lenschart[-2…]` (pagine da 11 righe) e `NN_filters`.
+- Nomi riservati: `NN_lenschart[-2…]` (pagine da 11 lenti al massimo) e `NN_filters`.
 - `/camtag/project.json`: il progetto dello strumento web, inviato con le card
   (anche nello zip) e riletto con "Importa dall'X3". Il firmware lo ignora. Il
   lavoro nel browser sta solo nel localStorage: questo file è la copia che resta.
@@ -120,7 +120,9 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 
 - Solo X3 per ora; l'X4 è un futuro lontano.
 - Decimali sulle schermate: sempre il punto (0.9), senza opzione.
-- Lens chart: focale, T, MOD, Ø frontale (più piccolo, dato secondario). Niente
+- Lens chart: focale, T, MOD, Ø frontale (più piccolo, dato secondario, si può
+  nascondere: `state.lensFront`). Le lenti a focale fissa si chiamano "prime"
+  anche nei testi in italiano, mai "fissi". Niente
   colonna serie: in basso un riquadro con il nome per esteso del set principale
   e "Serie (SIGLA)" per le altre; la sigla piccola compare accanto alla focale
   solo sulle lenti fuori dal set principale (su tutte se non c'è). In negativo
@@ -128,7 +130,17 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   diverso, es. l'unica macro); con un pareggio tra serie non si evidenzia per
   serie. Si può forzare per ogni lente (auto / sempre / mai). Scala del testo
   in base al numero di lenti: con poche lenti ogni lente va su due righe grandi,
-  con tante torna la tabella; la misura è unica per tutte le pagine.
+  con tante torna la tabella; la misura è unica per tutte le pagine. La focale
+  di un prime è sempre il testo più grande: T e MOD stanno a 0,8 della sua misura
+  (`VAL`), e in tabella le colonne prendono la larghezza del contenuto.
+  Eccezione per gli zoom: la loro escursione può scendere fino a 0,6 della
+  focale dei prime (`ZOOM`), così non rimpicciolisce tutta la tabella.
+  In orizzontale la tabella si divide in due affiancate (prima metà a sinistra)
+  quando la focale cresce almeno del 20% (`TWO_COLS_GAIN`): in pratica da 6
+  lenti. Le pagine restano da 11 lenti in entrambi gli orientamenti.
+  Opzione "Prime e zoom su pagine separate" (`state.lensSplit`, `lensGroups`):
+  prima le pagine dei prime, poi quelle degli zoom; ogni gruppo è una lens
+  chart a sé, con le sue misure, la sua legenda e le sue lenti in negativo.
 - ND e diottrie: +/− sul dispositivo, scorrendo solo i valori del kit scelto
   nello strumento web. Nella scala dell'ND entrano anche i totali fatti con
   **due vetri** spuntati nello strumento (`ndCombos`, `ndComboList`: mai un

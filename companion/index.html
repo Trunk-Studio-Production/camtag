@@ -239,7 +239,7 @@ const KEY_POS = { A: 0.14, B: 0.44, C: 0.57, D: 0.86 };
 const ND_VALUES = [0.3, 0.6, 0.9, 1.2, 1.5, 1.8, 2.1, 2.4];
 const DIOPTERS = [0.25, 0.5, 1, 2, 3, 4];
 const DIO_LABEL = { 0.25: '+1/4', 0.5: '+1/2', 1: '+1', 2: '+2', 3: '+3', 4: '+4' };
-const LENS_TYPES = { prime: 'Fisso', macro: 'Macro', zoom: 'Zoom', anamorphic: 'Anamorfico', probe: 'Probe', specialty: 'Speciale' };
+const LENS_TYPES = { prime: 'Prime', macro: 'Macro', zoom: 'Zoom', anamorphic: 'Anamorfico', probe: 'Probe', specialty: 'Speciale' };
 
 const DEFAULTS = {
   lens:  () => ({ formats: 'both', type: 'lens', brand: 'MARCA', series: 'Serie', focal: '35', tstop: '1.8', mod: '0.35 m', front: '95 mm', thread: '', notes: '' }),
@@ -251,7 +251,7 @@ const TYPE_LABEL = { lens: 'Lente', crew: 'Crew', notes: 'Note', patch: 'Patch' 
 
 function freshState() {
   return {
-    version: 6, device: 'x3', production: '',
+    version: 6, device: 'x3', production: '', lensSplit: false, lensFront: true,
     auto: { lenschart: true, filters: true },
     lenses: [],
     filters: { ndFormat: 'density', ndType: 'ND', nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], ndCombos: [], dio: [], effects: [], stages: [null, null, null], previewNd: 0, previewDio: 0 },
@@ -263,7 +263,7 @@ function migrate(s) {
   if (!s || !Array.isArray(s.cards)) return s;
   for (const c of s.cards) { if (!c.formats) c.formats = 'both'; delete c.orient; delete c.mount; }
   const f = freshState(), hadStages = Array.isArray(s.filters?.stages);
-  for (const k of ['production', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
+  for (const k of ['production', 'lensSplit', 'lensFront', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
   s.filters = Object.assign(f.filters, s.filters);
   if ('ir' in s.filters) { if (s.filters.ir) s.filters.ndType = 'IRND'; delete s.filters.ir; }  // vecchia casella IRND
   // Vecchi "filtri di stile" (un elemento per filtro montato) -> kit con gradazioni montate.
@@ -457,10 +457,23 @@ function setOverride(dbId, key, raw, type) {
   saveOverrides();
 }
 
-function sortedLenses() { return state.lenses.map(effective).sort((a, b) => focalSort(a) - focalSort(b) || (a.seriesCode || '').localeCompare(b.seriesCode || '')); }
+function sortedLenses(list = state.lenses) { return list.map(effective).sort((a, b) => focalSort(a) - focalSort(b) || (a.seriesCode || '').localeCompare(b.seriesCode || '')); }
+// Uno zoom è una lente con un'escursione al posto della focale.
+const isZoom = l => l.focal == null;
+// Gruppi della lens chart: tutte le lenti insieme, oppure prime e zoom separati
+// (`state.lensSplit`). Ogni gruppo ha le sue pagine, le sue misure, la sua
+// legenda e le sue lenti in negativo, come fosse una lens chart a sé.
+function lensGroups() {
+  const zooms = state.lenses.filter(isZoom), primes = state.lenses.filter(l => !isZoom(l));
+  return state.lensSplit && zooms.length && primes.length ? [primes, zooms] : [state.lenses];
+}
+// Pagine: `rows` le lenti della pagina, `group` tutte quelle del suo gruppo, in ordine.
 function lensPages() {
-  const all = sortedLenses(), pages = [];
-  for (let i = 0; i < all.length; i += LENS_ROWS_PER_PAGE) pages.push(all.slice(i, i + LENS_ROWS_PER_PAGE));
+  const pages = [];
+  for (const g of lensGroups()) {
+    const group = sortedLenses(g);
+    for (let i = 0; i < group.length; i += LENS_ROWS_PER_PAGE) pages.push({ rows: group.slice(i, i + LENS_ROWS_PER_PAGE), group });
+  }
   return pages;
 }
 function plurality(items) {
@@ -470,8 +483,9 @@ function plurality(items) {
   return sorted[0][0];
 }
 // Evidenziata se di serie diversa dal set principale o di tipo diverso dal resto.
-function outliers() {
-  const L = state.lenses, out = new Set();
+function outliers(L) {
+  if (!L) return new Set(lensGroups().flatMap(g => [...outliers(g)]));  // tutte, gruppo per gruppo
+  const out = new Set();
   const key = l => `${l.brand}|${l.series}`;
   const mainSeries = L.length > 1 ? plurality(L.map(key)) : null;
   const mainType = L.length > 1 ? plurality(L.map(l => l.type || 'prime')) : null;
@@ -515,8 +529,8 @@ function dims(layout) { const { w, h } = DEVICES[state.device]; return layout ==
 // ============================================================================
 // Schermata: lens chart
 // ============================================================================
-function drawLensChart(ctx, W, H, rows, pageIdx, pageCount) {
-  const out = outliers();
+function drawLensChart(ctx, W, H, { rows, group }, pageIdx, pageCount) {
+  const out = outliers(group);
   const pad = Math.round(W * 0.035);
   const barH = Math.round(H > W ? 64 : 56);
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, barH);
@@ -527,7 +541,7 @@ function drawLensChart(ctx, W, H, rows, pageIdx, pageCount) {
 
   // Righe alte quanto lo spazio permette: poche lenti = testo grande. Tutte le
   // pagine usano la misura della pagina più piena, così la scala non cambia.
-  const n = Math.max(1, Math.min(state.lenses.length, LENS_ROWS_PER_PAGE));
+  const n = Math.max(1, Math.min(group.length, LENS_ROWS_PER_PAGE));
   const footH = H > W ? 44 : 36;
   const avail = H - barH - footH - pad * 0.5;
   const tall = (avail / n) >= 120;  // abbastanza spazio: ogni lente su due righe
@@ -542,10 +556,12 @@ function drawLensChart(ctx, W, H, rows, pageIdx, pageCount) {
     return;
   }
   // Sigla piccola solo sulle lenti fuori dal set principale (o su tutte se non c'è).
-  const leg = seriesLegend();
+  const leg = seriesLegend(group);
   const tag = l => leg.main && seriesKey(l) === leg.main ? '' : (l.seriesCode || '');
+  // Dati accanto alla focale: T, MOD e, se l'utente lo vuole, il Ø frontale (sempre ultimo, indice 2).
   const specs = l => [['T', tText(l) + star(l, 'tstop', 'tstopLong')], ['MOD m', fmt(l.mod_m) + star(l, 'mod_m')],
-                      ['Ø mm', (l.front_mm != null ? fmt(l.front_mm, 1) : '—') + star(l, 'front_mm')]];
+                      ...(state.lensFront ? [['Ø mm', (l.front_mm != null ? fmt(l.front_mm, 1) : '—') + star(l, 'front_mm')]] : [])];
+  const NS = state.lensFront ? 3 : 2;
   // Una sola misura per tipo di testo su tutta la pagina: la più grande che entra ovunque.
   const sizeFor = (texts, weight, maxW, maxSize) => Math.min(...texts.map(t => fitFont(ctx, t, weight, maxW, maxSize)));
   // Righe sottili allineate ai pixel e spesse 2: a mezzo pixel diventerebbero
@@ -553,6 +569,9 @@ function drawLensChart(ctx, W, H, rows, pageIdx, pageCount) {
   const rule = y => { ctx.fillStyle = '#000'; ctx.fillRect(Math.round(pad), Math.round(y), Math.round(W - pad * 2), 2); };
   const inner = W - pad * 2;
   const SMALL = 0.72;  // Ø frontale: dato secondario, più piccolo (ma leggibile)
+  const VAL = 0.8;     // T e MOD rispetto alla focale, che è sempre il testo più grande
+  const ZOOM = 0.6;    // eccezione: l'escursione di uno zoom può scendere fin qui rispetto alla focale
+  const TWO_COLS_GAIN = 1.2;  // due tabelle affiancate solo se la focale cresce almeno di tanto
   const smallSize = v => Math.min(v, Math.max(18, Math.round(v * SMALL)));
 
   // Riquadro in basso con il nome della serie per esteso (e la legenda delle sigle).
@@ -562,21 +581,24 @@ function drawLensChart(ctx, W, H, rows, pageIdx, pageCount) {
 
   if (tall) {
     // Sopra: focale grande (e sigla piccola). Sotto: T, MOD, Ø con l'etichetta sopra.
-    const fs = sizeFor(rows.map(focalText), 900, inner * 0.7 - 20, rowH * 0.42);
-    const ts = Math.round(fs * 0.36);
+    // Gli zoom non rimpiccioliscono le focali dei prime: hanno la loro misura, mai più grande.
+    const focalSize = set => set.length ? sizeFor(set.map(focalText), 900, inner * 0.7 - 20, rowH * 0.42) : null;
+    const zsFit = focalSize(rows.filter(isZoom)), fs = focalSize(rows.filter(l => !isZoom(l))) ?? zsFit;
+    const zs = Math.min(fs, zsFit ?? fs);
     const ls = Math.max(14, Math.round(rowH * 0.075));
-    const groupW = inner / 3;
-    const vs = sizeFor(rows.flatMap(l => specs(l).map(s => s[1])), 800, groupW - 34, rowH * 0.26);
+    const groupW = inner / NS;
+    const vs = Math.min(sizeFor(rows.flatMap(l => specs(l).map(s => s[1])), 800, groupW - 34, rowH * 0.26), Math.round(fs * VAL));
     rows.forEach((l, i) => {
       const y = top + i * rowH, line1 = y + rowH * 0.27;
       const labelY = y + rowH * 0.55, valueY = labelY + ls * 0.6 + vs * 0.62;
       if (i > 0) rule(y);
-      ctx.font = `900 ${fs}px ${FONT}`;
+      const s = isZoom(l) ? zs : fs;
+      ctx.font = `900 ${s}px ${FONT}`;
       const fw = ctx.measureText(focalText(l)).width;
-      if (out.has(l.uid)) { ctx.fillStyle = '#000'; ctx.fillRect(pad, line1 - fs * 0.62, fw + 20, fs * 1.18); ctx.fillStyle = '#fff'; }
+      if (out.has(l.uid)) { ctx.fillStyle = '#000'; ctx.fillRect(pad, line1 - s * 0.62, fw + 20, s * 1.18); ctx.fillStyle = '#fff'; }
       ctx.textAlign = 'left'; ctx.fillText(focalText(l), pad + 10, line1);
       ctx.fillStyle = '#000';
-      if (tag(l)) { ctx.font = `800 ${ts}px ${FONT}`; ctx.fillText(tag(l), pad + fw + 32, line1 + fs * 0.12); }
+      if (tag(l)) { ctx.font = `800 ${Math.round(s * 0.36)}px ${FONT}`; ctx.fillText(tag(l), pad + fw + 32, line1 + s * 0.12); }
       specs(l).forEach(([k, v], j) => {
         const x = pad + 10 + j * groupW;
         ctx.font = `600 ${ls}px ${FONT}`; ctx.fillText(k, x, labelY); // unità minuscole: "MOD m", "Ø mm"
@@ -586,28 +608,66 @@ function drawLensChart(ctx, W, H, rows, pageIdx, pageCount) {
     return;
   }
 
-  // Tabella: una riga per lente.
-  const cols = [['FOC', 0], ['T', 0.36], ['MOD m', 0.56], ['Ø mm', 0.81]];
-  const colX = f => pad + f * inner;
-  const gap = 14;
-  ctx.font = `700 ${Math.round(headH * 0.5)}px ${FONT}`;
-  for (const [t, f] of cols) ctx.fillText(t, colX(f) + (f === 0 ? 8 : 0), barH + headH / 2 + 2);
-  ctx.fillRect(pad, top - 2, W - pad * 2, 3);
-  const focW = colX(cols[1][1]) - colX(0) - gap;
-  const anyTag = rows.some(tag);
-  const fs = sizeFor(rows.map(focalText), 900, (anyTag ? focW * 0.66 : focW) - 16, rowH * 0.62);
-  const ts = Math.max(15, Math.round(Math.min(fs * 0.45, rowH * 0.36)));
-  const cellW = j => (j + 2 < cols.length ? colX(cols[j + 2][1]) : W - pad) - colX(cols[j + 1][1]) - gap;
-  const vs = Math.min(...rows.flatMap(l => specs(l).map((s, j) => fitFont(ctx, s[1], 800, cellW(j) / (j === 2 ? SMALL : 1), rowH * 0.5))));
-  rows.forEach((l, i) => {
-    const y = top + i * rowH, mid = y + rowH / 2 + 1;
-    if (i > 0) rule(y);
-    if (out.has(l.uid)) { ctx.fillStyle = '#000'; ctx.fillRect(colX(0), y + 3, focW, rowH - 6); ctx.fillStyle = '#fff'; }
-    ctx.font = `900 ${fs}px ${FONT}`; ctx.fillText(focalText(l), colX(0) + 8, mid);
-    if (tag(l)) { const fw = ctx.measureText(focalText(l)).width; ctx.font = `800 ${ts}px ${FONT}`; ctx.fillText(tag(l), colX(0) + 8 + fw + 8, mid + fs * 0.1); }
+  // Tabella: una riga per lente. Le colonne prendono la larghezza del loro
+  // contenuto e una sola scala regola tutto: la focale più grande che entra,
+  // con i dati a VAL della sua misura. L'escursione di uno zoom è lunga e
+  // stringerebbe tutta la tabella: può scendere fino a ZOOM della focale, e
+  // risale se avanza spazio. Si misura su tutte le lenti, non solo su quelle
+  // della pagina, così ogni pagina ha le stesse misure.
+  const heads = ['FOC', 'T', 'MOD m', 'Ø mm'].slice(0, NS + 1);
+  const gap = 20, box = 8;  // box: margine dentro il riquadro della focale
+  const GUTTER = 32;        // tra due tabelle affiancate, con la riga verticale in mezzo
+  const all = group;
+  const width = (t, weight, size) => { ctx.font = `${weight} ${size}px ${FONT}`; return ctx.measureText(t).width; };
+  const valSize = (fs, j) => { const v = Math.round(fs * VAL); return j === 2 ? smallSize(v) : v; };
+  // Misure con `count` tabelle affiancate, ognuna con la sua parte di righe.
+  const fit = count => {
+    const per = Math.ceil(n / count);
+    const headH = Math.round(Math.min(46, Math.max(H > W ? 34 : 28, avail / per * 0.32)));
+    const rowH = Math.min((avail - headH) / per, H * 0.45);
+    const tableW = Math.floor((inner - GUTTER * (count - 1)) / count);
+    const hs = Math.round(headH * 0.5);
+    const tagSize = s => Math.max(15, Math.round(Math.min(s * 0.45, rowH * 0.36)));
+    const focW = (l, s) => box + width(focalText(l), 900, s) + (tag(l) ? box + width(tag(l), 800, tagSize(s)) : 0) + box;
+    const colWidths = (fs, zs) => [
+      Math.max(box + width(heads[0], 700, hs), ...all.map(l => focW(l, isZoom(l) ? zs : fs))),
+      ...heads.slice(1).map((_, j) => Math.max(width(heads[j + 1], 700, hs), ...all.map(l => width(specs(l)[j][1], 800, valSize(fs, j))))),
+    ];
+    const total = w => w.reduce((a, b) => a + b, 0) + gap * NS;
+    const zoomMin = fs => Math.round(fs * ZOOM);
+    let fs = Math.round(rowH * 0.62), w = colWidths(fs, zoomMin(fs));
+    while (total(w) > tableW && fs > 16) { fs--; w = colWidths(fs, zoomMin(fs)); }
+    let zs = zoomMin(fs);
+    if (all.some(isZoom)) for (let z = fs; z > zs; z--) { const t = colWidths(fs, z); if (total(t) <= tableW) { zs = z; w = t; break; } }
+    // Lo spazio che avanza va tra le colonne: l'ultima finisce sul margine destro.
+    return { count, per, headH, rowH, tableW, hs, tagSize, fs, zs, w, extra: Math.max(0, (tableW - total(w)) / NS) };
+  };
+  // In orizzontale le lenti si dividono su due tabelle affiancate (prima metà a
+  // sinistra) quando il testo ci guadagna davvero: righe alte il doppio in metà larghezza.
+  const one = fit(1), two = W > H && n > 1 ? fit(2) : null;
+  const L = two && two.fs >= one.fs * TWO_COLS_GAIN ? two : one;
+  const { fs, zs, w } = L, tTop = barH + L.headH;
+  for (let c = 0; c < L.count; c++) {
+    const part = rows.slice(c * L.per, (c + 1) * L.per);
+    if (!part.length) break;
+    const x0 = pad + c * (L.tableW + GUTTER);
+    const x = [x0]; for (let j = 1; j <= NS; j++) x.push(Math.round(x[j - 1] + w[j - 1] + gap + L.extra));
     ctx.fillStyle = '#000';
-    specs(l).forEach(([, v], j) => { ctx.font = `800 ${j === 2 ? smallSize(vs) : vs}px ${FONT}`; ctx.fillText(v, colX(cols[j + 1][1]), mid); });
-  });
+    if (c > 0) ctx.fillRect(x0 - GUTTER / 2 - 1, barH + 8, 2, H - footH - barH - 16);
+    ctx.font = `700 ${L.hs}px ${FONT}`;
+    heads.forEach((t, j) => ctx.fillText(t, x[j] + (j === 0 ? box : 0), barH + L.headH / 2 + 2));
+    ctx.fillRect(x0, tTop - 2, L.tableW, 3);
+    part.forEach((l, i) => {
+      const y = tTop + i * L.rowH, mid = y + L.rowH / 2 + 1;
+      if (i > 0) ctx.fillRect(x0, Math.round(y), L.tableW, 2);
+      if (out.has(l.uid)) { ctx.fillStyle = '#000'; ctx.fillRect(x0, y + 3, Math.round(w[0]), L.rowH - 6); ctx.fillStyle = '#fff'; }
+      const s = isZoom(l) ? zs : fs;
+      ctx.font = `900 ${s}px ${FONT}`; ctx.fillText(focalText(l), x0 + box, mid);
+      if (tag(l)) { const fw = ctx.measureText(focalText(l)).width; ctx.font = `800 ${L.tagSize(s)}px ${FONT}`; ctx.fillText(tag(l), x0 + box + fw + box, mid + s * 0.1); }
+      ctx.fillStyle = '#000';
+      specs(l).forEach(([, v], j) => { ctx.font = `800 ${valSize(fs, j)}px ${FONT}`; ctx.fillText(v, x[j + 1], mid); });
+    });
+  }
 }
 
 // Serie della produzione: quella principale per esteso, le altre come "SIGLA = nome".
@@ -617,8 +677,7 @@ function seriesName(l) {
   const name = s.toLowerCase().startsWith(b.toLowerCase()) ? s : `${b} ${s}`.trim();
   return name + (l.squeeze ? ` ×${fmt(l.squeeze)}` : '');
 }
-function seriesLegend() {
-  const L = state.lenses.map(effective);
+function seriesLegend(L = state.lenses.map(effective)) {
   const keys = [...new Set(L.map(seriesKey))];
   const main = keys.length === 1 ? keys[0] : plurality(L.map(seriesKey));
   const first = k => L.find(l => seriesKey(l) === k);
@@ -924,7 +983,7 @@ function renderScreen(s, layout, opts = {}) {
   const [cv, ctx] = newCanvas(W, H);
   if (s.kind === 'lenschart') {
     const pages = lensPages();
-    drawLensChart(ctx, W, H, pages[s.page] || [], s.page, pages.length);
+    drawLensChart(ctx, W, H, pages[s.page] || { rows: [], group: [] }, s.page, pages.length);
   } else if (s.kind === 'filters') {
     const L = drawFiltersBackground(ctx, W, H);
     if (opts.preview) {
@@ -1125,7 +1184,11 @@ function lensEditor(ed) {
   ed.append(h('h2', {}, 'Lens chart'),
     h('label', { class: 'inline' }, h('input', { type: 'checkbox', checked: state.auto.lenschart, onchange: e => { state.auto.lenschart = e.target.checked; changed(); } }), 'Includi nell\'esportazione'),
     h('label', {}, 'Titolo (es. nome produzione)'),
-    h('input', { type: 'text', value: state.production, placeholder: 'LENS CHART', oninput: e => { state.production = e.target.value; changed(); } }));
+    h('input', { type: 'text', value: state.production, placeholder: 'LENS CHART', oninput: e => { state.production = e.target.value; changed(); } }),
+    h('label', { class: 'inline', style: 'margin-top:10px' }, h('input', { type: 'checkbox', checked: state.lensSplit, onchange: e => { state.lensSplit = e.target.checked; changed(true); } }), 'Prime e zoom su pagine separate'),
+    h('p', { class: 'hint' }, 'Prima le pagine dei prime, poi quelle degli zoom. Ogni gruppo ha la sua misura del testo: utile con tanti prime e pochi zoom.'),
+    h('label', { class: 'inline' }, h('input', { type: 'checkbox', checked: state.lensFront, onchange: e => { state.lensFront = e.target.checked; changed(); } }), 'Mostra il diametro frontale (Ø)'),
+    h('p', { class: 'hint' }, 'Senza il diametro restano focale, T e MOD, più grandi.'));
 
   // Lenti selezionate
   ed.append(h('h3', {}, `Lenti selezionate (${state.lenses.length})`));
