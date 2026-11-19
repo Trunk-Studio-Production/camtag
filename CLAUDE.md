@@ -23,6 +23,14 @@ costruttori di lenti e filtri nei dati vanno bene.
   `../data/*.json`, quindi va servito dalla radice del repo. Ha un
   **simulatore** (`simPress`/`renderSim`, solo da computer: sotto 700 px è nascosto) con tasti, rotazione, blocco e power:
   è la specifica di comportamento per il firmware, e i due devono restare allineati.
+  Barra e anteprima restano fisse mentre l'editor scorre: tre colonne da 1100 px,
+  due da 700 (striscia delle schermate e anteprima a sinistra), sotto i 700
+  anteprima compatta in alto che si apre a tutto schermo; `fitStage` tiene
+  anteprima e simulatore dentro lo schermo (il simulatore si scala). Nell'editor
+  le sezioni richiudibili si fanno con `section()` e le spiegazioni stanno dietro
+  una ⓘ (`info()`): in chiaro restano solo avvisi e stati vuoti. Le preferenze
+  dell'interfaccia (sezioni aperte, orientamento, anteprima o simulatore) stanno
+  nel localStorage `camtag.ui.v1`: sono del browser, non entrano in `project.json`.
 - `data/lenses.json` — database lenti (schema in `data/README.md`), dati solo
   dalle schede dei costruttori, con la fonte per ogni lente. Mai modificarlo per
   un esemplare: le differenze (es. Ø frontale del noleggio) sono modifiche

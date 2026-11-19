@@ -14,94 +14,204 @@
 <style>
   :root {
     --bg: #f4f3ef; --panel: #ffffff; --ink: #161616; --muted: #6b6b66; --line: #dcdad3;
-    --accent: #161616; --accent-ink: #ffffff; --sel: #ecebe5; --danger: #a3261a;
+    --sel: #ecebe5; --danger: #a3261a; --track: #b4b2aa;
+    /* Accento: arancio da nastro camera, usato con parsimonia (primario, selezione, fuoco). */
+    --accent: #c2410c; --accent-ink: #ffffff; --accent-soft: #fbe7dc;
+    --r-s: 6px; --r-m: 8px; --r-l: 14px; --gap: 16px; --bar-h: 52px;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #121212; --panel: #1c1c1b; --ink: #ecebe6; --muted: #9a9993; --line: #33332f;
-      --accent: #ecebe6; --accent-ink: #121212; --sel: #2a2a27; --danger: #e0705f;
+      --sel: #2a2a27; --danger: #e0705f; --track: #5a5954;
+      --accent: #ff9255; --accent-ink: #1b0d04; --accent-soft: #3a2518;
     }
   }
   :root[data-theme="dark"] {
     --bg: #121212; --panel: #1c1c1b; --ink: #ecebe6; --muted: #9a9993; --line: #33332f;
-    --accent: #ecebe6; --accent-ink: #121212; --sel: #2a2a27; --danger: #e0705f;
+    --sel: #2a2a27; --danger: #e0705f; --track: #5a5954;
+    --accent: #ff9255; --accent-ink: #1b0d04; --accent-soft: #3a2518;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
   body { margin: 0; background: var(--bg); color: var(--ink);
          font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
-  header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-  header h1 { font-size: 16px; margin: 0; letter-spacing: .04em; }
-  header .sp { flex: 1; }
-  header select { width: auto; }
   button, select, input, textarea { font: inherit; color: inherit; }
-  button { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; cursor: pointer; }
-  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-s); padding: 7px 12px; cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
   button.danger { color: var(--danger); }
   button.small { padding: 3px 8px; font-size: 12px; }
-  button.on { background: var(--sel); border-color: var(--ink); }
+  button.icon { padding: 7px 0; width: 34px; }
+  button.on { background: var(--accent-soft); border-color: var(--accent); }
   button:disabled { opacity: .35; cursor: default; }
-  main { display: grid; grid-template-columns: 220px minmax(0, 1fr) 430px; gap: 16px; padding: 16px; align-items: start; }
-  @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
-  /* Il simulatore serve da computer: sul telefono resta solo l'anteprima. */
-  @media (max-width: 700px) { #modeRow { display: none; } }
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-width: 0; }
-  .panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
-  .panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 18px 0 8px; border-top: 1px solid var(--line); padding-top: 14px; }
-  #list { list-style: none; margin: 0 0 10px; padding: 0; }
-  #list li { display: flex; gap: 8px; align-items: center; padding: 7px 8px; border-radius: 6px; cursor: pointer; }
-  #list li.sel { background: var(--sel); }
-  #list li.off .t { text-decoration: line-through; color: var(--muted); }
-  #list li .n { color: var(--muted); font-variant-numeric: tabular-nums; width: 20px; }
-  #list li .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #list li .k { font-size: 11px; color: var(--muted); }
-  .add { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .stage { display: flex; flex-direction: column; gap: 10px; align-items: center; }
-  .frame { background: #8a8a85; padding: 14px; border-radius: 14px; max-width: 100%; }
-  /* Rimpicciolita, l'immagine 1 bit va ammorbidita (pixelated butterebbe via righe);
-     a 1:1 si vedono i pixel veri. */
-  canvas#preview { display: block; max-width: 100%; max-height: 72vh; height: auto; width: auto; image-rendering: auto; background: #fff; }
-  .frame.actual { max-width: none; overflow: auto; }
-  .frame.actual canvas#preview { max-width: none; max-height: none; image-rendering: pixelated; }
-  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: center; }
-  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
-  input.tslider { width: 100%; accent-color: var(--ink); }
-  label .tval { color: var(--ink); font-variant-numeric: tabular-nums; }
-  label .hint { opacity: .7; }
-  label.inline { display: inline-flex; gap: 6px; align-items: center; margin: 0; color: var(--ink); font-size: 13px; }
-  input[type=text], input[type=number], input[type=search], textarea, select { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  input[type=text], input[type=number], input[type=search], textarea, select { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-s); padding: 7px 8px; }
   textarea { min-height: 110px; resize: vertical; }
+  input.tslider { width: 100%; accent-color: var(--accent); }
+
+  /* ---------- Barra: sempre in vista, una riga sola ---------- */
+  header.bar { position: sticky; top: 0; z-index: 30; height: var(--bar-h); display: flex; align-items: center; gap: 8px;
+               padding: 0 var(--gap); background: var(--bg); border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .bar h1 { font-size: 16px; margin: 0; letter-spacing: .04em; }
+  .bar .dev { color: var(--muted); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .bar .sp { flex: 1; }
+  .bar button { flex: none; }
+  .dev-s, .bar .s { display: none; }
+
+  /* ---------- Riquadri a comparsa: menu e spiegazioni ---------- */
+  .pop { display: none; position: fixed; inset: auto; margin: 0; z-index: 1000; background: var(--panel); color: var(--ink);
+         border: 1px solid var(--line); border-radius: var(--r-m); box-shadow: 0 8px 24px rgba(0, 0, 0, .2); padding: 4px;
+         max-width: min(320px, calc(100vw - 16px)); overflow: visible; }
+  .pop.open { display: block; }
+  .menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 8px 12px; }
+  .menu button:hover { background: var(--sel); }
+  .tip { padding: 10px 12px; font-size: 13px; line-height: 1.45; white-space: pre-line; }
+  .info { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0;
+          border: 0; border-radius: 50%; background: none; color: var(--muted); vertical-align: middle; }
+  .info::before { content: "i"; display: block; width: 16px; height: 16px; border: 1.5px solid currentColor; border-radius: 50%;
+                  font: italic 700 11px/13px Georgia, "Times New Roman", serif; text-align: center; text-transform: none; letter-spacing: 0; }
+  .info:hover, .info[aria-expanded="true"] { color: var(--accent); }
+
+  /* ---------- Disposizione: tre colonne, schermate e anteprima fisse ---------- */
+  main { display: grid; grid-template-columns: 220px minmax(0, 1fr) 430px; gap: var(--gap); padding: var(--gap);
+         align-items: start; max-width: 1560px; margin: 0 auto; }
+  /* Sotto i 1100 px .work diventa il blocco fisso (un elemento sticky in una riga di
+     griglia alta quanto lui non resterebbe fermo); a tre colonne non esiste. */
+  .work { display: contents; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-m); padding: 12px; min-width: 0; }
+  .panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+  .screens, .stagecol { position: sticky; top: calc(var(--bar-h) + var(--gap)); }
+  .screens { max-height: calc(100dvh - var(--bar-h) - 2 * var(--gap)); overflow: auto; }
+  #editor { --pad: 12px; }
+
+  /* ---------- Schermate ---------- */
+  #list { list-style: none; margin: 0 0 10px; padding: 0; }
+  .scr { display: grid; grid-template-columns: 22px minmax(0, 1fr); column-gap: 6px; width: 100%; text-align: left;
+         border: 0; background: none; padding: 7px 8px; }
+  .scr:hover { background: var(--sel); }
+  .scr .n { grid-row: span 2; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .scr .t, .scr .d { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .scr .d { grid-column: 2; font-size: 11px; color: var(--muted); }
+  #list li.sel .scr { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+  #list li.off .t { text-decoration: line-through; color: var(--muted); }
+  #addBtn { width: 100%; }
+
+  /* ---------- Anteprima e simulatore ---------- */
+  .stagecol { display: flex; flex-direction: column; gap: 10px; align-items: center; min-width: 0; }
+  .pbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
+  .pbar-g { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
+  .pbar button, .pbar .seg button { padding: 7px 9px; }
+  #previewNote { margin: 0; text-align: center; }
+  .pages { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .pages:empty { display: none; }
+  #previewMode, #simMode { display: flex; flex-direction: column; gap: 10px; align-items: center; max-width: 100%; min-width: 0; }
+  .frame { position: relative; background: #8a8a85; padding: 14px; border-radius: var(--r-l); max-width: 100%; }
+  /* Rimpicciolita, l'immagine 1 bit va ammorbidita (pixelated butterebbe via righe);
+     a 1:1 si vedono i pixel veri. L'altezza massima la calcola fitStage(): l'anteprima
+     sta sempre tutta nello schermo. */
+  canvas#preview { display: block; max-width: 100%; max-height: var(--prev-max-h, 72vh); height: auto; width: auto; image-rendering: auto; background: #fff; }
+  .frame.actual { overflow: auto; max-height: calc(var(--prev-max-h, 72vh) + 28px); }
+  .frame.actual canvas#preview { max-width: none; max-height: none; image-rendering: pixelated; }
+  .fbtn, .full-only { display: none; }
+
+  /* ---------- Componenti ---------- */
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--panel); overflow: hidden; }
+  .seg button { flex: 1; border: 0; border-radius: 0; background: none; padding: 7px 12px; white-space: nowrap; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.on { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 600; }
+  .seg button:focus-visible { outline-offset: -2px; }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pill { position: relative; display: inline-flex; align-items: center; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px;
+          background: var(--panel); font-size: 13px; font-variant-numeric: tabular-nums; cursor: pointer; user-select: none; -webkit-user-select: none; }
+  .pill input, .switch input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
+  .pill:has(:checked) { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
+  .pill:has(:focus-visible), .switch:has(:focus-visible) .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .switch { position: relative; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+  .switch .track { flex: none; position: relative; width: 34px; height: 20px; border-radius: 999px; background: var(--track); transition: background .15s; }
+  .switch .track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff;
+                          box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
+  .switch:has(:checked) .track { background: var(--accent); }
+  .switch:has(:checked) .track::after { transform: translateX(14px); }
+  .sw-row { display: flex; align-items: center; gap: 4px; margin-top: 10px; }
+  /* Sezione richiudibile, con il riepilogo a destra nella riga del titolo. */
+  .sec { border-top: 1px solid var(--line); margin: 14px calc(-1 * var(--pad)) 0; padding: 0 var(--pad); }
+  .sec + .sec { margin-top: 0; }
+  .sec > summary { display: flex; align-items: center; gap: 6px; padding: 11px 0; cursor: pointer; list-style: none; user-select: none; -webkit-user-select: none; }
+  .sec > summary::-webkit-details-marker { display: none; }
+  .sec > summary::before { content: "▸"; flex: none; width: 12px; color: var(--muted); }
+  .sec[open] > summary::before { content: "▾"; }
+  .sec-t { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
+  .sec-s { flex: 1; min-width: 0; text-align: right; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sec-s:empty { display: none; }
+  .sec-b { padding-bottom: 14px; }
+  .sec-b > :first-child { margin-top: 0; }
+  .sec:last-child > .sec-b { padding-bottom: 2px; }
+  .sec.sub { border: 1px solid var(--line); border-radius: var(--r-s); margin: 10px 0 0; padding: 0 10px; }
+  .sec.sub > summary { padding: 8px 0; }
+  .sec.sub .sec-t { font-size: 13px; font-weight: 500; text-transform: none; letter-spacing: 0; }
+  .sec.sub > .sec-b { padding-bottom: 10px; }
+
+  /* ---------- Editor ---------- */
+  .ed-head { display: flex; align-items: center; gap: 8px; min-height: 34px; }
+  .panel .ed-head h2 { flex: 1; min-width: 0; margin: 0; font-size: 16px; text-transform: none; letter-spacing: 0; color: var(--ink);
+                       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ed-acts { display: flex; gap: 6px; align-items: center; }
+  .fld { display: block; min-width: 0; }
+  .lab { display: flex; align-items: center; gap: 4px; min-height: 22px; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  .lab .tval { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .lab .out { margin-left: 4px; }
+  .srow { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 8px; align-items: center; margin-top: 8px; }
+  .srow .lab { margin: 0; }
+  .srow .seg { display: flex; }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .mt { margin-top: 8px; }
+  .acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
   .hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
   .warn { font-size: 12px; color: var(--danger); margin: 8px 0 0; }
   .empty { color: var(--muted); padding: 14px 0; text-align: center; }
-  table.t { width: 100%; border-collapse: collapse; font-size: 13px; }
-  table.t td, table.t th { padding: 4px 4px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
-  table.t th { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
-  table.t td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
-  table.t input, table.t select { padding: 3px 5px; font-size: 12px; }
   .out { background: var(--ink); color: var(--panel); padding: 0 4px; border-radius: 3px; }
-  .db { max-height: 420px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; margin-top: 8px; }
+  .mod { color: var(--accent); font-weight: 700; }
+  /* Lenti selezionate: una riga per lente, che regge anche su un telefono. */
+  .lrow { --bw: 30px; display: grid; grid-template-columns: minmax(0, 1fr) 58px 84px var(--bw) var(--bw); gap: 6px; align-items: center;
+          padding: 5px 0; border-bottom: 1px solid var(--line); }
+  .lrow.head { padding: 0 0 4px; font-size: 11px; font-weight: 600; color: var(--muted); }
+  .lrow .foc { min-width: 0; font-variant-numeric: tabular-nums; }
+  .lrow .ser { display: block; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lrow input, .lrow select { padding: 4px 6px; font-size: 12px; }
+  .lrow button { padding: 3px 0; }
+  .ledit { padding: 2px 0 10px; border-bottom: 1px solid var(--line); }
+  .strow { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; align-items: center; margin-top: 6px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .db { max-height: 420px; overflow: auto; border: 1px solid var(--line); border-radius: var(--r-s); margin-top: 8px; }
   .db .grp { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--sel); position: sticky; top: 0; font-weight: 600; font-size: 13px; }
-  .db .grp .tog { flex: 1; display: flex; align-items: center; gap: 6px; background: none; border: 0; border-radius: 0; padding: 0; text-align: left; font-weight: 600; }
+  .db .grp .tog { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; background: none; border: 0; border-radius: 0; padding: 0; text-align: left; font-weight: 600; }
   .db .grp .tog .n { color: var(--muted); font-weight: 400; font-size: 12px; }
   .db .grp .tog::before { content: "▸"; width: 12px; color: var(--muted); }
   .db .grp .tog[aria-expanded="true"]::before { content: "▾"; }
   .db .it { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-top: 1px solid var(--line); font-size: 13px; }
   .db .it span { flex: 1; font-variant-numeric: tabular-nums; }
   .db .it .meta { color: var(--muted); font-size: 12px; flex: 2; }
-  .checks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px 10px; }
-  details summary { cursor: pointer; font-size: 13px; margin-top: 12px; }
-  /* Simulatore in scala con le misure dell'X3 (5,34 px/mm): scocca 63,7 × 97,6 mm,
-     area attiva 51,84 × 77,76 mm (528 × 792 pixel a ~259 ppi). */
-  .simbox { width: 560px; height: 560px; max-width: 100%; display: flex; align-items: center; justify-content: center; }
+  .kit { border: 1px solid var(--line); border-radius: var(--r-s); padding: 8px; margin-top: 8px; }
+  .kit-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 13px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px;
+          font-size: 13px; font-variant-numeric: tabular-nums; }
+  .chip-x { border: 0; background: none; padding: 0 2px; font-size: 11px; line-height: 1; color: inherit; opacity: .55; cursor: pointer; }
+  .chip-x:hover { opacity: 1; }
+  .chips input { width: 56px; padding: 4px 6px; font-size: 12px; }
+
+  /* ---------- Simulatore ---------- */
+  /* In scala con le misure dell'X3 (5,34 px/mm): scocca 63,7 × 97,6 mm, area attiva
+     51,84 × 77,76 mm (528 × 792 pixel a ~259 ppi). --sim-scale (fitStage) lo rimpicciolisce
+     quando la colonna o la finestra non bastano, così resta fisso senza tagli. */
+  .simbox { flex: none; width: calc(560px * var(--sim-scale, 1)); height: calc(560px * var(--sim-scale, 1)); display: flex; align-items: center; justify-content: center; }
+  .simscale { flex: none; transform: scale(var(--sim-scale, 1)); }
   .device { position: relative; width: 340px; height: 521px; background: #d6d5d0; border-radius: 26px;
             box-shadow: inset 0 0 0 6px #c9c8c2, 0 6px 18px rgba(0,0,0,.25); transition: transform .35s ease; }
   .device.asleep #simScreen { filter: contrast(.92); }
   #simScreen { position: absolute; left: 32px; top: 34px; width: 277px; height: 415px; background: #fff; image-rendering: auto;
                box-shadow: inset 0 0 0 1px #bbb; }
-  .device .key { position: absolute; padding: 0; border: none; background: #c4c3bd; cursor: pointer; }
+  .device .key { position: absolute; min-width: 0; min-height: 0; padding: 0; border: none; background: #c4c3bd; cursor: pointer; }
   .device .key:hover { background: #b7b6af; }
   .device .key.down { background: #8f8e88; }
   .device .key.held { background: #5a5954; }
@@ -115,16 +225,11 @@
   .device .rocker .key + .key { border-left: 1px solid #aaa9a3; }
   .device .r1 { left: 46px; width: 118px; }
   .device .r2 { left: 176px; width: 118px; }
-  .sim-status { min-height: 1.4em; font-size: 13px; margin: 0; }
-  .kit { border: 1px solid var(--line); border-radius: 6px; padding: 8px; margin-top: 8px; }
-  .kit-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 13px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .chip { padding: 4px 10px; border-radius: 999px; font-size: 13px; font-variant-numeric: tabular-nums; }
-  .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); }
-  .chip-x { border: 0; background: none; padding: 0 2px; font-size: 11px; line-height: 1; color: inherit; opacity: .55; cursor: pointer; }
-  .chip-x:hover { opacity: 1; }
-  .chips input { width: 56px; padding: 4px 6px; font-size: 12px; }
-  /* Invio via Bluetooth */
+  /* Tre righe riservate: un messaggio lungo non sposta il dispositivo. */
+  .sim-status { min-height: 4.2em; font-size: 13px; margin: 0; text-align: center; }
+  #simHint { margin: 0; text-align: center; }
+
+  /* ---------- Invio via Bluetooth ---------- */
   #bleDlg { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink);
             width: min(420px, calc(100vw - 32px)); padding: 18px; }
   #bleDlg::backdrop { background: rgba(0, 0, 0, .45); }
@@ -132,23 +237,99 @@
   #bleDlg p { margin: 6px 0; }
   #bleDlg progress { width: 100%; height: 10px; margin: 10px 0 4px; accent-color: var(--accent); }
   #bleDlg .err { color: var(--danger); }
-  #bleDlg .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  #bleDlg .acts { justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+  /* ---------- 700–1099 px: due colonne; a sinistra, fisse, striscia e anteprima ---------- */
+  @media (max-width: 899px) { .dev-l { display: none; } .dev-s { display: inline; } }
+  @media (max-width: 1099px) {
+    main { grid-template-columns: minmax(0, 1fr) minmax(320px, 430px); }
+    .work { display: flex; flex-direction: column; gap: 10px; min-width: 0; position: sticky; top: calc(var(--bar-h) + var(--gap)); }
+    .screens, .stagecol { position: static; }
+    .screens { max-height: none; overflow: visible; padding: 0; border: 0; background: none; }
+    .screens h2, .screens > .hint, .scr .d, #addBtn .l { display: none; }
+    .scr-row { display: flex; gap: 6px; overflow-x: auto; padding: 3px; scrollbar-width: none; }
+    .scr-row::-webkit-scrollbar { display: none; }
+    #list { display: flex; gap: 6px; margin: 0; }
+    #list li { flex: none; }
+    .scr { display: flex; gap: 6px; max-width: 190px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); padding: 6px 12px; }
+    #list li.sel .scr { border-color: var(--accent); box-shadow: none; }
+    #addBtn { flex: none; width: auto; border-radius: 999px; }
+  }
+  /* ---------- Sotto 700 px: anteprima compatta e striscia fisse, l'editor scorre ---------- */
+  @media (max-width: 699px) {
+    header.bar { gap: 6px; padding: 0 12px; }
+    .bar .dev, .bar .l { display: none; }
+    .bar .s { display: inline; }
+    main { display: block; padding: 0; }
+    .work { top: var(--bar-h); z-index: 20; gap: 8px; padding: 8px 12px; background: var(--bg); border-bottom: 1px solid var(--line); }
+    .work:has(.stagecol.full) { z-index: 100; }
+    body:has(.stagecol.full) { overflow: hidden; }
+    .stagecol { order: 1; }
+    .screens { order: 2; }
+    /* Il simulatore serve da computer: sul telefono resta solo l'anteprima. */
+    #modeRow, .pbar, #previewNote { display: none; }
+    /* Orientamento, pagine e "ingrandisci" stanno nel bordo basso della cornice, senza coprire la schermata. */
+    .frame { padding: 6px 6px 42px; border-radius: 10px; min-width: 176px; }
+    canvas#preview { cursor: zoom-in; margin: 0 auto; }
+    .fbtn { display: block; position: absolute; bottom: 1px; width: 40px; height: 40px; padding: 0; border: 0; color: #fff; font-size: 16px; line-height: 40px;
+            background: radial-gradient(circle, rgba(22, 22, 22, .78) 15px, transparent 15.5px); }
+    .fbtn.l { left: 2px; } .fbtn.r { right: 2px; } .fbtn.c1 { right: 50%; } .fbtn.c2 { left: 50%; }
+    #editor { --pad: 16px; border: 0; border-radius: 0; background: none; padding: 12px 16px 40px; }
+    /* Il riepilogo va sotto il titolo: accanto verrebbe troncato. */
+    .sec:not(.sub) > summary { flex-wrap: wrap; row-gap: 0; }
+    .sec:not(.sub) > summary > .sec-s { flex: 1 0 100%; text-align: left; padding-left: 18px; margin-top: -4px; }
+    #editor input[type=text], #editor input[type=number], #editor input[type=search], #editor textarea, #editor select { background: var(--panel); }
+    /* Anteprima a tutto schermo (si apre toccandola). */
+    .stagecol.full { position: fixed; inset: 0; z-index: 100; padding: 56px 12px 12px; background: var(--bg); }
+    .stagecol.full .pbar { display: flex; order: 2; }  /* comandi in basso, a portata di pollice */
+    #fullClose { position: absolute; top: 8px; right: 12px; }
+    .stagecol.full #previewNote { display: block; }
+    .stagecol.full .fbtn { display: none; }
+    .stagecol.full .frame { padding: 6px; }
+    .stagecol.full .full-only { display: inline-block; }
+    .stagecol.full #previewMode { flex: 1; min-height: 0; justify-content: center; }
+    .stagecol.full canvas#preview { cursor: auto; }
+    #bleDlg .acts button { flex: 1 1 100%; }
+    #bleDlg .acts .primary { order: -1; }
+  }
+  @media (max-width: 359px) { .bar h1 { display: none; } }
+  /* Telefono orizzontale: resta fissa solo la barra. */
+  @media (max-width: 1099px) and (max-height: 499px) { .work { position: static; } }
+  /* ---------- Dito: bersagli da almeno 40 px e campi a 16 px (niente zoom su iOS) ---------- */
+  @media (pointer: coarse) {
+    button, select, .pill, .switch, .sec > summary { min-height: 40px; }
+    button.small, button.icon, .chip-x, #addBtn { min-width: 40px; }
+    input[type=text], input[type=number], input[type=search], textarea, select, .lrow input, .lrow select, .chips input { font-size: 16px; min-height: 40px; }
+    .lrow { --bw: 40px; grid-template-columns: minmax(0, 1fr) 62px 94px var(--bw) var(--bw); }
+    .info { width: 40px; height: 40px; }
+    .lab { min-height: 40px; margin-top: 4px; margin-bottom: 0; }
+    .chip { padding: 0 0 0 12px; gap: 0; }
+    .chips input { width: 64px; }
+    .scr { align-items: center; }
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1>CAMTAG · CARDS</h1>
-  <span class="hint" id="dims"></span>
+<header class="bar">
+  <h1>CAMTAG</h1>
+  <span class="dev" id="dims"><span class="dev-l"></span><span class="dev-s"></span></span>
   <span class="sp"></span>
-  <select id="device" title="Dispositivo">
-    <option value="x3">Xteink X3 · 528×792 (verticale)</option>
-  </select>
-  <button id="importBtn">Importa progetto</button>
-  <button id="exportJson">Salva progetto</button>
-  <button id="zipBtn">Scarica tutto (.zip)</button>
+  <button id="projBtn"><span class="l">Progetto ▾</span><span class="s">Progetto</span></button>
+  <button id="zipBtn" title="Scarica tutte le card (.zip)"><span class="l">Scarica .zip</span><span class="s">.zip</span></button>
   <button id="bleBtn" class="primary" title="Manda le card all'X3 senza microSD, o riprendi il progetto salvato sull'X3">Bluetooth</button>
   <input type="file" id="importFile" accept="application/json" hidden>
 </header>
+<div class="pop menu" id="projMenu" role="menu">
+  <button id="importBtn" role="menuitem">Importa progetto…</button>
+  <button id="exportJson" role="menuitem">Salva progetto</button>
+</div>
+<div class="pop menu" id="addMenu" role="menu">
+  <button data-add="crew" role="menuitem">Crew</button>
+  <button data-add="notes" role="menuitem">Note</button>
+  <button data-add="lens" role="menuitem">Lente singola</button>
+  <button data-add="patch" role="menuitem">Patch</button>
+</div>
+<div class="pop tip" id="tip" role="tooltip"></div>
 
 <dialog id="bleDlg">
   <h3>CamTag via Bluetooth</h3>
@@ -163,60 +344,63 @@
 </dialog>
 
 <main>
-  <section class="panel">
-    <h2>Schermate</h2>
-    <ul id="list"></ul>
-    <div class="add">
-      <button data-add="crew">+ Crew</button>
-      <button data-add="notes">+ Note</button>
-      <button data-add="lens">+ Lente singola</button>
-      <button data-add="patch">+ Patch</button>
-    </div>
-    <p class="hint">Lens chart e Filtri si generano da soli. L'ordine qui è l'ordine sul dispositivo.</p>
-  </section>
+  <div class="work">
+    <section class="panel screens">
+      <h2>Schermate</h2>
+      <div class="scr-row">
+        <ul id="list"></ul>
+        <button id="addBtn" title="Aggiungi una schermata">+<span class="l"> Aggiungi</span></button>
+      </div>
+      <p class="hint">Lens chart e Filtri si generano da soli. L'ordine qui è l'ordine sul dispositivo.</p>
+    </section>
 
-  <section class="stage">
-    <div class="row" id="modeRow">
-      <button data-mode="preview" class="on">Anteprima</button>
-      <button data-mode="sim">Simulatore</button>
-    </div>
-    <div id="previewMode" class="stage">
-      <div class="row">
-        <button data-view="land">Orizzontale</button>
-        <button data-view="port">Verticale</button>
-        <span id="pageCtl" class="row"></span>
-      </div>
-      <div class="frame"><canvas id="preview"></canvas></div>
-      <div class="row">
-        <button id="up">↑ Su</button>
-        <button id="down">↓ Giù</button>
-        <button id="dup">Duplica</button>
-        <button id="del" class="danger">Elimina</button>
-        <button id="bmpBtn">Scarica questa immagine</button>
-        <button id="actualBtn" title="Mostra la schermata senza scalarla: un pixel dell'X3 per pixel">Pixel 1:1</button>
-      </div>
-      <p class="hint" id="previewNote">Anteprima a 1 bit, identica a ciò che vedrai sull'e-paper.</p>
-    </div>
-    <div id="simMode" class="stage" hidden>
-      <div class="row">
-        <button id="rotL" title="Ruota il dispositivo in senso antiorario">⟲ Ruota</button>
-        <button id="rotR" title="Ruota il dispositivo in senso orario">Ruota ⟳</button>
-      </div>
-      <div class="simbox">
-        <div class="device" id="simDevice">
-          <button class="key pwr" data-key="P" title="Power"></button>
-          <button class="key side side-f" data-key="F" title="F: pagina precedente (tieni premuto: Bluetooth)"></button>
-          <button class="key side side-e" data-key="E" title="E: pagina successiva (tieni premuto: blocco rotazione)"></button>
-          <canvas id="simScreen" width="528" height="792"></canvas>
-          <div class="rocker r1"><button class="key" data-key="A" title="A"></button><button class="key" data-key="B" title="B"></button></div>
-          <div class="rocker r2"><button class="key" data-key="C" title="C"></button><button class="key" data-key="D" title="D"></button></div>
+    <section class="stagecol" id="stage">
+      <div class="pbar">
+        <div class="seg" id="modeRow">
+          <button data-mode="preview" class="on">Anteprima</button>
+          <button data-mode="sim">Simulatore</button>
         </div>
+        <div class="pbar-g" id="previewTools">
+          <div class="seg">
+            <button data-view="land">Orizzontale</button>
+            <button data-view="port">Verticale</button>
+          </div>
+          <span id="pageCtl" class="pages"></span>
+          <button id="actualBtn" title="Mostra la schermata senza scalarla: un pixel dell'X3 per pixel">Pixel 1:1</button>
+          <button id="bmpBtn" title="Scarica questa schermata (.bmp)">Scarica .bmp</button>
+        </div>
+        <div class="pbar-g" id="simTools" hidden>
+          <button id="rotL" title="Ruota il dispositivo in senso antiorario">⟲ Ruota</button>
+          <button id="rotR" title="Ruota il dispositivo in senso orario">Ruota ⟳</button>
+        </div>
+        <button id="fullClose" class="full-only" aria-label="Chiudi l'anteprima a tutto schermo">✕ Chiudi</button>
       </div>
-      <p class="sim-status" id="simStatus"></p>
-      <p class="hint">Clic sui tasti come sul dispositivo. Tenuto premuto 0,8 s (o Maiusc+clic): E blocca la rotazione, F apre il Bluetooth, A o B nei filtri aprono la modifica degli stadi (E o F la chiudono). L'azione scatta mentre tieni premuto, senza aspettare il rilascio.
-        Da tastiera: A B C D E F, P = power. Le funzioni seguono il comportamento previsto per il firmware.</p>
-    </div>
-  </section>
+      <div id="previewMode">
+        <div class="frame" id="frame">
+          <canvas id="preview"></canvas>
+          <button class="fbtn l" id="fView" aria-label="Cambia orientamento">⟳</button>
+          <button class="fbtn r" id="fFull" aria-label="Anteprima a tutto schermo">⤢</button>
+          <button class="fbtn c1" id="fPrev" aria-label="Pagina precedente" hidden>‹</button>
+          <button class="fbtn c2" id="fNext" aria-label="Pagina successiva" hidden>›</button>
+        </div>
+        <p class="hint" id="previewNote">Anteprima a 1 bit, identica a ciò che vedrai sull'e-paper.</p>
+      </div>
+      <div id="simMode" hidden>
+        <div class="simbox"><div class="simscale">
+          <div class="device" id="simDevice">
+            <button class="key pwr" data-key="P" title="Power"></button>
+            <button class="key side side-f" data-key="F" title="F: pagina precedente (tieni premuto: Bluetooth)"></button>
+            <button class="key side side-e" data-key="E" title="E: pagina successiva (tieni premuto: blocco rotazione)"></button>
+            <canvas id="simScreen" width="528" height="792"></canvas>
+            <div class="rocker r1"><button class="key" data-key="A" title="A"></button><button class="key" data-key="B" title="B"></button></div>
+            <div class="rocker r2"><button class="key" data-key="C" title="C"></button><button class="key" data-key="D" title="D"></button></div>
+          </div>
+        </div></div>
+        <p class="sim-status" id="simStatus"></p>
+        <p class="hint" id="simHint">Clic sui tasti come sul dispositivo; da tastiera A B C D E F, P = power. </p>
+      </div>
+    </section>
+  </div>
 
   <section class="panel" id="editor"></section>
 </main>
@@ -1127,6 +1311,94 @@ function h(tag, attrs = {}, ...kids) {
   for (const k of kids.flat()) if (k != null) e.append(k instanceof Node ? k : document.createTextNode(k));
   return e;
 }
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+// Preferenze dell'interfaccia (sezioni aperte, orientamento, anteprima o simulatore):
+// sono del browser, non del progetto, quindi non entrano in project.json.
+const UI_KEY = 'camtag.ui.v1';
+const ui = { sec: {}, view: 'land', mode: 'preview', ...(() => { try { return JSON.parse(localStorage.getItem(UI_KEY)) || {}; } catch { return {}; } })() };
+if (!ui.sec || typeof ui.sec !== 'object') ui.sec = {};
+function saveUi() { try { localStorage.setItem(UI_KEY, JSON.stringify(ui)); } catch {} }
+view = ui.view === 'port' ? 'port' : 'land';
+
+// ---------- Riquadri a comparsa: menu e spiegazioni ----------
+// Uno alla volta, accanto a chi lo apre e sempre dentro lo schermo. Si chiude
+// toccando fuori, con Esc, scorrendo o ridimensionando.
+const HAS_POPOVER = 'showPopover' in HTMLElement.prototype;
+let pop = null;  // { el, anchor, pinned }: pinned = aperto con un clic, non solo passandoci sopra
+function showPop(el, anchor, pinned = true) {
+  hidePop();
+  if (HAS_POPOVER) { el.popover = 'manual'; el.showPopover(); }  // sopra a tutto, anche ai blocchi fissi
+  el.classList.add('open');
+  el.style.left = el.style.top = '0px';
+  const a = anchor.getBoundingClientRect(), vw = document.documentElement.clientWidth, m = 8;
+  const w = el.offsetWidth, eh = el.offsetHeight, below = a.bottom + 6;
+  el.style.left = `${Math.max(m, Math.min(a.left, vw - w - m))}px`;
+  el.style.top = `${below + eh > innerHeight - m && a.top - 6 - eh >= m ? a.top - 6 - eh : below}px`;
+  anchor.setAttribute('aria-expanded', 'true');
+  pop = { el, anchor, pinned };
+}
+function hidePop() {
+  if (!pop) return;
+  if (HAS_POPOVER) pop.el.hidePopover();
+  pop.el.classList.remove('open');
+  pop.anchor.setAttribute('aria-expanded', 'false');
+  pop = null;
+}
+document.addEventListener('pointerdown', e => { if (pop && !pop.el.contains(e.target) && !pop.anchor.contains(e.target)) hidePop(); }, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && pop) { const a = pop.anchor; hidePop(); a.focus(); } });
+addEventListener('scroll', hidePop, { capture: true, passive: true });
+addEventListener('resize', hidePop);
+function menuButton(btn, menu) {
+  btn.setAttribute('aria-haspopup', 'menu'); btn.setAttribute('aria-expanded', 'false');
+  btn.addEventListener('click', () => { if (pop && pop.anchor === btn) hidePop(); else showPop(menu, btn); });
+  menu.addEventListener('click', e => { if (e.target.closest('button')) hidePop(); });
+}
+// Spiegazione dietro una ⓘ: da computer compare passando col mouse o col fuoco da
+// tastiera; al tocco (dove l'hover non esiste) si apre e si chiude con un tocco.
+function info(text) {
+  const b = h('button', { type: 'button', class: 'info', 'aria-label': 'Spiegazione', 'aria-expanded': 'false' });
+  const isOpen = () => !!pop && pop.anchor === b;
+  const open = pinned => { const t = $('#tip'); t.textContent = text; showPop(t, b, pinned); };
+  b.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse' && !isOpen()) open(false); });
+  b.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && isOpen() && !pop.pinned) hidePop(); });
+  b.addEventListener('focus', () => { if (!isOpen() && b.matches(':focus-visible')) open(false); });
+  b.addEventListener('blur', () => { if (isOpen()) hidePop(); });
+  b.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); if (isOpen() && pop.pinned) hidePop(); else open(true); });
+  return b;
+}
+
+// ---------- Componenti dell'editor ----------
+// Sezione richiudibile con il riepilogo nella riga del titolo. Aperta o chiusa si
+// ricorda in camtag.ui.v1, così sopravvive ai renderEditor() completi; finché non
+// la tocchi vale `openByDefault`.
+function section(id, title, summary, content, openByDefault = true, { tip, sub = false } = {}) {
+  const want = () => ui.sec[id] ?? openByDefault;
+  const d = h('details', { class: 'sec' + (sub ? ' sub' : ''), open: want() },
+    h('summary', {}, h('span', { class: 'sec-t' }, title), tip ? info(tip) : null, h('span', { class: 'sec-s' }, summary)),
+    h('div', { class: 'sec-b' }, content));
+  d.addEventListener('toggle', () => { if (d.open !== want()) { ui.sec[id] = d.open; saveUi(); } });
+  return d;
+}
+// Etichetta di un controllo, con la sua spiegazione se serve.
+function lab(text, tip) { return h('div', { class: 'lab' }, h('span', {}, text), tip ? info(tip) : null); }
+// Scelta fra poche alternative: options = [[valore, testo, title?], …].
+function seg(options, value, onchange, label) {
+  return h('div', { class: 'seg', role: 'group', 'aria-label': label },
+    ...options.map(([v, t, title]) => h('button', { type: 'button', class: v === value ? 'on' : '', 'aria-pressed': String(v === value), title, onclick: () => { if (v !== value) onchange(v); } }, t)));
+}
+// Casella a pillola: la casella vera è dentro l'etichetta, nascosta.
+function pill(text, checked, onchange, value) {
+  return h('label', { class: 'pill' }, h('input', { type: 'checkbox', checked, value, onchange: e => onchange(e.target.checked) }), text);
+}
+function toggle(text, checked, onchange, { tip, title } = {}) {
+  const sw = h('label', { class: 'switch', title },
+    h('input', { type: 'checkbox', role: 'switch', checked, onchange: e => onchange(e.target.checked) }), h('span', { class: 'track' }), h('span', {}, text));
+  return tip ? h('div', { class: 'sw-row' }, sw, info(tip)) : sw;
+}
+// Testata dell'editor: titolo e, a destra, tutto ciò che riguarda la schermata scelta.
+function editorHead(title, ...acts) { return h('div', { class: 'ed-head' }, h('h2', {}, title), h('div', { class: 'ed-acts' }, ...acts)); }
+const includeSwitch = key => toggle('Includi', state.auto[key], v => { state.auto[key] = v; changed(); }, { title: 'Includi nell\'esportazione' });
 function cardTitle(c) {
   if (c.type === 'lens') return `${c.focal}mm ${c.brand}`;
   if (c.type === 'crew') return c.title || 'Crew';
@@ -1149,69 +1421,120 @@ function drawPreview() {
   const img = ctx.createImageData(r.w, r.h);
   for (let i = 0; i < r.w * r.h; i++) { const c = r.bits[i] ? 255 : 0; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = c; img.data[i * 4 + 3] = 255; }
   ctx.putImageData(img, 0, 0);
-  document.querySelectorAll('[data-view]').forEach(b => { b.classList.toggle('on', b.dataset.view === layout); b.disabled = !availableLayouts().includes(b.dataset.view); });
+  const layouts = availableLayouts();
+  document.querySelectorAll('[data-view]').forEach(b => {
+    b.classList.toggle('on', b.dataset.view === layout); b.setAttribute('aria-pressed', String(b.dataset.view === layout)); b.disabled = !layouts.includes(b.dataset.view);
+  });
+  $('#fView').disabled = layouts.length < 2;  // sul telefono l'orientamento è un solo pulsante sulla cornice
 
-  const pc = $('#pageCtl'); pc.innerHTML = '';
-  if (s.kind === 'lenschart' && lensPages().length > 1) {
-    const n = lensPages().length;
-    pc.append(h('button', { class: 'small', disabled: s.page === 0, onclick: () => { page--; drawPreview(); } }, '‹'),
-              h('span', { class: 'hint' }, `Pagina ${s.page + 1}/${n}`),
-              h('button', { class: 'small', disabled: s.page >= n - 1, onclick: () => { page++; drawPreview(); } }, '›'));
-  }
+  const pc = $('#pageCtl'), n = s.kind === 'lenschart' ? lensPages().length : 1; pc.innerHTML = '';
+  if (n > 1) pc.append(h('button', { class: 'small', 'aria-label': 'Pagina precedente', disabled: s.page === 0, onclick: () => turnPage(-1) }, '‹'),
+                       h('span', { title: 'Pagina' }, `${s.page + 1}/${n}`),
+                       h('button', { class: 'small', 'aria-label': 'Pagina successiva', disabled: s.page >= n - 1, onclick: () => turnPage(1) }, '›'));
+  $('#fPrev').hidden = $('#fNext').hidden = n < 2;
+  $('#fPrev').disabled = !s.page; $('#fNext').disabled = s.page >= n - 1;
   $('#previewNote').textContent = s.kind === 'filters'
     ? (layout === 'port' ? 'Anteprima: le indicazioni dei tasti in basso le disegna il dispositivo, sul bordo dei tasti.' : 'Le fasce libere ai lati ospitano le indicazioni dei tasti, disegnate dal dispositivo.')
     : 'Anteprima a 1 bit, identica a ciò che vedrai sull\'e-paper.';
-  const isCard = s.kind === 'card';
-  $('#up').disabled = $('#down').disabled = $('#dup').disabled = $('#del').disabled = !isCard;
+}
+function turnPage(d) {
+  const s = selectedScreen(); if (!s || s.kind !== 'lenschart') return;
+  page = Math.max(0, Math.min(lensPages().length - 1, s.page + d)); drawPreview();
 }
 
 function renderList() {
   const ul = $('#list'); ul.innerHTML = '';
   const pages = lensPages().length;
-  const item = (key, num, title, kind, isSel, onclick, off) => {
-    const li = h('li', { class: (isSel ? 'sel ' : '') + (off ? 'off' : ''), onclick }, h('span', { class: 'n' }, num), h('span', { class: 't' }, title), h('span', { class: 'k' }, kind));
-    ul.append(li);
+  const item = (num, title, detail, to, off) => {
+    const on = to.kind === sel.kind && to.i === sel.i;
+    ul.append(h('li', { class: (on ? 'sel ' : '') + (off ? 'off' : '') },
+      h('button', { class: 'scr', 'aria-current': on ? 'true' : null, title: off ? 'Non inclusa nell\'esportazione' : null, onclick: () => selectScreen(to) },
+        h('span', { class: 'n' }, num), h('span', { class: 't' }, title), h('span', { class: 'd' }, detail))));
   };
-  item('lc', '◆', `Lens chart · ${state.lenses.length} lenti${pages > 1 ? ` · ${pages} pag.` : ''}`, 'auto', sel.kind === 'lenschart', () => { sel = { kind: 'lenschart' }; refresh(); }, !state.auto.lenschart || !state.lenses.length);
-  item('fl', '◆', 'Filtri · ND, diottrie, stadi', 'auto', sel.kind === 'filters', () => { sel = { kind: 'filters' }; refresh(); }, !state.auto.filters);
-  state.cards.forEach((c, i) => item(i, String(i + 1).padStart(2, '0'), cardTitle(c), TYPE_LABEL[c.type], sel.kind === 'card' && sel.i === i, () => { sel = { kind: 'card', i }; refresh(); }));
+  item('◆', 'Lens chart', `${plural(state.lenses.length, 'lente', 'lenti')}${pages > 1 ? ` · ${pages} pag.` : ''}`, { kind: 'lenschart' }, !state.auto.lenschart || !state.lenses.length);
+  item('◆', 'Filtri', 'ND, diottrie, stadi', { kind: 'filters' }, !state.auto.filters);
+  state.cards.forEach((c, i) => item(String(i + 1).padStart(2, '0'), cardTitle(c), TYPE_LABEL[c.type], { kind: 'card', i }));
+}
+// Sceglie una schermata; nella striscia (sotto i 1100 px) la porta in vista.
+function selectScreen(to) {
+  sel = to; refresh();
+  const b = $('#list li.sel .scr'); if (!b) return;
+  b.focus({ preventScroll: true });
+  const row = $('.scr-row');
+  if (row.scrollWidth > row.clientWidth) row.scrollTo({ left: b.offsetLeft - (row.clientWidth - b.offsetWidth) / 2, behavior: 'smooth' });
 }
 
 function changed(redrawEditor = false) { save(); renderList(); drawPreview(); if (simOn) renderSim(); if (redrawEditor) renderEditor(); }
 
 // ---------- editor: lens chart ----------
 function lensEditor(ed) {
-  ed.append(h('h2', {}, 'Lens chart'),
-    h('label', { class: 'inline' }, h('input', { type: 'checkbox', checked: state.auto.lenschart, onchange: e => { state.auto.lenschart = e.target.checked; changed(); } }), 'Includi nell\'esportazione'),
-    h('label', {}, 'Titolo (es. nome produzione)'),
-    h('input', { type: 'text', value: state.production, placeholder: 'LENS CHART', oninput: e => { state.production = e.target.value; changed(); } }),
-    h('label', { class: 'inline', style: 'margin-top:10px' }, h('input', { type: 'checkbox', checked: state.lensSplit, onchange: e => { state.lensSplit = e.target.checked; changed(true); } }), 'Prime e zoom su pagine separate'),
-    h('p', { class: 'hint' }, 'Prima le pagine dei prime, poi quelle degli zoom. Ogni gruppo ha la sua misura del testo: utile con tanti prime e pochi zoom.'),
-    h('label', { class: 'inline' }, h('input', { type: 'checkbox', checked: state.lensFront, onchange: e => { state.lensFront = e.target.checked; changed(); } }), 'Mostra il diametro frontale (Ø)'),
-    h('p', { class: 'hint' }, 'Senza il diametro restano focale, T e MOD, più grandi.'));
+  ed.append(editorHead('Lens chart', includeSwitch('lenschart')),
+    h('label', { class: 'fld' }, h('span', { class: 'lab' }, 'Titolo (es. nome produzione)'),
+      h('input', { type: 'text', value: state.production, placeholder: 'LENS CHART', oninput: e => { state.production = e.target.value; changed(); } })),
+    toggle('Prime e zoom su pagine separate', state.lensSplit, v => { state.lensSplit = v; changed(true); },
+      { tip: 'Prima le pagine dei prime, poi quelle degli zoom. Ogni gruppo ha la sua misura del testo: utile con tanti prime e pochi zoom.' }),
+    toggle('Mostra il diametro frontale (Ø)', state.lensFront, v => { state.lensFront = v; changed(); },
+      { tip: 'Senza il diametro restano focale, T e MOD, più grandi.' }));
 
   // Lenti selezionate
-  ed.append(h('h3', {}, `Lenti selezionate (${state.lenses.length})`));
-  if (!state.lenses.length) ed.append(h('p', { class: 'hint' }, 'Cerca nel database qui sotto e aggiungi le lenti della produzione.'));
+  const rows = [], nPages = lensPages().length;
+  if (!state.lenses.length) rows.push(h('p', { class: 'hint' }, 'Cerca nel database qui sotto e aggiungi le lenti della produzione.'));
   else {
     const out = outliers();
-    const tb = h('table', { class: 't' }, h('tr', {}, h('th', {}, 'Foc'), h('th', {}, 'Sigla'), h('th', {}, 'Serie'), h('th', {}, 'Negativo'), h('th', {}), h('th', {})));
+    rows.push(h('div', { class: 'lrow head' }, h('span', {}, 'Lente'), h('span', {}, 'Sigla'), h('span', {}, 'Negativo')));
     for (const e of sortedLenses()) {
       const l = state.lenses.find(x => x.uid === e.uid);  // le modifiche vanno sull'originale
-      const mod = isModified(l);
-      tb.append(h('tr', {},
-        h('td', { class: 'num' }, out.has(l.uid) ? h('span', { class: 'out' }, focalText(e)) : focalText(e), mod ? h('span', { title: 'Dati modificati rispetto alla scheda del costruttore' }, '*') : null),
-        h('td', {}, h('input', { type: 'text', value: l.seriesCode || '', size: 4, maxlength: 5, oninput: ev => { l.seriesCode = ev.target.value.toUpperCase(); changed(); } })),
-        h('td', { title: `${l.brand} ${l.series}` }, `${l.series}`),
-        h('td', {}, h('select', { onchange: ev => { l.highlight = ev.target.value; changed(true); } },
-            ...[['auto', 'auto'], ['on', 'sempre'], ['off', 'mai']].map(([v, t]) => h('option', { value: v, selected: (l.highlight || 'auto') === v }, t)))),
-        h('td', {}, h('button', { class: 'small' + (editingUid === l.uid ? ' on' : ''), title: 'Modifica dati', onclick: () => { editingUid = editingUid === l.uid ? null : l.uid; renderEditor(); } }, '✎')),
-        h('td', {}, h('button', { class: 'small danger', title: 'Togli', onclick: () => { state.lenses = state.lenses.filter(x => x !== l); changed(true); } }, '✕'))));
-      if (editingUid === l.uid) tb.append(h('tr', {}, h('td', { colspan: 6 }, lensDataEditor(l, e))));
+      rows.push(h('div', { class: 'lrow' },
+        h('div', { class: 'foc', title: `${l.brand} ${l.series}` },
+          h('span', { class: out.has(l.uid) ? 'out' : '' }, focalText(e)),
+          isModified(l) ? h('span', { class: 'mod', title: 'Dati modificati rispetto alla scheda del costruttore' }, '*') : null,
+          h('span', { class: 'ser' }, l.series)),
+        h('input', { type: 'text', 'aria-label': 'Sigla', value: l.seriesCode || '', maxlength: 5, oninput: ev => { l.seriesCode = ev.target.value.toUpperCase(); changed(); } }),
+        h('select', { 'aria-label': 'Negativo', onchange: ev => { l.highlight = ev.target.value; changed(true); } },
+          ...[['auto', 'auto'], ['on', 'sempre'], ['off', 'mai']].map(([v, t]) => h('option', { value: v, selected: (l.highlight || 'auto') === v }, t))),
+        h('button', { class: 'small' + (editingUid === l.uid ? ' on' : ''), title: 'Modifica dati', 'aria-label': 'Modifica dati', onclick: () => { editingUid = editingUid === l.uid ? null : l.uid; renderEditor(); } }, '✎'),
+        h('button', { class: 'small danger', title: 'Togli', 'aria-label': 'Togli', onclick: () => { state.lenses = state.lenses.filter(x => x !== l); changed(true); } }, '✕')));
+      if (editingUid === l.uid) rows.push(h('div', { class: 'ledit' }, lensDataEditor(l, e)));
     }
-    ed.append(tb, h('p', { class: 'hint' }, 'In negativo va la lente "fuori dal coro": serie diversa dal set principale o tipo diverso (es. l\'unica macro).'),
-      h('button', { class: 'small danger', onclick: () => { if (confirm('Togliere tutte le lenti?')) { state.lenses = []; changed(true); } } }, 'Togli tutte'));
+    rows.push(h('div', { class: 'acts' },
+      h('button', { class: 'small danger', onclick: () => { if (confirm('Togliere tutte le lenti?')) { state.lenses = []; changed(true); } } }, 'Togli tutte')));
   }
+  ed.append(section('lens.sel', 'Lenti selezionate', state.lenses.length ? `${state.lenses.length}${nPages > 1 ? ` · ${nPages} pagine` : ''}` : 'nessuna', rows, true,
+    { tip: 'In negativo va la lente "fuori dal coro": serie diversa dal set principale o tipo diverso (es. l\'unica macro).' }));
+
+  // Database
+  const db = [];
+  if (!lensDb) db.push(h('p', { class: 'warn' }, lensDbError || 'Caricamento…'));
+  else {
+    const brands = [...new Set(lensDb.map(l => l.brand))].sort();
+    const q = h('input', { type: 'search', 'aria-label': 'Cerca nel database', value: dbSearch.q, placeholder: 'Cerca: marca, serie, sigla, focale (es. "supreme 35")' });
+    const fb = h('select', { 'aria-label': 'Marca' }, h('option', { value: '' }, 'Tutte le marche'), ...brands.map(b => h('option', { value: b, selected: dbSearch.brand === b }, b)));
+    const ft = h('select', { 'aria-label': 'Tipo' }, h('option', { value: '' }, 'Tutti i tipi'), ...Object.entries(LENS_TYPES).map(([k, v]) => h('option', { value: k, selected: dbSearch.type === k }, v)));
+    const box = h('div', { class: 'db' });
+    // searching = l'utente ha appena cambiato la ricerca: se resta una sola serie si apre da sola.
+    const run = searching => { dbSearch = { q: q.value, brand: fb.value, type: ft.value }; renderDbResults(box, q.value, fb.value, ft.value, searching === true); };
+    q.addEventListener('input', () => run(true)); fb.addEventListener('change', () => run(true)); ft.addEventListener('change', () => run(true));
+    db.push(q, h('div', { class: 'two mt' }, fb, ft), box);
+    run();
+  }
+  // Inserimento manuale
+  const m = { brand: '', series: '', seriesCode: '', type: 'prime', focal: '', tstop: '', mod_m: '', front_mm: '' };
+  const inp = (k, ph, type = 'text') => h('input', { type, placeholder: ph, 'aria-label': ph, step: 'any', oninput: e => m[k] = e.target.value });
+  db.push(section('lens.manual', 'Aggiungi una lente a mano', null, [
+    h('div', { class: 'two' }, inp('brand', 'Marca'), inp('series', 'Serie')),
+    h('div', { class: 'three mt' }, inp('seriesCode', 'Sigla'), inp('focal', 'Focale mm', 'number'), inp('tstop', 'T', 'number')),
+    h('div', { class: 'three mt' }, inp('mod_m', 'MOD m', 'number'), inp('front_mm', 'Ø mm', 'number'),
+      h('select', { 'aria-label': 'Tipo', onchange: e => m.type = e.target.value }, ...Object.entries(LENS_TYPES).map(([k, v]) => h('option', { value: k }, v)))),
+    h('div', { class: 'acts' }, h('button', { class: 'primary', onclick: () => {
+      if (!m.focal) { alert('Serve almeno la focale.'); return; }
+      const num = v => v === '' ? null : Number(v);
+      state.lenses.push({ uid: 'm-' + Date.now(), dbId: null, brand: m.brand || 'Manuale', series: m.series || m.brand || 'Manuale',
+        seriesCode: (m.seriesCode || slug(m.series).slice(0, 3)).toUpperCase(), type: m.type, focal: num(m.focal), focalMin: null, focalMax: null,
+        tstop: num(m.tstop), tstopLong: null, mod_m: num(m.mod_m), front_mm: num(m.front_mm), filterThread: null, squeeze: null, highlight: 'auto' });
+      changed(true);
+    } }, 'Aggiungi'))], false, { sub: true }));
+  ed.append(section('lens.db', 'Database lenti', lensDb ? `${lensDb.length} lenti` : null, db, true,
+    { tip: 'Dati dalle schede tecniche dei costruttori; "—" = dato non pubblicato in modo affidabile.' }));
 
   // Modifiche locali: valgono per tutte le produzioni; si portano su un altro computer con un file.
   const nOvr = Object.keys(lensOverrides).length;
@@ -1223,58 +1546,23 @@ function lensEditor(ed) {
       Object.assign(lensOverrides, d.overrides); saveOverrides(); changed(true);
     }).catch(() => alert('File non valido.'));
   } });
-  ed.append(h('h3', {}, `Lenti modificate (${nOvr})`),
-    h('p', { class: 'hint' }, 'Con ✎ cambi i dati di un esemplare (es. un anello frontale diverso dal noleggio). Il database resta quello del costruttore; i valori modificati sono segnati con * anche sulla lens chart.'),
-    h('div', { class: 'row', style: 'justify-content:flex-start;margin-top:8px' },
+  ed.append(section('lens.ovr', 'Lenti modificate', nOvr ? String(nOvr) : 'nessuna', h('div', { class: 'acts' },
       h('button', { class: 'small', disabled: !nOvr, onclick: () => download(new Blob([JSON.stringify({ version: 1, overrides: lensOverrides }, null, 2)], { type: 'application/json' }), 'camtag-lenti-modificate.json') }, 'Esporta modifiche'),
-      h('button', { class: 'small', onclick: () => ovrFile.click() }, 'Importa modifiche'), ovrFile));
-
-  // Database
-  ed.append(h('h3', {}, 'Database lenti'));
-  if (!lensDb) { ed.append(h('p', { class: 'warn' }, lensDbError || 'Caricamento…')); }
-  else {
-    const brands = [...new Set(lensDb.map(l => l.brand))].sort();
-    const q = h('input', { type: 'search', value: dbSearch.q, placeholder: 'Cerca: marca, serie, sigla, focale (es. "supreme 35")' });
-    const fb = h('select', {}, h('option', { value: '' }, 'Tutte le marche'), ...brands.map(b => h('option', { value: b, selected: dbSearch.brand === b }, b)));
-    const ft = h('select', {}, h('option', { value: '' }, 'Tutti i tipi'), ...Object.entries(LENS_TYPES).map(([k, v]) => h('option', { value: k, selected: dbSearch.type === k }, v)));
-    const box = h('div', { class: 'db' });
-    // searching = l'utente ha appena cambiato la ricerca: se resta una sola serie si apre da sola.
-    const run = searching => { dbSearch = { q: q.value, brand: fb.value, type: ft.value }; renderDbResults(box, q.value, fb.value, ft.value, searching === true); };
-    q.addEventListener('input', () => run(true)); fb.addEventListener('change', () => run(true)); ft.addEventListener('change', () => run(true));
-    ed.append(q, h('div', { class: 'two', style: 'margin-top:6px' }, fb, ft), box);
-    ed.append(h('p', { class: 'hint' }, `${lensDb.length} lenti. Dati dalle schede tecniche dei costruttori; "—" = dato non pubblicato in modo affidabile.`));
-    run();
-  }
-
-  // Inserimento manuale
-  const m = { brand: '', series: '', seriesCode: '', type: 'prime', focal: '', tstop: '', mod_m: '', front_mm: '' };
-  const inp = (k, ph, type = 'text') => h('input', { type, placeholder: ph, step: 'any', oninput: e => m[k] = e.target.value });
-  ed.append(h('details', {}, h('summary', {}, 'Aggiungi una lente a mano'),
-    h('div', { class: 'two' }, inp('brand', 'Marca'), inp('series', 'Serie')),
-    h('div', { class: 'three', style: 'margin-top:6px' }, inp('seriesCode', 'Sigla'), inp('focal', 'Focale mm', 'number'), inp('tstop', 'T', 'number')),
-    h('div', { class: 'three', style: 'margin-top:6px' }, inp('mod_m', 'MOD m', 'number'), inp('front_mm', 'Ø mm', 'number'),
-      h('select', { onchange: e => m.type = e.target.value }, ...Object.entries(LENS_TYPES).map(([k, v]) => h('option', { value: k }, v)))),
-    h('button', { class: 'primary', style: 'margin-top:8px', onclick: () => {
-      if (!m.focal) { alert('Serve almeno la focale.'); return; }
-      const num = v => v === '' ? null : Number(v);
-      state.lenses.push({ uid: 'm-' + Date.now(), dbId: null, brand: m.brand || 'Manuale', series: m.series || m.brand || 'Manuale',
-        seriesCode: (m.seriesCode || slug(m.series).slice(0, 3)).toUpperCase(), type: m.type, focal: num(m.focal), focalMin: null, focalMax: null,
-        tstop: num(m.tstop), tstopLong: null, mod_m: num(m.mod_m), front_mm: num(m.front_mm), filterThread: null, squeeze: null, highlight: 'auto' });
-      changed(true);
-    } }, 'Aggiungi')));
+      h('button', { class: 'small', onclick: () => ovrFile.click() }, 'Importa modifiche'), ovrFile), false,
+    { tip: 'Con ✎ cambi i dati di un esemplare (es. un anello frontale diverso dal noleggio). Il database resta quello del costruttore; i valori modificati sono segnati con * anche sulla lens chart.' }));
 }
 
 // Modifica dei dati tecnici di una lente. Lenti del database: modifica locale
 // per id, con il valore della scheda accanto. Lenti manuali: si cambiano e basta.
 function lensDataEditor(l, e) {
   const base = l.dbId && lensById.get(l.dbId);
-  const box = h('div', { style: 'padding:8px 0' });
+  const box = h('div', {});
   const grid = h('div', { class: 'three' });
   for (const [k, label, type] of OVR_FIELDS) {
     const cur = e[k] ?? '';
     const differs = base && lensOverrides[l.dbId] && k in lensOverrides[l.dbId];
-    grid.append(h('div', {},
-      h('label', {}, label, differs ? h('span', { class: 'out', style: 'margin-left:4px' }, `scheda: ${base[k] ?? '—'}`) : null),
+    grid.append(h('label', { class: 'fld' },
+      h('span', { class: 'lab' }, label, differs ? h('span', { class: 'out' }, `scheda: ${base[k] ?? '—'}`) : null),
       h('input', { type, step: 'any', value: cur, onchange: ev => {
         if (base) setOverride(l.dbId, k, ev.target.value, type);
         else l[k] = ev.target.value === '' ? null : type === 'number' ? Number(ev.target.value) : ev.target.value;
@@ -1284,16 +1572,16 @@ function lensDataEditor(l, e) {
   box.append(grid);
   if (base) {
     const note = (lensOverrides[l.dbId] || {}).note || '';
-    box.append(h('label', {}, 'Nota (es. "anello frontale 114 mm del noleggio")'),
+    box.append(h('label', { class: 'fld' }, h('span', { class: 'lab' }, 'Nota (es. "anello frontale 114 mm del noleggio")'),
       h('input', { type: 'text', value: note, onchange: ev => {
         const o = { ...(lensOverrides[l.dbId] || {}) };
         if (ev.target.value.trim()) o.note = ev.target.value.trim(); else delete o.note;
         if (Object.keys(o).length) lensOverrides[l.dbId] = o; else delete lensOverrides[l.dbId];
         saveOverrides(); changed(true);
-      } }),
-      h('div', { class: 'row', style: 'justify-content:flex-start;margin-top:8px' },
+      } })),
+      h('div', { class: 'acts' },
         h('button', { class: 'small', disabled: !lensOverrides[l.dbId], onclick: () => { delete lensOverrides[l.dbId]; saveOverrides(); changed(true); } }, 'Ripristina i dati della scheda'),
-        h('span', { class: 'hint', style: 'margin:0' }, 'La modifica vale per questa lente in tutte le produzioni.')));
+        info('La modifica vale per questa lente in tutte le produzioni.')));
   }
   return box;
 }
@@ -1353,6 +1641,8 @@ function renderDbResults(box, query, brand, type, searching = false) {
 }
 
 // ---------- editor: filtri ----------
+// Prima "cosa hai" (ND, diottrie, vetri), poi "come parte" (mattebox e valori di partenza).
+let kitAdding = false;  // hai appena aggiunto un vetro: "+ Aggiungi vetri" resta aperto per il prossimo
 function filtersEditor(ed) {
   const f = state.filters;
   const clampPreview = (was = ndUsed()) => { f.previewNd = Math.min(f.previewNd, ndSteps().length - 1); f.previewDio = Math.min(f.previewDio, dioSteps().length - 1); ndStagesChanged(f.stages, was, ndUsed()); };
@@ -1363,141 +1653,151 @@ function filtersEditor(ed) {
     const i = ndSteps().indexOf(v); if (i >= 0) f.previewNd = i;
     clampPreview(was); changed(true);
   };
-  ed.append(h('h2', {}, 'Filtri'),
-    h('label', { class: 'inline' }, h('input', { type: 'checkbox', checked: state.auto.filters, onchange: e => { state.auto.filters = e.target.checked; changed(); } }), 'Includi nell\'esportazione'));
+  ed.append(editorHead('Filtri', includeSwitch('filters')));
 
-  // ND
-  ed.append(h('h3', {}, 'ND'),
-    h('div', { class: 'two' },
-      h('div', {}, h('label', {}, 'Come mostrarlo'),
-        h('select', { onchange: e => { f.ndFormat = e.target.value; changed(true); } },
-          ...[['density', 'Densità (0,9)'], ['stops', 'Stop (3 stop)'], ['factor', 'Fattore (ND8)']].map(([v, t]) => h('option', { value: v, selected: f.ndFormat === v }, t)))),
-      h('div', {}, h('label', {}, 'Tipo'),
-        h('select', { onchange: e => { f.ndType = e.target.value; changed(true); } },
-          ...[['ND', 'ND'], ['IRND', 'IRND'], ['FSND', 'FSND (full spectrum)']].map(([v, t]) => h('option', { value: v, selected: f.ndType === v }, t))))),
-    h('label', {}, 'ND nel kit (i tasti C/D scorrono solo questi)'),
-    h('div', { class: 'checks' }, ...ND_VALUES.map(v => h('label', { class: 'inline' },
-      h('input', { type: 'checkbox', checked: f.nd.includes(v), onchange: e => editNd(() => { f.nd = e.target.checked ? [...f.nd, v] : f.nd.filter(x => x !== v); }) }),
-      ndLabel(v)))));
-  // Totali fatti con due vetri: entrano nella scala solo quelli spuntati.
-  const combos = ndComboList();
-  if (combos.length) ed.append(h('label', {}, 'Combinazioni di due ND'),
-    h('div', { class: 'checks' }, ...combos.map(c => h('label', { class: 'inline' },
-      h('input', { type: 'checkbox', checked: f.ndCombos.includes(c.total), onchange: e => editNd(() => { f.ndCombos = e.target.checked ? [...f.ndCombos, c.total] : f.ndCombos.filter(t => t !== c.total); }) }),
-      `${ndLabel(c.total)} = ${ndLabel(c.parts[0])} + ${ndLabel(c.parts[1])}`))),
-    h('p', { class: 'hint' }, 'Spunta i totali che fai con due vetri: C/D li scorrono insieme agli altri, e sul dispositivo i due vetri occupano gli stadi 1 e 2.'));
+  // ND: tipo, formato, vetri del kit e totali fatti con due vetri (entrano nella scala solo quelli spuntati).
+  const combos = ndComboList(), nCombos = combos.filter(c => f.ndCombos.includes(c.total)).length;
+  const nd = [
+    h('div', { class: 'srow' }, lab('Tipo'),
+      seg([['ND', 'ND'], ['IRND', 'IRND'], ['FSND', 'FSND', 'Full spectrum']], f.ndType, v => { f.ndType = v; changed(true); }, 'Tipo di ND')),
+    h('div', { class: 'srow' }, lab('Formato'),
+      seg([['density', '0.9', 'Densità'], ['stops', '3 stop', 'Stop'], ['factor', `${f.ndType}8`, 'Fattore']], f.ndFormat, v => { f.ndFormat = v; changed(true); }, 'Come mostrare l\'ND')),
+    lab('ND nel kit', 'I tasti C/D scorrono solo questi.'),
+    h('div', { class: 'pills' }, ...ND_VALUES.map(v => pill(ndLabel(v), f.nd.includes(v), on => editNd(() => { f.nd = on ? [...f.nd, v] : f.nd.filter(x => x !== v); })))),
+  ];
+  if (combos.length) nd.push(section('flt.combos', 'Combinazioni di due ND', nCombos ? `${nCombos} di ${combos.length}` : 'nessuna',
+    h('div', { class: 'pills' }, ...combos.map(c => pill(`${ndLabel(c.total)} = ${ndLabel(c.parts[0])} + ${ndLabel(c.parts[1])}`, f.ndCombos.includes(c.total),
+      on => editNd(() => { f.ndCombos = on ? [...f.ndCombos, c.total] : f.ndCombos.filter(t => t !== c.total); })))),
+    nCombos > 0, { sub: true, tip: 'Spunta i totali che fai con due vetri: C/D li scorrono insieme agli altri, e sul dispositivo i due vetri occupano gli stadi 1 e 2.' }));
+  ed.append(section('flt.nd', 'ND', `${f.ndType} · ${plural(f.nd.length, 'vetro', 'vetri')}${nCombos ? ` · ${plural(nCombos, 'coppia', 'coppie')}` : ''}`, nd));
 
-  // Diottrie
+  // Diottrie: due file di pillole, intere e split.
   const has = (v, split) => f.dio.some(d => d.v === v && d.split === split);
-  const toggle = (v, split, on) => { f.dio = on ? [...f.dio, { v, split }] : f.dio.filter(d => !(d.v === v && d.split === split)); clampPreview(); changed(true); };
-  ed.append(h('h3', {}, 'Diottrie'),
-    h('table', { class: 't' }, h('tr', {}, h('th', {}, ''), h('th', {}, 'Intera'), h('th', {}, 'Split')),
-      ...DIOPTERS.map(v => h('tr', {}, h('td', {}, DIO_LABEL[v]),
-        h('td', {}, h('input', { type: 'checkbox', checked: has(v, false), onchange: e => toggle(v, false, e.target.checked) })),
-        h('td', {}, h('input', { type: 'checkbox', checked: has(v, true), onchange: e => toggle(v, true, e.target.checked) }))))),
-    h('p', { class: 'hint' }, 'Con almeno una diottria nel kit, nella schermata filtri i tasti A/B sono diottria −/+ (le pagine si cambiano sempre con E e F).'));
-
-  // Valori iniziali / anteprima
-  ed.append(h('h3', {}, 'Valori iniziali'),
-    h('div', { class: 'two' },
-      h('div', {}, h('label', {}, 'ND'), h('select', { onchange: e => { const was = ndUsed(); f.previewNd = +e.target.value; ndStagesChanged(f.stages, was, ndUsed()); changed(true); } },
-        ...ndSteps().map((v, i) => h('option', { value: i, selected: f.previewNd === i }, ndLabel(v))))),
-      h('div', {}, h('label', {}, 'Diottria'), h('select', { disabled: !f.dio.length, onchange: e => { f.previewDio = +e.target.value; changed(); } },
-        ...dioSteps().map((v, i) => h('option', { value: i, selected: f.previewDio === i }, dioLabel(v)))))),
-    h('p', { class: 'hint' }, 'Il dispositivo parte da qui, poi ricorda l\'ultimo valore impostato con i tasti.'));
-
-  // Mattebox: quanti stadi e cosa c'è in ognuno all'avvio.
-  const kit = kitGlasses();
-  const setStages = n => { f.stages = Array.from({ length: n }, (_, i) => f.stages[i] ?? null); changed(true); };
-  const ndStart = ndParts(ndSteps()[f.previewNd] || 0);  // l'ND di partenza occupa i primi stadi
-  ed.append(h('h3', {}, 'Mattebox'),
-    h('div', {}, h('label', {}, 'Stadi'),
-      h('select', { onchange: e => setStages(+e.target.value) },
-        ...Array.from({ length: MAX_STAGES }, (_, i) => h('option', { value: i + 1, selected: f.stages.length === i + 1 }, String(i + 1))))),
-    h('table', { class: 't' }, ...f.stages.map((k, i) => {
-      const opts = stageOptions(i);
-      const name = h('td', { class: 'num' }, `${i + 1}${i === 0 ? ' · lato lente' : ''}`);
-      if (i < ndStart.length) return h('tr', {}, name, h('td', {}, h('select', { disabled: true }, h('option', {}, `${ndStageLabel(ndStart[i])} · l'ND di partenza`))));
-      return h('tr', {}, name,
-        h('td', {}, h('select', { disabled: !kit.length, onchange: e => { f.stages[i] = e.target.value || null; changed(true); } },
-          h('option', { value: '', selected: !k }, '— vuoto'),
-          ...kit.map(g => h('option', { value: g.key, selected: g.key === k, disabled: !opts.includes(g.key) }, g.label)))));
-    })),
-    h('p', { class: 'hint' }, 'L\'ND, quando c\'è, sta nello stadio 1 (due ND insieme: stadi 1 e 2). Gli stadi che l\'ND non usa sono liberi per gli altri vetri; quando l\'ND ne ha bisogno, i vetri scalano verso il fronte e, se non c\'è posto, l\'ultimo esce. Quando l\'ND libera uno stadio (da due ND a uno, o ND tolto) i vetri tornano indietro verso la lente.'),
-    h('p', { class: 'hint' }, kit.length
-      ? 'Il dispositivo parte da qui. Per cambiare i vetri sul dispositivo: nella schermata filtri tieni A o B, scegli lo stadio con A/B e il vetro con C/D. Dopo 5 secondi senza tocchi la modifica è accettata; per uscire subito premi E o F.'
-      : 'Aggiungi dei vetri al kit qui sotto per riempire gli stadi.'));
+  const toggleDio = (v, split, on) => { f.dio = on ? [...f.dio, { v, split }] : f.dio.filter(d => !(d.v === v && d.split === split)); clampPreview(); changed(true); };
+  const dioRow = (name, split) => h('div', { class: 'srow' }, lab(name),
+    h('div', { class: 'pills' }, ...DIOPTERS.map(v => pill(DIO_LABEL[v], has(v, split), on => toggleDio(v, split, on)))));
+  const dioNames = split => dioSteps().filter(d => d && d.split === split).map(d => DIO_LABEL[d.v]).join(', ');
+  ed.append(section('flt.dio', 'Diottrie', f.dio.length ? [dioNames(false), dioNames(true) && `split ${dioNames(true)}`].filter(Boolean).join(' · ') : 'nessuna',
+    [dioRow('Intere', false), dioRow('Split', true)], f.dio.length > 0,
+    { tip: 'Con almeno una diottria nel kit, nella schermata filtri i tasti A/B sono diottria −/+ (le pagine si cambiano sempre con E e F).' }));
 
   // Kit: i vetri che hai nella valigetta (gli ND pieni stanno nel kit ND qui sopra).
-  ed.append(h('h3', {}, 'Vetri nel kit'),
-    h('p', { class: 'hint', style: 'margin-top:0' }, 'Quello che hai nella valigetta, ND pieni esclusi: diffusione, polarizzatori, degradanti, colore… Sono i vetri che puoi mettere negli stadi.'));
-  if (!f.effects.length) ed.append(h('p', { class: 'hint' }, 'Kit vuoto.'));
+  const kit = kitGlasses(), kitBody = [];
+  if (!f.effects.length) kitBody.push(h('p', { class: 'hint' }, 'Kit vuoto.'));
   const dropStrength = (e, st) => {
     e.strengths = e.strengths.filter(x => x !== st); if (!e.strengths.length) f.effects = f.effects.filter(x => x !== e);
     normalizeStages(f); changed(true);
   };
   for (const e of f.effects) {
-    const extra = h('input', { type: 'text', placeholder: '+', size: 4, title: 'Aggiungi una gradazione', onchange: ev => {
+    const extra = h('input', { type: 'text', placeholder: '+', size: 4, title: 'Aggiungi una gradazione', 'aria-label': 'Aggiungi una gradazione', onchange: ev => {
       const v = ev.target.value.trim(); if (v) { addToKit(f, e.id, e.name, [v]); changed(true); }
     } });
-    ed.append(h('div', { class: 'kit' },
+    kitBody.push(h('div', { class: 'kit' },
       h('div', { class: 'kit-head' }, h('strong', {}, e.name),
-        h('button', { class: 'small danger', title: 'Togli la famiglia dal kit', onclick: () => { f.effects = f.effects.filter(x => x !== e); normalizeStages(f); changed(true); } }, '✕')),
+        h('button', { class: 'small danger', title: 'Togli la famiglia dal kit', 'aria-label': 'Togli la famiglia dal kit', onclick: () => { f.effects = f.effects.filter(x => x !== e); normalizeStages(f); changed(true); } }, '✕')),
       h('div', { class: 'chips' },
         ...e.strengths.map(st => h('span', { class: 'chip' }, st.s || 'senza gradazione',
-          h('button', { class: 'chip-x', title: 'Togli dal kit', onclick: () => dropStrength(e, st) }, '✕'))),
+          h('button', { class: 'chip-x', title: 'Togli dal kit', 'aria-label': 'Togli dal kit', onclick: () => dropStrength(e, st) }, '✕'))),
         extra)));
   }
-
-  // Aggiunta dal catalogo: tutte le gradazioni scelte in un colpo.
+  // Aggiunta dal catalogo (tutte le gradazioni scelte in un colpo) o di un filtro personalizzato.
+  const added = () => { kitAdding = true; changed(true); };
   const cats = [...new Set(filterDb.map(x => x.category))];
-  const picks = h('div', { class: 'checks', style: 'margin-top:8px' });
-  const fam = h('select', {}, h('option', { value: '' }, 'Scegli una famiglia dal catalogo…'),
+  const picks = h('div', { class: 'pills mt' });
+  const fam = h('select', { 'aria-label': 'Famiglia dal catalogo' }, h('option', { value: '' }, 'Scegli una famiglia dal catalogo…'),
     ...cats.map(c => h('optgroup', { label: c }, ...filterDb.filter(x => x.category === c).map(x => h('option', { value: x.id }, `${x.brand ? x.brand + ' ' : ''}${x.name}`)))));
   fam.addEventListener('change', () => {
     const x = filterDb.find(y => y.id === fam.value); picks.innerHTML = '';
-    if (x) picks.append(...x.strengths.map(s => h('label', { class: 'inline' }, h('input', { type: 'checkbox', value: s }), s)));
+    if (x) picks.append(...x.strengths.map(s => pill(s, false, () => {}, s)));
   });
-  ed.append(h('label', {}, 'Aggiungi al kit dal catalogo'), fam, picks,
-    h('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin-top:8px' },
+  // Filtro personalizzato: nome e gradazioni separate da virgola.
+  const cName = h('input', { type: 'text', placeholder: 'Nome (es. "Cinebloom")', 'aria-label': 'Nome del filtro' });
+  const cStr = h('input', { type: 'text', placeholder: 'Gradazioni (es. "10%, 20%")', 'aria-label': 'Gradazioni' });
+  kitBody.push(section('flt.add', '+ Aggiungi vetri', null, [
+    lab('Dal catalogo'), fam, picks,
+    h('div', { class: 'acts' },
       h('button', { class: 'small', onclick: () => {
         const x = filterDb.find(y => y.id === fam.value); if (!x) return;
         const chosen = [...picks.querySelectorAll('input:checked')].map(i => i.value);
         if (x.strengths.length && !chosen.length) { alert('Spunta almeno una gradazione.'); return; }
-        addToKit(f, x.id, x.name, chosen); changed(true);
+        addToKit(f, x.id, x.name, chosen); added();
       } }, '+ Aggiungi le gradazioni spuntate'),
       h('button', { class: 'small', onclick: () => {
         const x = filterDb.find(y => y.id === fam.value); if (!x) return;
-        addToKit(f, x.id, x.name, [...x.strengths]); changed(true);
-      } }, '+ Aggiungi tutte le gradazioni')));
-
-  // Filtro personalizzato: nome e gradazioni separate da virgola.
-  const cName = h('input', { type: 'text', placeholder: 'Nome (es. "Cinebloom")' });
-  const cStr = h('input', { type: 'text', placeholder: 'Gradazioni (es. "10%, 20%")' });
-  ed.append(h('label', {}, 'Oppure un filtro personalizzato'), h('div', { class: 'two' }, cName, cStr),
-    h('button', { class: 'small', style: 'margin-top:6px', onclick: () => {
+        addToKit(f, x.id, x.name, [...x.strengths]); added();
+      } }, '+ Aggiungi tutte le gradazioni')),
+    lab('Oppure un filtro personalizzato'), h('div', { class: 'two' }, cName, cStr),
+    h('div', { class: 'acts' }, h('button', { class: 'small', onclick: () => {
       const n = cName.value.trim(); if (!n) return;
-      addToKit(f, null, n, cStr.value.split(',').map(s => s.trim()).filter(Boolean)); changed(true);
-    } }, '+ Aggiungi personalizzato'),
-    h('p', { class: 'hint' }, 'Catalogo filtri provvisorio: le gradazioni sono da verificare.'));
+      addToKit(f, null, n, cStr.value.split(',').map(s => s.trim()).filter(Boolean)); added();
+    } }, '+ Aggiungi personalizzato')),
+    h('p', { class: 'hint' }, 'Catalogo filtri provvisorio: le gradazioni sono da verificare.'),
+  ], !f.effects.length || kitAdding, { sub: true }));
+  ed.append(section('flt.kit', 'Vetri nel kit', f.effects.length ? `${plural(f.effects.length, 'famiglia', 'famiglie')} · ${plural(kit.length, 'vetro', 'vetri')}` : 'vuoto', kitBody, true,
+    { tip: 'Quello che hai nella valigetta, ND pieni esclusi: diffusione, polarizzatori, degradanti, colore… Sono i vetri che puoi mettere negli stadi.' }));
+
+  // Mattebox: quanti stadi, da che ND e diottria si parte e cosa c'è in ogni stadio all'avvio.
+  const setStages = n => { f.stages = Array.from({ length: n }, (_, i) => f.stages[i] ?? null); changed(true); };
+  const ndV = ndSteps()[f.previewNd] || 0, ndStart = ndParts(ndV);  // l'ND di partenza occupa i primi stadi
+  const mb = [
+    h('div', { class: 'srow' },
+      lab('Stadi', 'L\'ND, quando c\'è, sta nello stadio 1 (due ND insieme: stadi 1 e 2). Gli stadi che l\'ND non usa sono liberi per gli altri vetri; quando l\'ND ne ha bisogno, i vetri scalano verso il fronte e, se non c\'è posto, l\'ultimo esce. Quando l\'ND libera uno stadio (da due ND a uno, o ND tolto) i vetri tornano indietro verso la lente.'),
+      seg(Array.from({ length: MAX_STAGES }, (_, i) => [i + 1, String(i + 1)]), f.stages.length, setStages, 'Numero di stadi')),
+    h('div', { class: 'two' },
+      h('div', {}, lab('ND di partenza', 'Il dispositivo parte da qui, poi ricorda l\'ultimo valore impostato con i tasti.'),
+        h('select', { 'aria-label': 'ND di partenza', onchange: e => { const was = ndUsed(); f.previewNd = +e.target.value; ndStagesChanged(f.stages, was, ndUsed()); changed(true); } },
+          ...ndSteps().map((v, i) => h('option', { value: i, selected: f.previewNd === i }, ndLabel(v))))),
+      h('div', {}, lab('Diottria di partenza'),
+        h('select', { 'aria-label': 'Diottria di partenza', disabled: !f.dio.length, onchange: e => { f.previewDio = +e.target.value; changed(); } },
+          ...dioSteps().map((v, i) => h('option', { value: i, selected: f.previewDio === i }, dioLabel(v)))))),
+    lab('Vetro in ogni stadio', kit.length ? 'Il dispositivo parte da qui. Per cambiare i vetri sul dispositivo: nella schermata filtri tieni A o B, scegli lo stadio con A/B e il vetro con C/D. Dopo 5 secondi senza tocchi la modifica è accettata; per uscire subito premi E o F.' : null),
+    ...f.stages.map((k, i) => {
+      const opts = stageOptions(i), name = `${i + 1}${i === 0 ? ' · lato lente' : ''}`;
+      if (i < ndStart.length) return h('div', { class: 'strow' }, name, h('select', { disabled: true, 'aria-label': `Stadio ${i + 1}` }, h('option', {}, `${ndStageLabel(ndStart[i])} · l'ND di partenza`)));
+      return h('div', { class: 'strow' }, name,
+        h('select', { 'aria-label': `Stadio ${i + 1}`, disabled: !kit.length, onchange: e => { f.stages[i] = e.target.value || null; changed(true); } },
+          h('option', { value: '', selected: !k }, '— vuoto'),
+          ...kit.map(g => h('option', { value: g.key, selected: g.key === k, disabled: !opts.includes(g.key) }, g.label))));
+    }),
+  ];
+  if (!kit.length) mb.push(h('p', { class: 'hint' }, 'Aggiungi dei vetri al kit qui sopra per riempire gli stadi.'));
+  const ndSum = ndV ? (f.ndFormat === 'factor' ? ndLabel(ndV) : `ND ${ndLabel(ndV)}`) : 'senza ND';
+  ed.append(section('flt.mb', 'Mattebox e valori di partenza', `${plural(f.stages.length, 'stadio', 'stadi')} · ${ndSum} · ${plural(f.stages.filter(Boolean).length, 'vetro', 'vetri')}`, mb));
 }
 
 // ---------- editor: schede manuali ----------
+// Un evento solo per campo: `input` mentre scrivi, `change` per menu e interruttori.
 function field(c, label, key, type = 'text', opts) {
-  const wrapEl = h('div', {}, h('label', {}, label));
+  if (type === 'checkbox') return h('div', { class: 'sw-row' }, toggle(label, !!c[key], v => { c[key] = v; changed(); }));
   let el;
   if (type === 'textarea') el = h('textarea');
   else if (type === 'select') el = h('select', {}, ...opts.map(([v, t]) => h('option', { value: v }, t)));
-  else if (type === 'checkbox') el = h('input', { type: 'checkbox', checked: !!c[key] });
   else el = h('input', { type });
-  if (type !== 'checkbox') el.value = c[key] ?? '';
-  el.oninput = el.onchange = () => { c[key] = type === 'checkbox' ? el.checked : type === 'number' ? Number(el.value) : el.value; changed(); };
-  wrapEl.append(el);
-  return wrapEl;
+  el.value = c[key] ?? '';
+  el.addEventListener(type === 'select' ? 'change' : 'input', () => { c[key] = type === 'number' ? Number(el.value) : el.value; changed(); });
+  return h('label', { class: 'fld' }, h('span', { class: 'lab' }, label), el);
+}
+
+function moveCard(d) {
+  if (sel.kind !== 'card') return; const i = sel.i, j = i + d;
+  if (j < 0 || j >= state.cards.length) return;
+  [state.cards[i], state.cards[j]] = [state.cards[j], state.cards[i]]; sel = { kind: 'card', i: j }; save(); refresh();
+}
+function dupCard() {
+  if (sel.kind !== 'card') return;
+  state.cards.splice(sel.i + 1, 0, structuredClone(state.cards[sel.i])); sel = { kind: 'card', i: sel.i + 1 }; save(); refresh();
+}
+function delCard() {
+  if (sel.kind !== 'card' || !confirm(`Eliminare «${cardTitle(state.cards[sel.i])}»?`)) return;
+  state.cards.splice(sel.i, 1); sel = state.cards.length ? { kind: 'card', i: Math.max(0, sel.i - 1) } : { kind: 'lenschart' }; save(); refresh();
 }
 
 function cardEditor(ed, c, idx) {
-  ed.append(h('h2', {}, TYPE_LABEL[c.type]));
+  ed.append(editorHead(TYPE_LABEL[c.type],
+    h('button', { class: 'icon', title: 'Sposta su', 'aria-label': 'Sposta su', disabled: idx === 0, onclick: () => moveCard(-1) }, '↑'),
+    h('button', { class: 'icon', title: 'Sposta giù', 'aria-label': 'Sposta giù', disabled: idx >= state.cards.length - 1, onclick: () => moveCard(1) }, '↓'),
+    h('button', { onclick: dupCard }, 'Duplica'),
+    h('button', { class: 'danger', onclick: delCard }, 'Elimina')));
   ed.append(field(c, 'Formati esportati', 'formats', 'select', [['both', 'Orizzontale + verticale (rotazione automatica)'], ['land', 'Solo orizzontale'], ['port', 'Solo verticale']]));
   const pair = (a, b) => ed.append(h('div', { class: 'two' }, a, b));
   if (c.type === 'lens') {
@@ -1517,21 +1817,22 @@ function cardEditor(ed, c, idx) {
       r.onload = () => downscale(r.result).then(url => { c.img = url; return ensureImg(url); }).then(() => changed());
       r.readAsDataURL(file);
     } });
-    ed.append(h('label', {}, 'Immagine'), inp);
+    ed.append(h('label', { class: 'fld' }, h('span', { class: 'lab' }, 'Immagine'), inp));
     const dither = field(c, 'Retinatura', 'dither', 'select', [['atkinson', 'Atkinson'], ['fs', 'Floyd–Steinberg'], ['none', 'Soglia']]);
     pair(field(c, 'Adattamento', 'fit', 'select', [['contain', 'Intera'], ['cover', 'Riempi']]), dither);
     // Soglia con uno slider: l'anteprima si aggiorna mentre lo si trascina. Visibile solo con "Soglia".
     const tVal = h('span', { class: 'tval' }, String(c.threshold ?? 128));
     const slider = h('input', { type: 'range', min: 1, max: 254, step: 1, value: c.threshold ?? 128, class: 'tslider',
       oninput: e => { c.threshold = Number(e.target.value); tVal.textContent = e.target.value; changed(); } });
-    const tWrap = h('div', {}, h('label', {}, 'Soglia: ', tVal, h('span', { class: 'hint' }, ' · più a destra = più nero')), slider);
-    const showT = () => { tWrap.style.display = c.dither === 'none' ? '' : 'none'; };
+    const tWrap = h('label', { class: 'fld' }, h('span', { class: 'lab' }, 'Soglia: ', tVal, ' · più a destra = più nero'), slider);
+    const showT = () => { tWrap.hidden = c.dither !== 'none'; };
     dither.querySelector('select').addEventListener('change', showT); showT();
     ed.append(tWrap, field(c, 'Inverti colori', 'invert', 'checkbox'), field(c, 'Didascalia (opzionale)', 'caption'));
   }
 }
 
 function renderEditor() {
+  hidePop();
   const ed = $('#editor'); ed.innerHTML = '';
   if (sel.kind === 'lenschart') return lensEditor(ed);
   if (sel.kind === 'filters') return filtersEditor(ed);
@@ -1557,10 +1858,10 @@ function ensureImg(url) {
 
 function refresh() {
   const d = DEVICES[state.device];
-  $('#dims').textContent = `${d.h}×${d.w} · 259 ppi · 1 bit`;
+  $('#dims .dev-l').textContent = `Xteink X3 · ${d.h}×${d.w} · 259 ppi · 1 bit`;
+  $('#dims .dev-s').textContent = `X3 · ${d.h}×${d.w}`;
   renderList(); renderEditor(); drawPreview();
   if (simOn) renderSim();
- 
 }
 
 function download(blob, name) {
@@ -1568,23 +1869,17 @@ function download(blob, name) {
   document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
+menuButton($('#projBtn'), $('#projMenu'));
+menuButton($('#addBtn'), $('#addMenu'));
 document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
-  state.cards.push(DEFAULTS[b.dataset.add]()); sel = { kind: 'card', i: state.cards.length - 1 }; save(); refresh();
+  state.cards.push(DEFAULTS[b.dataset.add]()); save(); selectScreen({ kind: 'card', i: state.cards.length - 1 });
 });
-document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => { view = b.dataset.view; drawPreview(); });
-const moveCard = d => {
-  if (sel.kind !== 'card') return; const i = sel.i, j = i + d;
-  if (j < 0 || j >= state.cards.length) return;
-  [state.cards[i], state.cards[j]] = [state.cards[j], state.cards[i]]; sel = { kind: 'card', i: j }; save(); refresh();
-};
-$('#up').onclick = () => moveCard(-1);
-$('#down').onclick = () => moveCard(1);
-$('#dup').onclick = () => { if (sel.kind !== 'card') return; state.cards.splice(sel.i + 1, 0, structuredClone(state.cards[sel.i])); sel = { kind: 'card', i: sel.i + 1 }; save(); refresh(); };
-$('#del').onclick = () => { if (sel.kind !== 'card') return; state.cards.splice(sel.i, 1); sel = state.cards.length ? { kind: 'card', i: Math.max(0, sel.i - 1) } : { kind: 'lenschart' }; save(); refresh(); };
-$('#actualBtn').onclick = () => {
-  const fr = document.querySelector('#previewMode .frame'), on = fr.classList.toggle('actual');
-  $('#actualBtn').classList.toggle('on', on);
-};
+const setView = v => { view = v; ui.view = v; saveUi(); drawPreview(); };
+document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => setView(b.dataset.view));
+$('#fView').onclick = () => setView(currentLayout() === 'land' ? 'port' : 'land');
+$('#fPrev').onclick = () => turnPage(-1);
+$('#fNext').onclick = () => turnPage(1);
+$('#actualBtn').onclick = () => { $('#actualBtn').classList.toggle('on', $('#frame').classList.toggle('actual')); };
 $('#bmpBtn').onclick = () => {
   const s = selectedScreen(); if (!s) return;
   const l = currentLayout(), r = renderScreen(s, l, { preview: true });
@@ -1592,6 +1887,40 @@ $('#bmpBtn').onclick = () => {
   download(encodeBmp(r.bits, r.w, r.h), `${base}${l === 'port' ? '.p' : ''}.bmp`);
 };
 $('#zipBtn').onclick = async () => download(await (await buildZip()).generateAsync({ type: 'blob' }), 'camtag.zip');
+$('#simHint').append(info('Clic sui tasti come sul dispositivo. Tenuto premuto 0,8 s (o Maiusc+clic): E blocca la rotazione, F apre il Bluetooth, A o B nei filtri aprono la modifica degli stadi (E o F la chiudono). L\'azione scatta mentre tieni premuto, senza aspettare il rilascio.\nDa tastiera: A B C D E F, P = power. Le funzioni seguono il comportamento previsto per il firmware.'));
+
+// Anteprima e simulatore stanno sempre tutti nello schermo: lo spazio libero sotto la
+// barra, tolti i comandi, limita l'altezza dell'anteprima (--prev-max-h) e scala il
+// simulatore (--sim-scale). Sul telefono l'anteprima fissa è compatta (circa un quarto
+// dell'altezza visibile, quindi si riduce con la tastiera aperta) e si apre a tutto schermo.
+function fitStage() {
+  const st = $('#stage'), vh = window.visualViewport ? visualViewport.height : innerHeight;
+  const phone = innerWidth < 700, strip = innerWidth < 1100;
+  if (!phone) st.classList.remove('full');
+  const full = st.classList.contains('full');
+  if (phone && !full) { $('#frame').classList.remove('actual'); $('#actualBtn').classList.remove('on'); }
+  const hOf = el => (el.offsetHeight ? el.offsetHeight + 10 : 0);  // con il suo distacco
+  let avail;
+  if (phone && !full) avail = vh * 0.25;
+  else {
+    const chrome = hOf($('.pbar')) + (simOn ? hOf($('#simStatus')) + hOf($('#simHint')) : hOf($('#previewNote'))) + (strip && !phone ? hOf($('.screens')) : 0);
+    avail = vh - chrome - (full ? 80 : $('header').offsetHeight + 60);  // margini e cornice
+    if (strip && vh < 500) avail = Math.max(avail, 220);  // telefono orizzontale: non c'è blocco fisso da far stare nello schermo
+  }
+  st.style.setProperty('--prev-max-h', `${Math.max(96, Math.floor(avail))}px`);
+  st.style.setProperty('--sim-scale', Math.max(0.4, Math.min(1, (avail + 28) / 560, st.clientWidth / 560)).toFixed(3));
+}
+function setFull(on) {
+  $('#stage').classList.toggle('full', on); fitStage();
+  if (on) $('#fullClose').focus({ preventScroll: true });
+}
+preview.addEventListener('click', () => { if (innerWidth < 700 && !$('#stage').classList.contains('full')) setFull(true); });
+$('#fFull').onclick = () => setFull(true);
+$('#fullClose').onclick = () => setFull(false);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#stage').classList.contains('full')) setFull(false); });
+addEventListener('resize', fitStage);
+if (window.visualViewport) visualViewport.addEventListener('resize', fitStage);
+new ResizeObserver(fitStage).observe($('.pbar'));  // i comandi vanno a capo: cambia lo spazio per l'anteprima
 
 // ============================================================================
 // Invio via Bluetooth LE (Web Bluetooth). Protocollo: docs/bluetooth.md.
@@ -2004,18 +2333,23 @@ function renderSim() {
   $('#simStatus').textContent = [`${sim.i + 1}/${plan.length} · ${name}`, sim.locked ? 'rotazione bloccata' : '', sim.asleep ? 'spento' : '', sim.msg].filter(Boolean).join(' · ');
 }
 
-document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
-  const mode = b.dataset.mode;
+// remember = scelta dell'utente, da ricordare in camtag.ui.v1 (non quando è la finestra stretta a decidere).
+function setMode(mode, remember = true) {
   simOn = mode === 'sim';
-  document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === b));
-  $('#previewMode').hidden = mode !== 'preview'; $('#simMode').hidden = !simOn;
+  document.querySelectorAll('[data-mode]').forEach(x => { x.classList.toggle('on', x.dataset.mode === mode); x.setAttribute('aria-pressed', String(x.dataset.mode === mode)); });
+  $('#previewMode').hidden = $('#previewTools').hidden = simOn; $('#simMode').hidden = $('#simTools').hidden = !simOn;
+  if (remember) { ui.mode = mode; saveUi(); }
   if (simOn) renderSim(); else drawPreview();
-});
-// Se la finestra diventa stretta come un telefono, si torna all'anteprima.
-const phoneMq = matchMedia('(max-width: 700px)');
-const leaveSimOnPhone = () => { if (phoneMq.matches && simOn) $('[data-mode="preview"]').click(); };
+  fitStage();
+}
+document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => setMode(b.dataset.mode));
+// Se la finestra diventa stretta come un telefono si torna all'anteprima; quando si
+// riallarga torna il simulatore, se era quello scelto.
+const phoneMq = matchMedia('(max-width: 699px)');
+const leaveSimOnPhone = () => { if (phoneMq.matches === simOn && (simOn || ui.mode === 'sim')) setMode(simOn ? 'preview' : 'sim', false); };
 phoneMq.addEventListener('change', leaveSimOnPhone);
 addEventListener('resize', leaveSimOnPhone);
+if (ui.mode === 'sim' && !phoneMq.matches) setMode('sim', false);
 $('#rotL').onclick = () => { sim.rot = (sim.rot + 270) % 360; sim.msg = ''; renderSim(); };
 $('#rotR').onclick = () => { sim.rot = (sim.rot + 90) % 360; sim.msg = ''; renderSim(); };
 // Come sul dispositivo: la pressione lunga scatta allo scadere del tempo, con il
@@ -2063,6 +2397,7 @@ Promise.all([
   ...[400, 600, 700, 800, 900].map(w => document.fonts.load(`${w} 40px "Inter"`).catch(() => {})),
 ]).then(refresh);
 refresh();
+fitStage();
 </script>
 </body>
 </html>
