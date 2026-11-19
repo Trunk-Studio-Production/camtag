@@ -437,7 +437,7 @@ const TYPE_LABEL = { lens: 'Lente', crew: 'Crew', notes: 'Note', patch: 'Patch' 
 
 function freshState() {
   return {
-    version: 6, device: 'x3', production: '', lensSplit: false, lensFront: true,
+    version: 6, device: 'x3', production: '', lensSplit: false, zoomsLast: false, lensFront: true,
     auto: { lenschart: true, filters: true },
     lenses: [],
     filters: { ndFormat: 'density', ndType: 'ND', nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], ndCombos: [], dio: [], effects: [], stages: [null, null, null], previewNd: 0, previewDio: 0 },
@@ -449,7 +449,7 @@ function migrate(s) {
   if (!s || !Array.isArray(s.cards)) return s;
   for (const c of s.cards) { if (!c.formats) c.formats = 'both'; delete c.orient; delete c.mount; }
   const f = freshState(), hadStages = Array.isArray(s.filters?.stages);
-  for (const k of ['production', 'lensSplit', 'lensFront', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
+  for (const k of ['production', 'lensSplit', 'zoomsLast', 'lensFront', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
   s.filters = Object.assign(f.filters, s.filters);
   if ('ir' in s.filters) { if (s.filters.ir) s.filters.ndType = 'IRND'; delete s.filters.ir; }  // vecchia casella IRND
   // Vecchi "filtri di stile" (un elemento per filtro montato) -> kit con gradazioni montate.
@@ -679,9 +679,13 @@ function setOverride(dbId, key, raw, type) {
   saveOverrides();
 }
 
-function sortedLenses(list = state.lenses) { return list.map(effective).sort((a, b) => focalSort(a) - focalSort(b) || (a.seriesCode || '').localeCompare(b.seriesCode || '')); }
 // Uno zoom è una lente con un'escursione al posto della focale.
 const isZoom = l => l.focal == null;
+// Per focale (minima, per gli zoom); con `state.zoomsLast` prima tutti i prime, poi gli zoom.
+function sortedLenses(list = state.lenses) {
+  const last = l => state.zoomsLast && isZoom(l) ? 1 : 0;
+  return list.map(effective).sort((a, b) => last(a) - last(b) || focalSort(a) - focalSort(b) || (a.seriesCode || '').localeCompare(b.seriesCode || ''));
+}
 // Gruppi della lens chart: tutte le lenti insieme, oppure prime e zoom separati
 // (`state.lensSplit`). Ogni gruppo ha le sue pagine, le sue misure, la sua
 // legenda e le sue lenti in negativo, come fosse una lens chart a sé.
@@ -1525,6 +1529,8 @@ function lensEditor(ed) {
       h('input', { type: 'text', value: state.production, placeholder: 'LENS CHART', oninput: e => { state.production = e.target.value; changed(); } })),
     toggle('Prime e zoom su pagine separate', state.lensSplit, v => { state.lensSplit = v; changed(true); },
       { tip: 'Prima le pagine dei prime, poi quelle degli zoom. Ogni gruppo ha la sua misura del testo: utile con tanti prime e pochi zoom.' }),
+    ...(state.lensSplit ? [] : [toggle('Zoom in fondo, dopo i prime', state.zoomsLast, v => { state.zoomsLast = v; changed(true); },
+      { tip: 'Senza, gli zoom stanno tra i prime in ordine di focale minima.' })]),
     toggle('Mostra il diametro frontale (Ø)', state.lensFront, v => { state.lensFront = v; changed(); },
       { tip: 'Senza il diametro restano focale, T e CF, più grandi.' }));
 
@@ -1572,17 +1578,27 @@ function lensEditor(ed) {
   // Inserimento manuale
   const m = { brand: '', series: '', seriesCode: '', type: 'prime', focal: '', tstop: '', mod_m: '', front_mm: '' };
   const inp = (k, ph, type = 'text') => h('input', { type, placeholder: ph, 'aria-label': ph, step: 'any', oninput: e => m[k] = e.target.value });
+  // Focale e T accettano un valore o un'escursione ("24-70", "2.8-4"; anche virgola e trattino lungo).
+  const range = v => {
+    const p = v.trim().replace(/,/g, '.').split(/\s*[-–—]\s*/).map(Number);
+    return p.length > 2 || p.some(n => !(n > 0)) ? null : p;
+  };
+  const rangeInp = (k, label, ph) => Object.assign(inp(k, label), { inputMode: 'decimal', placeholder: ph, title: `${label}: un valore o un'escursione` });
   db.push(section('lens.manual', 'Aggiungi una lente a mano', null, [
     h('div', { class: 'two' }, inp('brand', 'Marca'), inp('series', 'Serie')),
-    h('div', { class: 'three mt' }, inp('seriesCode', 'Sigla'), inp('focal', 'Focale mm', 'number'), inp('tstop', 'T', 'number')),
+    h('div', { class: 'three mt' }, inp('seriesCode', 'Sigla'), rangeInp('focal', 'Focale mm', 'Focale (24-70)'), rangeInp('tstop', 'T', 'T (2.8-4)')),
     h('div', { class: 'three mt' }, inp('mod_m', 'CF m', 'number'), inp('front_mm', 'Ø mm', 'number'),
       h('select', { 'aria-label': 'Tipo', onchange: e => m.type = e.target.value }, ...Object.entries(LENS_TYPES).map(([k, v]) => h('option', { value: k }, v)))),
     h('div', { class: 'acts' }, h('button', { class: 'primary', onclick: () => {
-      if (!m.focal) { alert('Serve almeno la focale.'); return; }
-      const num = v => v === '' ? null : Number(v);
+      if (!m.focal.trim()) { alert('Serve almeno la focale.'); return; }
+      const f = range(m.focal), t = m.tstop.trim() ? range(m.tstop) : [null];
+      if (!f) { alert('Focale non valida: scrivi un numero (35) o un\'escursione (24-70).'); return; }
+      if (!t) { alert('T non valido: scrivi un numero (2.8) o un\'escursione (2.8-4).'); return; }
+      const zoom = f.length === 2, num = v => v === '' ? null : Number(v);
       state.lenses.push({ uid: 'm-' + Date.now(), dbId: null, brand: m.brand || 'Manuale', series: m.series || m.brand || 'Manuale',
-        seriesCode: (m.seriesCode || slug(m.series).slice(0, 3)).toUpperCase(), type: m.type, focal: num(m.focal), focalMin: null, focalMax: null,
-        tstop: num(m.tstop), tstopLong: null, mod_m: num(m.mod_m), front_mm: num(m.front_mm), filterThread: null, squeeze: null, highlight: 'auto' });
+        seriesCode: (m.seriesCode || slug(m.series).slice(0, 3)).toUpperCase(), type: zoom && m.type === 'prime' ? 'zoom' : m.type,
+        focal: zoom ? null : f[0], focalMin: zoom ? Math.min(...f) : null, focalMax: zoom ? Math.max(...f) : null,
+        tstop: t[0], tstopLong: t[1] ?? null, mod_m: num(m.mod_m), front_mm: num(m.front_mm), filterThread: null, squeeze: null, highlight: 'auto' });
       changed(true);
     } }, 'Aggiungi'))], false, { sub: true }));
   ed.append(section('lens.db', 'Database lenti', lensDb ? `${lensDb.length} lenti` : null, db, true,

@@ -154,6 +154,9 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   Opzione "Prime e zoom su pagine separate" (`state.lensSplit`, `lensGroups`):
   prima le pagine dei prime, poi quelle degli zoom; ogni gruppo è una lens
   chart a sé, con le sue misure, la sua legenda e le sue lenti in negativo.
+  Ordine per focale (minima per gli zoom); "Zoom in fondo, dopo i prime"
+  (`state.zoomsLast`, in `sortedLenses`) li mette dopo i prime sulla stessa
+  lens chart, ed è nascosta quando le pagine sono separate.
 - ND e diottrie: +/− sul dispositivo, scorrendo solo i valori del kit scelto
   nello strumento web. Nella scala dell'ND entrano anche i totali fatti con
   **due vetri** spuntati nello strumento (`ndCombos`, `ndComboList`: mai un
