@@ -22,6 +22,14 @@ Eccezione: se il costruttore scrive accanto ai metri anche piedi o pollici e
 questi danno ragione a una sola delle due fonti, vale quella fonte. In tutti
 i casi `notes` riporta i valori in conflitto.
 
+**Eccezione (2026-11-19):** per le serie vintage o solo a noleggio di cui il
+costruttore non pubblica nulla (ZEISS Super Speed, Standard Speed, B Speed,
+Variable Prime, LWZ.1; Tribe7 Blackwing7 17 e 23.7; Oppenheimer Zeiss Macro;
+in parte Sony FE C) sono stati usati schede di noleggi o rivenditori. Ogni
+voce lo dice in `notes` ("non dal costruttore") e cita la fonte in `sources`.
+Per i rehousing il costruttore è chi fa il rehousing (Whitepoint, TLS,
+Oppenheimer) e `notes` dice di chi è il vetro.
+
 ## Schema
 
 ```json
@@ -67,7 +75,11 @@ chiavi mancanti.
   - Leitz, Canon CN-E L F, Canon Flex Zoom, Atlas Orion: il costruttore non
     dichiara il riferimento. I valori sono tenuti, con una nota, secondo la
     convenzione cine (piano focale).
-  - Usate solo unità metriche pubblicate; nessuna conversione da piedi.
+  - Vantage pubblica "CFD" (dal piano focale) e "MOD" (dal fronte lente): si
+    usa la CFD, la MOD sta in `notes`.
+  - Usate le unità metriche pubblicate. Dove la fonte dà solo piedi e pollici
+    (Panavision in parte, TLS, serie vintage) il valore è convertito e
+    `notes` riporta l'originale.
 - **Copertura.** È la classe dichiarata dal costruttore, ricondotta a cinque
   valori: `S35`; `S35+`, più grande del Super 35 ma non full frame (classe
   nostra: Tokina 25-75 "super35+", Blazar Cato 40 e 55 con formato 28,8×24);
@@ -206,8 +218,90 @@ chiavi mancanti.
 | Xeen | CF | XCF | 6 | FF |
 | Xeen | Meister | XMS | 5 | FF |
 | Xeen | Anamorphic | XAN | 1 | FF |
+| ZEISS | CP.2 | CP2 | 12 | FF/S35+ |
+| ZEISS | CP.2 Super Speed | CPS | 3 | FF |
+| ZEISS | Lightweight Zoom LWZ.1 | LW1 | 1 | S35 |
+| ZEISS | Lightweight Zoom LWZ.2 | LW2 | 1 | S35 |
+| ZEISS | Super Speed MKII | SS2 | 6 | S35 |
+| ZEISS | Super Speed MKIII | SS3 | 6 | S35 |
+| ZEISS | Standard Speed | STS | 15 | S35 |
+| ZEISS | B Speed MKI | BSP | 5 | S35 |
+| ZEISS | Variable Prime | VPR | 3 | S35 |
+| Sigma | Aizu Prime | SAZ | 11 | LF |
+| Sigma | FF Classic Prime | SCP | 11 | FF |
+| Sigma | AF Cine | SAF | 2 | FF |
+| Angénieux | Optimo DP | ODP | 2 | S35 |
+| Laowa | 24mm T14 2X Macro Probe | MPB | 1 | FF |
+| Sony | FE C | SFC | 1 | FF |
+| NiSi | Athena Prime | NAT | 8 | FF |
+| Tribe7 | Blackwing7 | BW7 | 10 | LF |
+| Panavision | B Series | PVB | 5 | S35 |
+| Panavision | C Series | PVC | 9 | S35 |
+| Panavision | E Series | PVE | 8 | S35 |
+| Panavision | G Series | PVG | 8 | S35 |
+| Panavision | T Series | PVT | 10 | S35 |
+| Panavision | Primo Anamorphic | PRA | 5 | S35 |
+| Panavision | Macro Anamorphic Prime | PMA | 5 | S35 |
+| Panavision | Anamorphic Zoom | PAZ | 6 | S35/S35+ |
+| Panavision | Ultra Panatar | UPN | 9 | FF |
+| Panavision | Ultra Panatar II | UP2 | 8 | FF |
+| Panavision | Ultra Vista | UVS | 7 | FF |
+| Panavision | VA | PVA | 11 | FF |
+| Panavision | Primo | PRI | 14 | S35 |
+| Panavision | Primo V | PRV | 9 | S35 |
+| Panavision | Primo Zoom | PZM | 8 | S35 |
+| Panavision | Primo 70 | PR70 | 13 | FF |
+| Panavision | Primo 65 | PR65 | 12 | 65 |
+| Panavision | Primo X | PRX | 3 | FF |
+| Panavision | Primo Artiste | PAR | 11 | FF |
+| Panavision | PVintage | PVN | 9 | S35 |
+| Panavision | Sphero 65 | SPH | 9 | 65 |
+| Panavision | System 65 | S65 | 9 | 65 |
+| Panavision | 65 Vintage | V65 | 11 | 65 |
+| Panavision | Super Speed | SSP | 5 | S35 |
+| Panavision | Ultra Speed | USP | 12 | S35 |
+| Panavision | Panaspeed | PSP | 12 | FF |
+| Panavision | Macro | PVM | 8 | S35 |
+| Panavision | H Series | HS | 18 | FF |
+| Panavision | Large Format Zoom | LFZ | 6 | FF/65 |
+| Panavision | Flare | FLR | 11 | S35 |
+| Whitepoint Optics | HS | WHS | 7 | FF |
+| Whitepoint Optics | TS70 | T70 | 7 | 65 |
+| Whitepoint Optics | Nikon AI-S | WNK | 13 | FF |
+| TLS | Petzval | PTZ | 4 | LF |
+| TLS | Super Baltar | SBL | 8 | — |
+| Schneider-Kreuznach | Cine-Xenar III | CX3 | 7 | S35 |
+| Schneider-Kreuznach | Xenon FF-Prime | XFF | 6 | FF |
+| P+S Technik | Evolution 2X | EVO | 6 | S35/FF |
+| P+S Technik | Technovision 1.5X | TNV | 7 | FF |
+| P+S Technik | Technovision 1.5X Zoom | TNZ | 2 | FF |
+| P+S Technik | Technovision 1.5X AproXima | TAX | 5 | FF |
+| Oppenheimer | Zeiss Macro | OZM | 1 | FF |
+| Vantage | HAWK class-X | HCX | 9 | S35 |
+| Vantage | HAWK class-X 2:1 Zoom | HXZ | 2 | S35 |
+| Vantage | HAWK C-Series | HCS | 6 | S35 |
+| Vantage | HAWK 3:1 Zoom | H3Z | 2 | S35 |
+| Vantage | HAWK 5:1 Zoom | H5Z | 1 | S35 |
+| Vantage | HAWK MHX | MHX | 10 | LF |
+| Vantage | MiniHAWK | MHK | 9 | S35 |
+| Vantage | HAWK65 | H65 | 11 | LF |
+| Vantage | HAWK65 Vintage'74 | H6V | 11 | LF |
+| Vantage | VANTAGE One | VON | 10 | S35 |
+| Vantage | VANTAGE One4 | VO4 | 10 | LF |
+| Vantage | VANTAGE LEITZ Macro | VLM | 10 | FF |
+| Vantage | VANTAGE Lightweight Zoom | VLZ | 2 | FF |
+| Vantage | HAWK V-Lite | HVL | 9 | S35 |
+| Vantage | HAWK V-Lite Vintage'74 | HVLV | 9 | S35 |
+| Vantage | HAWK V-Lite 1.3x | HVL3 | 11 | S35 |
+| Vantage | HAWK V-Lite Vintage'74 1.3x | HLV3 | 11 | S35 |
+| Vantage | HAWK V-Plus | HVP | 11 | S35 |
+| Vantage | HAWK V-Plus Zoom | HVPZ | 2 | S35 |
+| Vantage | HAWK V-Plus Vintage'74 Zoom | HPZV | 2 | S35 |
+| Vantage | HAWK V-Plus 1.3x Zoom | HPZ3 | 3 | S35 |
+| Vantage | HAWK V-Plus Vintage'74 1.3x Zoom | HZV3 | 3 | S35 |
+| Vantage | HAWK V-Series | HVS | 13 | S35 |
 
-Totale: 660 lenti, 110 serie. Verificate il 2026-11-17 le prime 32 serie, il 2026-11-18 le altre.
+Totale: 1269 lenti, 192 serie. Verificate il 2026-11-17 le prime 32 serie, il 2026-11-18 le altre fino a Xeen, il 2026-11-19 le 82 serie aggiunte in fondo alla tabella.
 
 Gli Angénieux EZ cambiano focale e T secondo il blocco posteriore montato
 (S35 o FF/VistaVision): ogni zoom compare due volte, una voce per
@@ -261,6 +355,16 @@ come scheda tecnica ufficiale:
 - Sirui: store.sirui.com (il negozio è il sito prodotti di Sirui)
 - Blazar: blazarlens.com
 - Xeen: www.xeenglobal.com (pagine delle serie e manuali PDF linkati)
+- Panavision: www.panavision.com (pagine prodotto con la tabella della serie;
+  copie del sito 2019-2020 su web.archive.org solo come conferma)
+- Vantage: www.vantagefilm.com (pagine prodotto, data sheet PDF, Lens Table)
+- Sigma (Aizu, Classic, AF Cine): www.sigma-global.com
+- NiSi: en.nisioptics.com e la brochure NiSi 2024
+- Whitepoint Optics, TLS, Schneider-Kreuznach, P+S Technik: siti dei
+  rispettivi costruttori (brochure Cine-Xenar III dalla copia su lensrentals.com)
+- ZEISS CP.2, CP.2 Super Speed, LWZ.2: pagine e brochure ZEISS archiviate
+- Fonti non del costruttore (vedi l'eccezione sopra): abelcine.com,
+  keslowcamera.com, truelens.co.uk, camaleonrental.com, cbm-cine.com
 
 Gli URL esatti sono in `sources` per ogni lente.
 
