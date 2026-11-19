@@ -162,6 +162,8 @@
   .srow .lab { margin: 0; }
   .srow .seg { display: flex; }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .urlrow { display: flex; gap: 8px; }
+  .urlrow input { flex: 1; min-width: 0; }
   .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
   .mt { margin-top: 8px; }
   .acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
@@ -1963,13 +1965,28 @@ function cardEditor(ed, c, idx) {
   } else if (c.type === 'notes') {
     ed.append(field(c, 'Titolo', 'title'), field(c, 'Testo', 'body', 'textarea'));
   } else {
+    const msg = h('p', { class: 'warn', hidden: true });
+    const say = t => { msg.textContent = t || ''; msg.hidden = !t; };
+    const useImage = blob => readDataUrl(blob).then(downscale).then(url => { c.img = url; return ensureImg(url); }).then(() => changed());
     const inp = h('input', { type: 'file', accept: 'image/*', onchange: () => {
       const file = inp.files[0]; if (!file) return;
-      const r = new FileReader();
-      r.onload = () => downscale(r.result).then(url => { c.img = url; return ensureImg(url); }).then(() => changed());
-      r.readAsDataURL(file);
+      say(''); useImage(file).catch(() => say('Il file non è un\'immagine leggibile.'));
     } });
     ed.append(h('label', { class: 'fld' }, h('span', { class: 'lab' }, 'Immagine'), inp));
+    // Da un indirizzo web: serve che il sito permetta di leggere l'immagine da un'altra pagina (CORS).
+    const urlIn = h('input', { type: 'text', inputmode: 'url', placeholder: 'https://…/immagine.jpg', 'aria-label': 'Indirizzo dell\'immagine' });
+    const urlBtn = h('button', { type: 'button' }, 'Carica');
+    const fromUrl = () => {
+      const raw = urlIn.value.trim(); if (!raw) return;
+      urlBtn.disabled = true; say('');
+      imageFromUrl(raw).then(useImage).then(() => { urlIn.value = ''; })
+        .catch(e => say(e.message)).finally(() => { urlBtn.disabled = false; });
+    };
+    urlBtn.onclick = fromUrl;
+    urlIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); fromUrl(); } });
+    ed.append(h('div', { class: 'fld' },
+      h('span', { class: 'lab' }, 'Oppure da un indirizzo web ', info('Incolla il link diretto a un\'immagine (JPEG, PNG, GIF, WebP, AVIF, SVG o BMP), non quello della pagina che la contiene. Alcuni siti non permettono di leggere le loro immagini da qui: in quel caso scaricala e caricala come file.')),
+      h('div', { class: 'urlrow' }, urlIn, urlBtn)), msg);
     const dither = field(c, 'Retinatura', 'dither', 'select', [['atkinson', 'Atkinson'], ['fs', 'Floyd–Steinberg'], ['none', 'Soglia']]);
     pair(field(c, 'Adattamento', 'fit', 'select', [['contain', 'Intera'], ['cover', 'Riempi']]), dither);
     // Soglia con uno slider: l'anteprima si aggiorna mentre lo si trascina. Visibile solo con "Soglia".
@@ -1994,14 +2011,38 @@ function renderEditor() {
 }
 
 function downscale(url, max = 1000) {
-  return new Promise(res => {
+  return new Promise((res, rej) => {
     const im = new Image(); im.onload = () => {
+      if (!im.width || !im.height) return rej(new Error('Immagine vuota.'));
       const s = Math.min(1, max / Math.max(im.width, im.height));
       const [cv] = newCanvas(Math.round(im.width * s), Math.round(im.height * s));
-      cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+      const g = cv.getContext('2d');
+      g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); // le trasparenze diventano bianco, non nero
+      g.drawImage(im, 0, 0, cv.width, cv.height);
       res(cv.toDataURL('image/jpeg', 0.85));
-    }; im.src = url;
+    }; im.onerror = () => rej(new Error('Immagine non leggibile.')); im.src = url;
   });
+}
+function readDataUrl(blob) {
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(blob); });
+}
+const URL_IMG_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml', 'image/bmp'];
+const URL_IMG_MAX = 25 * 1024 * 1024;
+async function imageFromUrl(raw) {
+  let u;
+  if (/\s/.test(raw)) throw new Error('Indirizzo non valido.');
+  try { u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : 'https://' + raw); } catch { throw new Error('Indirizzo non valido.'); }
+  if (!['http:', 'https:', 'data:'].includes(u.protocol)) throw new Error('Servono indirizzi http o https.');
+  let r;
+  try { r = await fetch(u.href, { mode: 'cors', credentials: 'omit', referrerPolicy: 'no-referrer' }); }
+  catch { throw new Error('Il sito non permette di leggere l\'immagine da qui (o non risponde). Scaricala e caricala come file.'); }
+  if (!r.ok) throw new Error(`Il sito ha risposto con un errore (${r.status}): immagine non disponibile.`);
+  const blob = await r.blob();
+  const type = (blob.type || '').split(';')[0].trim().toLowerCase();
+  if (type.startsWith('text/html')) throw new Error('Questo è l\'indirizzo di una pagina, non di un\'immagine: apri l\'immagine e copia il suo indirizzo.');
+  if (type && type !== 'application/octet-stream' && !URL_IMG_TYPES.includes(type)) throw new Error(`Formato non supportato (${type}). Vanno bene JPEG, PNG, GIF, WebP, AVIF, SVG e BMP.`);
+  if (blob.size > URL_IMG_MAX) throw new Error('Immagine troppo grande (oltre 25 MB).');
+  return blob;
 }
 function ensureImg(url) {
   if (!url || imgCache.has(url)) return Promise.resolve();
