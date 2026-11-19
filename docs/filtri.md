@@ -141,8 +141,8 @@ Una regola sola, ogni volta che ND o diottria cambiano gli stadi che occupano
   Ogni famiglia ha la casella "2 stadi" (nel catalogo: `"slots": 2`).
 - **Mattebox**: numero di stadi e, per ogni stadio, il vetro di partenza scelto
   da un menu (i vetri già in un altro stadio non sono selezionabili). Il
-  selettore mostra 1–4 e un `+`: con il `+` si passa a 5 e compaiono anche 5 e
-  6; tornando a 4 o meno si richiude. Gli stadi
+  selettore mostra 1–3 e un `+`: il `+` non cambia il numero, apre anche 4, 5
+  e 6; scegliendo 3 o meno si richiude. Gli stadi
   di ND e diottria di partenza non si scelgono, e così il secondo stadio di un
   vetro da due. Quando un cambio fa uscire un vetro dagli stadi resta un avviso
   che dice quale; un altro avviso segnala quando ND e diottria possono non

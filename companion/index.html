@@ -492,9 +492,11 @@ function addToKit(f, id, name, strengths, mounted = []) {
 // riga mostra l'ND o la diottria. Ai vetri restano gli stadi in mezzo (stageRange).
 // Qui ci sono i valori di partenza; il simulatore ne tiene una copia sua
 // (sim.stages, sim.nd, sim.dio), come farà il dispositivo.
-// Il selettore mostra gli stadi di un mattebox (BOX_STAGES); oltre, dietro un "+",
-// ci sono quelli per un vetro montato fuori (caso raro), fino a MAX_STAGES.
-const MAX_STAGES = 6, BOX_STAGES = 4;
+// Il selettore mostra gli stadi di un mattebox (BOX_STAGES); il "+" apre gli altri,
+// fino a MAX_STAGES (mattebox più grandi o un vetro montato fuori). Aperto solo in
+// questa pagina (stagesMore) o quando gli stadi sono già più di BOX_STAGES.
+const MAX_STAGES = 6, BOX_STAGES = 3;
+let stagesMore = false;
 function glassKey(e, s) { return `${e.id || 'c:' + e.name}|${s}`; }
 // I vetri nell'ordine in cui si scorrono sul dispositivo (per famiglia).
 // slots = stadi occupati: 1, oppure 2 se la famiglia è segnata così (e.slots).
@@ -1850,14 +1852,17 @@ function filtersEditor(ed) {
     { tip: 'Famiglie di vetri con le loro gradazioni. Una gradazione che manca si aggiunge nel kit con il campo "+".' }));
 
   // Mattebox: quanti stadi, da che ND e diottria si parte e cosa c'è in ogni stadio all'avvio.
-  const setStages = n => { refit(ndUsed(), n); changed(true); };
+  const setStages = n => {
+    if (n === 'more') { stagesMore = true; renderEditor(); return; }
+    stagesMore = false; refit(ndUsed(), n); changed(true);
+  };
   const ndV = ndSteps()[f.previewNd] || 0, cells = stageCells(), range = stageRange(f.stages.length);
   const mb = [
     h('div', { class: 'srow' },
-      lab('Stadi', 'L\'ND, quando c\'è, sta nei primi stadi (uno, o due per una coppia) e la diottria negli ultimi, davanti a tutto (due, o uno). Gli stadi in mezzo sono per gli altri vetri; un vetro segnato "2 stadi" nel kit ne occupa due di seguito. Quando ND o diottria hanno bisogno di posto i vetri si stringono: scalano verso il fronte per l\'ND, verso la lente per la diottria. Se non c\'è posto per tutti escono i vetri più avanti. Quando l\'ND libera uno stadio i vetri tornano indietro verso la lente. Con il + si va oltre il 4, fino a 6: serve per un vetro montato fuori dal mattebox. Sul dispositivo le righe degli stadi si abbassano per farle entrare tutte.'),
-      seg(f.stages.length > BOX_STAGES
+      lab('Stadi', 'L\'ND, quando c\'è, sta nei primi stadi (uno, o due per una coppia) e la diottria negli ultimi, davanti a tutto (due, o uno). Gli stadi in mezzo sono per gli altri vetri; un vetro segnato "2 stadi" nel kit ne occupa due di seguito. Quando ND o diottria hanno bisogno di posto i vetri si stringono: scalano verso il fronte per l\'ND, verso la lente per la diottria. Se non c\'è posto per tutti escono i vetri più avanti. Quando l\'ND libera uno stadio i vetri tornano indietro verso la lente. Con il + si va oltre il 3, fino a 6: per mattebox più grandi o un vetro montato fuori. Sul dispositivo le righe degli stadi si abbassano per farle entrare tutte.'),
+      seg(stagesMore || f.stages.length > BOX_STAGES
         ? Array.from({ length: MAX_STAGES }, (_, i) => [i + 1, String(i + 1)])
-        : [...Array.from({ length: BOX_STAGES }, (_, i) => [i + 1, String(i + 1)]), [BOX_STAGES + 1, '+', 'Uno stadio in più, per un vetro fuori dal mattebox']],
+        : [...Array.from({ length: BOX_STAGES }, (_, i) => [i + 1, String(i + 1)]), ['more', '+', `Più di ${BOX_STAGES} stadi, fino a ${MAX_STAGES}`]],
         f.stages.length, setStages, 'Numero di stadi')),
     h('div', { class: 'two' },
       h('div', {}, lab('ND di partenza', 'Il dispositivo parte da qui, poi ricorda l\'ultimo valore impostato con i tasti.'),

@@ -166,8 +166,8 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   FSND (full spectrum).
 - Gli altri vetri (diffusione, polarizzatori, colore…) seguono il mattebox
   (`docs/filtri.md`): un **kit** di vetri, uno per tipo, e da 1 a 6 **stadi**
-  (`MAX_STAGES`; nello strumento il selettore mostra 1–4 e un `+`,
-  `BOX_STAGES`: il 5 e il 6 servono per un vetro fuori dal mattebox, caso raro)
+  (`MAX_STAGES`; nello strumento il selettore mostra 1–3 e un `+`,
+  `BOX_STAGES`, che apre anche 4, 5 e 6)
   numerati da 1 = lato lente; ogni stadio ha un vetro o è vuoto (`—`), e un
   vetro sta in un posto solo. Non esiste "montato": la schermata mostra sempre
   tutti gli stadi sotto ND e diottria. Un vetro occupa uno stadio, o due se la
