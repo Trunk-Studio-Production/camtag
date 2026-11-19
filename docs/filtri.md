@@ -27,9 +27,13 @@ Un vetro sta in un posto solo; uno da due stadi ne occupa due di seguito.
 ### Chi sta dove
 
 - **L'ND** occupa i primi stadi, dal lato lente: uno, o due per una coppia.
-- **La diottria** occupa gli ultimi, davanti a tutto: è sempre il vetro più
-  lontano dalla camera. Due stadi, o uno.
-- **Gli altri vetri** hanno gli stadi in mezzo.
+- **La diottria** sta davanti a tutti gli altri vetri, subito dopo l'ultimo
+  (o dopo l'ND): è sempre il vetro più lontano dalla camera, ma non per forza
+  negli ultimi stadi. Senza ND e senza altri vetri occupa gli stadi 1 e 2. Due
+  stadi, o uno. Gli stadi davanti alla diottria restano vuoti.
+- **Gli altri vetri** stanno fra l'ND e la diottria, e lasciano sempre in fondo
+  il posto per la diottria: con 4 stadi e una diottria da due, i vetri hanno al
+  massimo gli stadi 1 e 2.
 - Se ND e diottria insieme non entrano negli stadi (es. coppia di ND e diottria
   da due su 3 stadi), l'ND ha la precedenza: la diottria resta solo nel
   riquadro grande e i suoi stadi sono liberi per gli altri vetri.
@@ -40,12 +44,14 @@ Una regola sola, ogni volta che ND o diottria cambiano gli stadi che occupano
 (o cambia il numero di stadi, o un vetro diventa da due):
 
 - I vetri restano nello stesso ordine e si spostano il meno possibile: chi si
-  trova sotto l'ND scala verso il fronte, chi si trova sotto la diottria scala
-  verso la lente, e gli stadi vuoti in mezzo si chiudono solo quanto serve.
+  trova sotto l'ND scala verso il fronte, chi lascerebbe la diottria senza posto
+  davanti scala verso la lente, e gli stadi vuoti in mezzo si chiudono solo
+  quanto serve. La diottria si mette poi subito davanti all'ultimo vetro.
 - Se non c'è posto per tutti, **escono i vetri più avanti** (i più lontani
   dalla lente), uno alla volta, finché gli altri entrano.
 - Quando l'ND libera stadi i vetri tornano indietro verso la lente (vedi
-  sotto). Quando è la diottria a liberarli, i vetri restano dove sono.
+  sotto), e la diottria con loro. Quando è la diottria a liberarli, i vetri
+  restano dove sono.
 
 ### L'ND occupa lo stadio 1
 
@@ -111,8 +117,10 @@ Una regola sola, ogni volta che ND o diottria cambiano gli stadi che occupano
   sulla stessa schermata (ND e diottria restano visibili). Si parte dal primo
   stadio selezionabile. Niente cursori lampeggianti.
 - **A/B** spostano la selezione fra gli stadi (si ferma al primo e all'ultimo).
-  Gli stadi di ND e diottria non si selezionano: si parte dal primo libero. Se
-  li occupano tutti, la modifica non si apre. Un vetro da due stadi si seleziona
+  Gli stadi dell'ND e quelli vuoti davanti alla diottria non si selezionano: si
+  parte dal primo libero. La diottria si seleziona (intera, in negativo) quando
+  ha posto per avanzare: un vetro scelto lì prende il suo posto e lei avanza
+  davanti. Se non resta nulla da selezionare, la modifica non si apre. Un vetro da due stadi si seleziona
   intero (due righe in negativo) e la selezione lo salta in un passo.
 - **C/D** cambiano il vetro dello stadio selezionato. L'ordine è: vuoto, poi
   tutti i vetri del kit nell'ordine del kit (per famiglia), saltando quelli già
@@ -171,8 +179,10 @@ sfondo ha vuoti i riquadri di ND e diottria e l'area degli stadi.
 - `stages.count`, `stages.start`: numero di stadi (da 1 a 6) e vetro di partenza di ognuno
   (indice nel kit del vetro che comincia lì; `-` = nessuno: stadio vuoto, di
   ND o diottria, o secondo stadio di un vetro da due). `stages.nd`: il primo
-  stadio dell'ND (1). La diottria occupa gli ultimi `dio.slots` stadi, se ci
-  sta tutta dopo l'ND. `stages.settle`: secondi di valori fermi prima di
+  stadio dell'ND (1). La diottria, se ci sta tutta dopo l'ND, occupa
+  `dio.slots` stadi subito dopo l'ultimo vetro (o dopo l'ND, o dallo stadio 1);
+  i vetri stanno fino a `stages.count - dio.slots`. Gli stadi davanti alla
+  diottria sono vuoti (`fxn`) e non si selezionano. `stages.settle`: secondi di valori fermi prima di
   rimettere a posto i vetri (regola in "Quando manca posto").
 - `<verso>.list` (x, y, larghezza, altezza dell'area), `<verso>.listRow`
   (altezza di una riga), `<verso>.listNum` (larghezza della colonna del numero).
@@ -186,8 +196,9 @@ Pezzi, tutti `.bmp` con `.p.bmp` per il verticale:
   Alto `kit.slots` righe.
 - `fxdK`: il vetro ND K (da 1, come in `nd.glasses`) per le righe degli stadi
   dell'ND; solo normale, perché quelle righe non si selezionano.
-- `fxoI`: la diottria al passo I (da 1) per i suoi stadi, alta `dio.slots`
-  righe; solo normale.
+- `fxoI`, `fxsoI`: la diottria al passo I (da 1) per i suoi stadi, alta
+  `dio.slots` righe, normale e selezionata (in modifica, quando si sceglie il
+  suo posto per mettervi un vetro).
 
 Ogni riga ha `stN` a sinistra. Nello stadio in cui un vetro comincia, subito a
 destra va il suo pezzo (`fxG`, `fxdK` o `fxoI`), che copre tutte le righe che

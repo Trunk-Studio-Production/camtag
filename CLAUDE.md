@@ -109,7 +109,7 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   per l'ND `nd.glasses`, `nd.parts`) e i pezzi: `ndI`, `dioI` (I = passo, 0 =
   nessuno); `stN`/`stsN` colonna del numero dello stadio N, normale e
   selezionata; `fxG`/`fxsG` vetro G (indice nel kit, `n` = vuoto), normale e
-  selezionato; `fxdK` il vetro ND K e `fxoI` la diottria al passo I nelle righe
+  selezionato; `fxdK` il vetro ND K e `fxoI`/`fxsoI` la diottria al passo I nelle righe
   dei loro stadi. Tutti `.bmp`, con `.p.bmp` per il verticale. Una riga = `stN`
   + pezzo del vetro affiancati (`listNum` = larghezza del numero), altezza
   `listRow`; il pezzo di un vetro da due stadi è alto due righe e nella seconda
@@ -172,9 +172,13 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   vetro sta in un posto solo. Non esiste "montato": la schermata mostra sempre
   tutti gli stadi sotto ND e diottria. Un vetro occupa uno stadio, o due se la
   famiglia è segnata così nel kit (`e.slots`, `glassSlots`): sulla schermata è una casella alta due righe. **L'ND, quando c'è,
-  occupa i primi stadi** (uno, o due per una coppia) **e la diottria gli
-  ultimi**, davanti a tutto (due, o uno se segnata: `dioSlots`); le loro righe
-  non si selezionano. Se insieme non entrano, la diottria resta solo nel
+  occupa i primi stadi** (uno, o due per una coppia) **e la diottria sta subito
+  davanti all'ultimo vetro** (o all'ND; da sola negli stadi 1 e 2), davanti a
+  tutto ma non per forza negli ultimi stadi (`dioStart`; due, o uno se segnata:
+  `dioSlots`); gli stadi davanti a lei restano vuoti. I vetri lasciano sempre in
+  fondo il posto per la diottria. Le righe dell'ND non si selezionano; quella
+  della diottria sì, se può avanzare: un vetro messo lì la spinge avanti
+  (`c.insert`, pezzi `fxsoI`). Se insieme non entrano, la diottria resta solo nel
   riquadro grande (`stageRange`). Una regola sola rimette a posto i vetri
   (`fitStages`): restano in ordine, scalano verso il fronte per l'ND e verso la
   lente per la diottria chiudendo i vuoti solo quanto serve, e se non c'è posto

@@ -489,8 +489,10 @@ function addToKit(f, id, name, strengths, mounted = []) {
 // stadio i+1 (1 = lato lente) oppure null. Un vetro sta in un posto solo; uno da
 // due stadi (glassSlots) occupa anche lo stadio dopo, che resta null.
 // L'ND, quando c'è, occupa i primi stadi (uno, o due per una coppia) e la diottria
-// gli ultimi (due, o uno: dioSlots), davanti a tutto: lì stages[i] resta null e la
-// riga mostra l'ND o la diottria. Ai vetri restano gli stadi in mezzo (stageRange).
+// (due stadi, o uno: dioSlots) sta subito davanti all'ultimo vetro, o all'ND, o
+// nello stadio 1 se non c'è altro (dioStart): lì stages[i] resta null e la riga
+// mostra l'ND o la diottria. Gli stadi davanti alla diottria restano vuoti. I vetri
+// stanno in [lo, hi) (stageRange), così la diottria trova sempre posto davanti.
 // Qui ci sono i valori di partenza; il simulatore ne tiene una copia sua
 // (sim.stages, sim.nd, sim.dio), come farà il dispositivo.
 // Il selettore mostra gli stadi di un mattebox (BOX_STAGES); il "+" apre gli altri,
@@ -520,9 +522,9 @@ function stageCount() { return state.filters.effects.length ? state.filters.stag
 function ndUsed(ndIdx = state.filters.previewNd) { return ndParts(ndSteps()[ndIdx] || 0).length; }
 // Quanti ne occupa la diottria a quel passo: 0 = nessuna, poi 2 o 1.
 function dioUsed(dioIdx = state.filters.previewDio) { return dioSlots(dioSteps()[dioIdx]); }
-// Gli stadi per i vetri, su n: [lo, hi). Prima c'è l'ND, dopo la diottria. La
-// diottria entra negli stadi solo se ci sta tutta dopo l'ND: altrimenti hi = n e
-// resta soltanto nel riquadro grande.
+// Gli stadi per i vetri, su n: [lo, hi). Prima c'è l'ND; hi lascia in fondo il posto
+// per la diottria. La diottria entra negli stadi solo se ci sta tutta dopo l'ND:
+// altrimenti hi = n e resta soltanto nel riquadro grande.
 function stageRange(n, ndIdx = state.filters.previewNd, dioIdx = state.filters.previewDio) {
   const lo = Math.min(n, ndUsed(ndIdx)), d = dioUsed(dioIdx);
   return { lo, hi: d && lo + d <= n ? n - d : n };
@@ -549,29 +551,40 @@ function fitStages(stages, lo, hi, back = 0, f = state.filters) {
   return { moved: stages.some((k, i) => k !== old[i]), out };
 }
 // ND, diottria e vetri di partenza al loro posto (all'avvio e dopo un'importazione).
+// Primo stadio della diottria: subito dopo l'ultimo vetro (o l'ND); mai oltre hi.
+function dioStart(stages, lo, hi) {
+  const size = new Map(kitGlasses().map(g => [g.key, g.slots]));
+  let e = lo; for (let i = lo; i < hi; i++) if (stages[i]) e = i + (size.get(stages[i]) || 1);
+  return Math.min(e, hi);
+}
 function fitStart() { const f = state.filters, { lo, hi } = stageRange(f.stages.length); fitStages(f.stages, lo, hi); }
 // Testo dell'ND nella riga dello stadio 1 (il fattore porta già il tipo: "IRND8").
 function ndStageLabel(v) { const f = state.filters; return f.ndFormat === 'factor' ? ndLabel(v) : `${f.ndType} ${ndLabel(v)}`; }
 // Cosa c'è in ogni stadio: { kind, label, span } con kind 'nd', 'dio', 'glass'
-// (più key) o 'empty'; span = stadi occupati. Lo stadio dopo, per chi ne occupa
-// due, è { kind: 'cont', of: stadio in cui comincia }.
+// (più key), 'empty' o 'front' (vuoto davanti alla diottria, dove non va nulla);
+// span = stadi occupati. Lo stadio dopo, per chi ne occupa due, è
+// { kind: 'cont', of: stadio in cui comincia }. La diottria ha insert = true quando
+// al suo posto si può mettere un vetro (lei avanza): ci sono stadi liberi davanti.
 function stageCells(stages = state.filters.stages, ndIdx = state.filters.previewNd, dioIdx = state.filters.previewDio) {
   const n = stages.length, { lo, hi } = stageRange(n, ndIdx, dioIdx), kit = new Map(kitGlasses().map(g => [g.key, g]));
-  const nd = ndParts(ndSteps()[ndIdx] || 0), cells = [];
+  const nd = ndParts(ndSteps()[ndIdx] || 0), cells = [], d = n - hi, ds = d ? dioStart(stages, lo, hi) : n;
   for (let i = 0, cont = 0; i < n; i++) {
-    const g = i >= lo && i < hi && stages[i] ? kit.get(stages[i]) : null;
+    const g = i >= lo && i < ds && stages[i] ? kit.get(stages[i]) : null;
     if (i < lo) cells.push({ kind: 'nd', label: ndStageLabel(nd[i]), span: 1 });
-    else if (i >= hi) cells.push(i === hi ? { kind: 'dio', label: dioStageLabel(dioSteps()[dioIdx]), span: n - hi } : { kind: 'cont', of: hi });
+    else if (i === ds) cells.push({ kind: 'dio', label: dioStageLabel(dioSteps()[dioIdx]), span: d, insert: ds < hi });
+    else if (i > ds && i < ds + d) cells.push({ kind: 'cont', of: ds });
+    else if (i >= ds + d) cells.push({ kind: 'front', label: '—', span: 1 });
     else if (i < cont) cells.push({ kind: 'cont', of: i - 1 });
     else if (g) { const span = Math.min(g.slots, hi - i); cells.push({ kind: 'glass', key: g.key, label: g.label, span }); cont = i + span; }
     else cells.push({ kind: 'empty', label: '—', span: 1 });
   }
   return cells;
 }
-// Gli stadi in cui si può scegliere un vetro: non quelli di ND e diottria, né il
-// secondo stadio di un vetro da due.
+// Gli stadi in cui si può scegliere un vetro: non quelli dell'ND, né il secondo
+// stadio di un vetro da due, né quelli davanti alla diottria. La diottria sì, se
+// può avanzare: un vetro messo al suo posto la spinge di altrettanti stadi.
 function editableStages(stages, ndIdx, dioIdx) {
-  return stageCells(stages, ndIdx, dioIdx).map((c, i) => (c.kind === 'glass' || c.kind === 'empty' ? i : -1)).filter(i => i >= 0);
+  return stageCells(stages, ndIdx, dioIdx).map((c, i) => (c.kind === 'glass' || c.kind === 'empty' || (c.kind === 'dio' && c.insert) ? i : -1)).filter(i => i >= 0);
 }
 // Scelte per uno stadio: vuoto, poi i vetri del kit non usati altrove; uno da due
 // stadi solo se anche lo stadio dopo è libero (hi = primo stadio non disponibile).
@@ -1273,7 +1286,8 @@ function filtersIni() {
   const ndGlasses = [...state.filters.nd].sort((a, b) => a - b);
   out.push(`nd.glasses=${ndGlasses.map(ndStageLabel).join('|')}`, `nd.parts=${nd.map(v => ndParts(v).map(g => ndGlasses.indexOf(g) + 1).join('+') || '-').join('|')}`);
   out.push(`dio.count=${state.filters.dio.length ? dio.length : 0}`);
-  // dio.slots: stadi occupati da ogni passo della diottria (0 = nessuna), gli ultimi.
+  // dio.slots: stadi occupati da ogni passo della diottria (0 = nessuna), subito
+  // davanti all'ultimo vetro.
   if (state.filters.dio.length) out.push(`dio.labels=${dio.map(dioLabel).join('|')}`, `dio.slots=${dio.map(dioSlots).join('|')}`);
   for (const layout of ['land', 'port']) {
     const [W, H] = dims(layout), L = filtersLayout(W, H);
@@ -1292,12 +1306,14 @@ function filtersIni() {
   // stadi occupa ognuno (kit.slots) e il vetro che comincia in ogni stadio alla
   // partenza (indice nel kit, "-" = nessuno: vuoto, di ND o diottria, o secondo
   // stadio di un vetro da due). L'ND occupa i primi stadi da stages.nd, la
-  // diottria gli ultimi se ci sta tutta dopo l'ND; i vetri si rimettono a posto
+  // diottria (se ci sta tutta dopo l'ND) gli stadi subito dopo l'ultimo vetro, o
+  // dopo l'ND; gli stadi davanti a lei sono vuoti (fxn). I vetri si rimettono a posto
   // quando ND e diottria restano fermi per stages.settle secondi.
   // Pezzi: stN / stsN = colonna del numero dello stadio N (normale / selezionata);
   // fxG / fxsG = vetro G (indice nel kit, n = vuoto), alto kit.slots righe;
-  // fxdK = il vetro ND K (vedi nd.glasses, nd.parts); fxoI = la diottria al
-  // passo I, alta dio.slots righe. Tutti con .p per il verticale.
+  // fxdK = il vetro ND K (vedi nd.glasses, nd.parts); fxoI / fxsoI = la diottria al
+  // passo I, alta dio.slots righe (selezionata = il suo posto scelto in modifica, per
+  // mettervi un vetro). Tutti con .p per il verticale.
   const kit = kitGlasses(), stages = stageCount() ? state.filters.stages : [];
   out.push(`kit.count=${kit.length}`, `kit.labels=${kit.map(g => g.label).join('|')}`, `kit.slots=${kit.map(g => g.slots).join('|')}`);
   out.push(`stages.count=${stages.length}`, `stages.nd=1`, `stages.settle=${SETTLE_S}`, `stages.start=${stages.map(k => (k ? kit.findIndex(g => g.key === k) : '-')).join('|')}`);
@@ -1343,9 +1359,10 @@ async function buildZip() {
         // I vetri ND negli stadi: mai selezionati, quindi solo la versione normale.
         if (stageCount()) [...state.filters.nd].sort((a, b) => a - b).forEach((v, i) =>
           sub.file(`fxd${i + 1}${ext}`, bits(gw, L.listRow, c => drawStageGlass(c, 0, 0, gw, L.listRow, ndStageLabel(v), false, fs))));
-        // La diottria negli ultimi stadi: come l'ND non si seleziona.
-        if (stageCount()) dioSteps().forEach((d, i) => { if (d) { const hh = L.listRow * dioSlots(d);
-          sub.file(`fxo${i}${ext}`, bits(gw, hh, c => drawStageGlass(c, 0, 0, gw, hh, dioStageLabel(d), false, fs))); } });
+        // La diottria davanti all'ultimo vetro. In modifica si seleziona il suo posto,
+        // quando può avanzare per far entrare un vetro: serve anche in negativo (fxso).
+        if (stageCount()) for (const sel of [false, true]) dioSteps().forEach((d, i) => { if (d) { const hh = L.listRow * dioSlots(d);
+          sub.file(`${sel ? 'fxso' : 'fxo'}${i}${ext}`, bits(gw, hh, c => drawStageGlass(c, 0, 0, gw, hh, dioStageLabel(d), sel, fs))); } });
       }
     }
   }
@@ -1796,12 +1813,12 @@ function filtersEditor(ed) {
     h('div', { class: 'pills' }, ...DIOPTERS.map(v => pill(DIO_LABEL[v], has(v, split), on => toggleDio(v, split, on)))));
   const dioNames = split => dioSteps().filter(d => d && d.split === split).map(d => DIO_LABEL[d.v]).join(', ');
   const dioBody = [dioRow('Intere', false), dioRow('Split', true)];
-  if (f.dio.length) dioBody.push(lab('Occupano un solo stadio', 'Una diottria occupa di solito due stadi, gli ultimi: sta sempre davanti a tutti gli altri vetri. Spunta quelle che ne occupano uno solo, per esempio una +1/2 a lastra.'),
+  if (f.dio.length) dioBody.push(lab('Occupano un solo stadio', 'Una diottria occupa di solito due stadi, subito davanti all\'ultimo vetro: sta sempre davanti a tutti gli altri. Spunta quelle che ne occupano uno solo, per esempio una +1/2 a lastra.'),
     h('div', { class: 'pills' }, ...dioSteps().filter(Boolean).map(d => pill(dioLabel(d), d.slots === 1, on => { if (on) d.slots = 1; else delete d.slots; refit(); changed(true); }))));
   const oneSlot = f.dio.filter(d => d.slots === 1).length;
   ed.append(section('flt.dio', 'Diottrie', f.dio.length ? [dioNames(false), dioNames(true) && `split ${dioNames(true)}`, oneSlot && `${oneSlot} da uno stadio`].filter(Boolean).join(' · ') : 'nessuna',
     dioBody, f.dio.length > 0,
-    { tip: 'Con almeno una diottria nel kit, nella schermata filtri i tasti A/B sono diottria −/+ (le pagine si cambiano sempre con E e F). La diottria occupa gli ultimi stadi del mattebox.' }));
+    { tip: 'Con almeno una diottria nel kit, nella schermata filtri i tasti A/B sono diottria −/+ (le pagine si cambiano sempre con E e F). La diottria sta negli stadi del mattebox subito davanti all\'ultimo vetro.' }));
 
   // Kit: i vetri che hai nella valigetta (gli ND pieni stanno nel kit ND qui sopra).
   const kit = kitGlasses(), kitBody = [];
@@ -1862,7 +1879,7 @@ function filtersEditor(ed) {
   const ndV = ndSteps()[f.previewNd] || 0, cells = stageCells(), range = stageRange(f.stages.length);
   const mb = [
     h('div', { class: 'srow' },
-      lab('Stadi', 'L\'ND, quando c\'è, sta nei primi stadi (uno, o due per una coppia) e la diottria negli ultimi, davanti a tutto (due, o uno). Gli stadi in mezzo sono per gli altri vetri; un vetro segnato "2 stadi" nel kit ne occupa due di seguito. Quando ND o diottria hanno bisogno di posto i vetri si stringono: scalano verso il fronte per l\'ND, verso la lente per la diottria. Se non c\'è posto per tutti escono i vetri più avanti. Quando l\'ND libera uno stadio i vetri tornano indietro verso la lente. Con il + si va oltre il 3, fino a 6: per mattebox più grandi o un vetro montato fuori. Sul dispositivo le righe degli stadi si abbassano per farle entrare tutte.'),
+      lab('Stadi', 'L\'ND, quando c\'è, sta nei primi stadi (uno, o due per una coppia) e la diottria subito davanti all\'ultimo vetro (due stadi, o uno): senza ND e senza vetri sta negli stadi 1 e 2. Gli stadi davanti alla diottria restano vuoti. Un vetro segnato "2 stadi" nel kit ne occupa due di seguito. Per aggiungere un vetro davanti all\'ultimo sceglilo nella riga della diottria: lei avanza. I vetri lasciano sempre in fondo il posto per la diottria; quando ND o diottria hanno bisogno di posto si stringono: scalano verso il fronte per l\'ND, verso la lente per la diottria. Se non c\'è posto per tutti escono i vetri più avanti. Quando l\'ND libera uno stadio i vetri tornano indietro verso la lente. Con il + si va oltre il 3, fino a 6: per mattebox più grandi o un vetro montato fuori. Sul dispositivo le righe degli stadi si abbassano per farle entrare tutte.'),
       seg(stagesMore || f.stages.length > BOX_STAGES
         ? Array.from({ length: MAX_STAGES }, (_, i) => [i + 1, String(i + 1)])
         : [...Array.from({ length: BOX_STAGES }, (_, i) => [i + 1, String(i + 1)]), ['more', '+', `Più di ${BOX_STAGES} stadi, fino a ${MAX_STAGES}`]],
@@ -1879,12 +1896,14 @@ function filtersEditor(ed) {
       const name = `${i + 1}${i === 0 ? ' · lato lente' : ''}`, head = c.kind === 'cont' ? cells[c.of] : c;
       const fixed = t => h('div', { class: 'strow' }, name, h('select', { disabled: true, 'aria-label': `Stadio ${i + 1}` }, h('option', {}, t)));
       if (head.kind === 'nd') return fixed(`${head.label} · l'ND di partenza`);
-      if (head.kind === 'dio') return fixed(`${head.label} · la diottria di partenza`);
+      if (c.kind === 'front') return fixed('— · davanti alla diottria');
+      if (head.kind === 'dio' && (c.kind === 'cont' || !c.insert)) return fixed(`${head.label} · la diottria di partenza`);
       if (c.kind === 'cont') return fixed(`${head.label} · occupa due stadi`);
+      // Sulla riga della diottria, un vetro prende il suo posto e lei avanza.
       const opts = stageOptions(i, f.stages, range.hi);
       return h('div', { class: 'strow' }, name,
         h('select', { 'aria-label': `Stadio ${i + 1}`, disabled: !kit.length, onchange: e => { f.stages[i] = e.target.value || null; stageNote = ''; changed(true); } },
-          h('option', { value: '', selected: !c.key }, '— vuoto'),
+          h('option', { value: '', selected: !c.key }, c.kind === 'dio' ? `${c.label} · la diottria di partenza` : '— vuoto'),
           ...kit.map(g => h('option', { value: g.key, selected: g.key === c.key, disabled: !opts.includes(g.key) }, g.slots > 1 ? `${g.label} · 2 stadi` : g.label))));
     }),
   ];
@@ -2380,7 +2399,7 @@ function simEditArm() {
 }
 
 // ND e diottria cambiano subito nei riquadri grandi; gli stadi si riordinano (ND
-// nei primi, diottria negli ultimi, vetri che si stringono: fitStages) solo quando
+// nei primi, diottria davanti all'ultimo vetro, vetri che si stringono: fitStages) solo quando
 // i valori restano fermi, così passare da una coppia o da una diottria mentre scorri
 // non sposta nulla. sim.ndShown, sim.dioShown = i passi già applicati agli stadi.
 const SETTLE_S = 2;
@@ -2396,7 +2415,7 @@ function simSettle() {
   const noDio = dioUsed(sim.dio) && hi === sim.stages.length ? 'La diottria non entra negli stadi: resta solo nel riquadro grande.' : '';
   if (r.out.length) sim.msg = `Non c'è posto per tutti: ${r.out.map(k => names.get(k)).join(', ')} ${r.out.length > 1 ? 'escono' : 'esce'} dagli stadi.`;
   else if (r.moved) sim.msg = now < was ? (now ? 'Un ND in meno: i vetri tornano accanto all\'ND.' : 'ND tolto: i vetri tornano verso la lente.')
-    : now > was ? 'L\'ND prende il suo posto: i vetri scalano verso il fronte.' : 'La diottria prende gli ultimi stadi: i vetri scalano verso la lente.';
+    : now > was ? 'L\'ND prende il suo posto: i vetri scalano verso il fronte.' : 'La diottria non ha posto davanti ai vetri: scalano verso la lente.';
   else if (dioNew && noDio) sim.msg = noDio;
 }
 
