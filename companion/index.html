@@ -1269,7 +1269,9 @@ function renderDbResults(box, query, brand, type, searching = false) {
     dbOpen.has(name) ? dbOpen.delete(name) : dbOpen.add(name);
     const top = box.scrollTop; renderDbResults(box, query, brand, type); box.scrollTop = top;
   };
-  for (const [name, ls] of groups) {
+  // Serie in ordine alfabetico (marca, poi serie), senza badare a maiuscole e accenti.
+  const sorted = [...groups].sort(([a], [b]) => a.localeCompare(b, 'it', { sensitivity: 'base', numeric: true }));
+  for (const [name, ls] of sorted) {
     ls.sort((a, b) => focalSort(a) - focalSort(b));
     const missing = ls.filter(l => !chosen.has(l.id)), open = dbOpen.has(name);
     box.append(h('div', { class: 'grp' },
