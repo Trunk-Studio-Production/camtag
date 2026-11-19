@@ -133,7 +133,7 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 
 - Solo X3 per ora; l'X4 è un futuro lontano.
 - Decimali sulle schermate: sempre il punto (0.9), senza opzione.
-- Lens chart: focale, T, MOD, Ø frontale (più piccolo, dato secondario, si può
+- Lens chart: focale, T, CF (close focus), Ø frontale (più piccolo, dato secondario, si può
   nascondere: `state.lensFront`). Le lenti a focale fissa si chiamano "prime"
   anche nei testi in italiano, mai "fissi". Niente
   colonna serie: in basso un riquadro con il nome per esteso del set principale
@@ -144,7 +144,7 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   serie. Si può forzare per ogni lente (auto / sempre / mai). Scala del testo
   in base al numero di lenti: con poche lenti ogni lente va su due righe grandi,
   con tante torna la tabella; la misura è unica per tutte le pagine. La focale
-  di un prime è sempre il testo più grande: T e MOD stanno a 0,8 della sua misura
+  di un prime è sempre il testo più grande: T e CF stanno a 0,8 della sua misura
   (`VAL`), e in tabella le colonne prendono la larghezza del contenuto.
   Eccezione per gli zoom: la loro escursione può scendere fino a 0,6 della
   focale dei prime (`ZOOM`), così non rimpicciolisce tutta la tabella.
@@ -200,7 +200,7 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 
 ## Regole
 
-- Unità di misura sempre minuscole ("MOD m", "Ø mm"), anche nelle etichette
+- Unità di misura sempre minuscole ("CF m", "Ø mm"), anche nelle etichette
   in maiuscolo: mai passare le unità a `toUpperCase()`.
 - Firmware piccolo: niente allocazioni grandi o librerie nuove senza motivo.
   `Canvas` disegna in coordinate logiche; la rotazione la gestisce lui.

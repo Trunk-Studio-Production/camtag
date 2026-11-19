@@ -647,7 +647,7 @@ function slug(s) {
 // lenses.json resta com'è (scheda del costruttore); le differenze dell'esemplare
 // vivono qui, per id, e valgono per tutte le produzioni.
 const OVR_KEY = 'camtag.lensOverrides.v1';
-const OVR_FIELDS = [['tstop', 'T', 'number'], ['tstopLong', 'T tele', 'number'], ['mod_m', 'MOD m', 'number'],
+const OVR_FIELDS = [['tstop', 'T', 'number'], ['tstopLong', 'T tele', 'number'], ['mod_m', 'CF m', 'number'],
                     ['front_mm', 'Ø mm', 'number'], ['filterThread', 'Filetto', 'text'], ['squeeze', 'Squeeze', 'number']];
 let lensOverrides = (() => { try { return JSON.parse(localStorage.getItem(OVR_KEY))?.overrides || {}; } catch { return {}; } })();
 function saveOverrides() { try { localStorage.setItem(OVR_KEY, JSON.stringify({ version: 1, overrides: lensOverrides })); } catch {} }
@@ -780,8 +780,8 @@ function drawLensChart(ctx, W, H, { rows, group }, pageIdx, pageCount) {
   // Sigla piccola solo sulle lenti fuori dal set principale (o su tutte se non c'è).
   const leg = seriesLegend(group);
   const tag = l => leg.main && seriesKey(l) === leg.main ? '' : (l.seriesCode || '');
-  // Dati accanto alla focale: T, MOD e, se l'utente lo vuole, il Ø frontale (sempre ultimo, indice 2).
-  const specs = l => [['T', tText(l) + star(l, 'tstop', 'tstopLong')], ['MOD m', fmt(l.mod_m) + star(l, 'mod_m')],
+  // Dati accanto alla focale: T, CF e, se l'utente lo vuole, il Ø frontale (sempre ultimo, indice 2).
+  const specs = l => [['T', tText(l) + star(l, 'tstop', 'tstopLong')], ['CF m', fmt(l.mod_m) + star(l, 'mod_m')],
                       ...(state.lensFront ? [['Ø mm', (l.front_mm != null ? fmt(l.front_mm, 1) : '—') + star(l, 'front_mm')]] : [])];
   const NS = state.lensFront ? 3 : 2;
   // Una sola misura per tipo di testo su tutta la pagina: la più grande che entra ovunque.
@@ -791,7 +791,7 @@ function drawLensChart(ctx, W, H, { rows, group }, pageIdx, pageCount) {
   const rule = y => { ctx.fillStyle = '#000'; ctx.fillRect(Math.round(pad), Math.round(y), Math.round(W - pad * 2), 2); };
   const inner = W - pad * 2;
   const SMALL = 0.72;  // Ø frontale: dato secondario, più piccolo (ma leggibile)
-  const VAL = 0.8;     // T e MOD rispetto alla focale, che è sempre il testo più grande
+  const VAL = 0.8;     // T e CF rispetto alla focale, che è sempre il testo più grande
   const ZOOM = 0.6;    // eccezione: l'escursione di uno zoom può scendere fin qui rispetto alla focale
   const TWO_COLS_GAIN = 1.2;  // due tabelle affiancate solo se la focale cresce almeno di tanto
   const smallSize = v => Math.min(v, Math.max(18, Math.round(v * SMALL)));
@@ -802,7 +802,7 @@ function drawLensChart(ctx, W, H, { rows, group }, pageIdx, pageCount) {
   fitFont(ctx, leg.text, 700, inner, footH * 0.46, 11); ctx.fillText(leg.text, pad, H - footH / 2 + 1);
 
   if (tall) {
-    // Sopra: focale grande (e sigla piccola). Sotto: T, MOD, Ø con l'etichetta sopra.
+    // Sopra: focale grande (e sigla piccola). Sotto: T, CF, Ø con l'etichetta sopra.
     // Gli zoom non rimpiccioliscono le focali dei prime: hanno la loro misura, mai più grande.
     const focalSize = set => set.length ? sizeFor(set.map(focalText), 900, inner * 0.7 - 20, rowH * 0.42) : null;
     const zsFit = focalSize(rows.filter(isZoom)), fs = focalSize(rows.filter(l => !isZoom(l))) ?? zsFit;
@@ -823,7 +823,7 @@ function drawLensChart(ctx, W, H, { rows, group }, pageIdx, pageCount) {
       if (tag(l)) { ctx.font = `800 ${Math.round(s * 0.36)}px ${FONT}`; ctx.fillText(tag(l), pad + fw + 32, line1 + s * 0.12); }
       specs(l).forEach(([k, v], j) => {
         const x = pad + 10 + j * groupW;
-        ctx.font = `600 ${ls}px ${FONT}`; ctx.fillText(k, x, labelY); // unità minuscole: "MOD m", "Ø mm"
+        ctx.font = `600 ${ls}px ${FONT}`; ctx.fillText(k, x, labelY); // unità minuscole: "CF m", "Ø mm"
         ctx.font = `800 ${j === 2 ? smallSize(vs) : vs}px ${FONT}`; ctx.fillText(v, x, valueY);
       });
     });
@@ -836,7 +836,7 @@ function drawLensChart(ctx, W, H, { rows, group }, pageIdx, pageCount) {
   // stringerebbe tutta la tabella: può scendere fino a ZOOM della focale, e
   // risale se avanza spazio. Si misura su tutte le lenti, non solo su quelle
   // della pagina, così ogni pagina ha le stesse misure.
-  const heads = ['FOC', 'T', 'MOD m', 'Ø mm'].slice(0, NS + 1);
+  const heads = ['FOC', 'T', 'CF m', 'Ø mm'].slice(0, NS + 1);
   const gap = 20, box = 8;  // box: margine dentro il riquadro della focale
   const GUTTER = 32;        // tra due tabelle affiancate, con la riga verticale in mezzo
   const all = group;
@@ -1050,7 +1050,7 @@ function drawLens(ctx, W, H, c) {
 
   ctx.fillStyle = '#000'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   const portrait = H > W;
-  const specs = [['T', c.tstop], ['MOD', c.mod], ['Ø FRONTALE', c.front], ['FILETTO FILTRI', c.thread]].filter(s => s[1]);
+  const specs = [['T', c.tstop], ['CF', c.mod], ['Ø FRONTALE', c.front], ['FILETTO FILTRI', c.thread]].filter(s => s[1]);
   const notesH = c.notes ? Math.round(H * 0.11) : 0;
 
   if (!portrait) {
@@ -1526,7 +1526,7 @@ function lensEditor(ed) {
     toggle('Prime e zoom su pagine separate', state.lensSplit, v => { state.lensSplit = v; changed(true); },
       { tip: 'Prima le pagine dei prime, poi quelle degli zoom. Ogni gruppo ha la sua misura del testo: utile con tanti prime e pochi zoom.' }),
     toggle('Mostra il diametro frontale (Ø)', state.lensFront, v => { state.lensFront = v; changed(); },
-      { tip: 'Senza il diametro restano focale, T e MOD, più grandi.' }));
+      { tip: 'Senza il diametro restano focale, T e CF, più grandi.' }));
 
   // Lenti selezionate
   const rows = [], nPages = lensPages().length;
@@ -1575,7 +1575,7 @@ function lensEditor(ed) {
   db.push(section('lens.manual', 'Aggiungi una lente a mano', null, [
     h('div', { class: 'two' }, inp('brand', 'Marca'), inp('series', 'Serie')),
     h('div', { class: 'three mt' }, inp('seriesCode', 'Sigla'), inp('focal', 'Focale mm', 'number'), inp('tstop', 'T', 'number')),
-    h('div', { class: 'three mt' }, inp('mod_m', 'MOD m', 'number'), inp('front_mm', 'Ø mm', 'number'),
+    h('div', { class: 'three mt' }, inp('mod_m', 'CF m', 'number'), inp('front_mm', 'Ø mm', 'number'),
       h('select', { 'aria-label': 'Tipo', onchange: e => m.type = e.target.value }, ...Object.entries(LENS_TYPES).map(([k, v]) => h('option', { value: k }, v)))),
     h('div', { class: 'acts' }, h('button', { class: 'primary', onclick: () => {
       if (!m.focal) { alert('Serve almeno la focale.'); return; }
@@ -1684,7 +1684,7 @@ function renderDbResults(box, query, brand, type, searching = false) {
     if (!open) continue;
     for (const l of ls) {
       const v = effective({ dbId: l.id });
-      const meta = `${v.stopType === 'f' ? '' : 'T'}${tText(v)}${star(v, 'tstop', 'tstopLong')} · MOD ${fmt(v.mod_m)}${star(v, 'mod_m')} m · Ø ${v.front_mm != null ? fmt(v.front_mm, 1) : '—'}${star(v, 'front_mm')}${l.type !== 'prime' ? ' · ' + LENS_TYPES[l.type] : ''}${v.squeeze && l.type !== 'anamorphic' ? ` ×${fmt(v.squeeze)}` : ''}`;
+      const meta = `${v.stopType === 'f' ? '' : 'T'}${tText(v)}${star(v, 'tstop', 'tstopLong')} · CF ${fmt(v.mod_m)}${star(v, 'mod_m')} m · Ø ${v.front_mm != null ? fmt(v.front_mm, 1) : '—'}${star(v, 'front_mm')}${l.type !== 'prime' ? ' · ' + LENS_TYPES[l.type] : ''}${v.squeeze && l.type !== 'anamorphic' ? ` ×${fmt(v.squeeze)}` : ''}`;
       box.append(h('div', { class: 'it' }, h('span', {}, `${focalText(l)} mm`), h('span', { class: 'meta' }, meta),
         chosen.has(l.id) ? h('button', { class: 'small', disabled: true }, '✓') :
         h('button', { class: 'small', onclick: () => { addDbLens(l); keepScroll(() => changed(true)); } }, '+')));
@@ -1912,7 +1912,7 @@ function cardEditor(ed, c, idx) {
   if (c.type === 'lens') {
     pair(field(c, 'Marca', 'brand'), field(c, 'Serie', 'series'));
     pair(field(c, 'Focale (mm)', 'focal'), field(c, 'T-stop', 'tstop'));
-    pair(field(c, 'MOD (fuoco minimo)', 'mod'), field(c, 'Ø frontale', 'front'));
+    pair(field(c, 'CF (fuoco minimo)', 'mod'), field(c, 'Ø frontale', 'front'));
     ed.append(field(c, 'Filettatura filtri (opzionale, es. M82)', 'thread'));
     ed.append(field(c, 'Nota in basso (opzionale)', 'notes'));
   } else if (c.type === 'crew') {
