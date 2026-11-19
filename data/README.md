@@ -152,6 +152,7 @@ chiavi mancanti.
 | Angénieux | Optimo Ultra Compact | OUC | 4 | S35/FF |
 | Angénieux | Optimo | OPT | 4 | S35 |
 | Angénieux | Optimo Style | OST | 3 | S35 |
+| Angénieux | Optimo DP | ODP | 2 | S35 |
 | Angénieux | Optimo Anamorphic | OAN | 2 | S35 |
 | Fujinon | Premista | PRM | 3 | FF |
 | Fujinon | HK Premier | HK | 4 | S35 |
@@ -180,7 +181,6 @@ chiavi mancanti.
 | Laowa | Pro2be Probe | PRB | 1 | FF |
 | Laowa | Probe Zoom | PBZ | 2 | FF |
 | Laowa | 24mm T14 2X PeriProbe | PPR | 1 | FF |
-| Laowa | 24mm T14 2X Macro Probe | MPB | 1 | FF |
 | Laowa | 24mm T14 2X Macro Probe | MPB | 1 | FF |
 | Laowa | Zero-D Cine | ZDC | 4 | S35/FF |
 | Laowa | 2X Macro APO Cine | MAP | 1 | S35 |
@@ -251,7 +251,9 @@ come scheda tecnica ufficiale:
 - Atlas: atlaslensco.com. Il PDF di specifiche sta su cdn.shopify.com, il CDN
   del loro negozio.
 - Angénieux: www.angenieux.com (pagina Type EZ Series, brochure EZ 2025,
-  manuale EZ-1/EZ-2), per la gamma Optimo pagine prodotto e schede PDF
+  manuale EZ-1/EZ-2), per la gamma Optimo pagine prodotto e schede PDF; per
+  l'Optimo DP, non più sul sito, le schede PDF del 2013 nella copia di
+  web.archive.org
 - Fujinon: www.fujifilm.com, www.fujifilm-x.com, asset.fujifilm.com (manuali)
 - Tokina: tokinalens.com, tokinacinema.com
 - Laowa: laowacine.com, www.venuslens.net. La tabella del Nanomorph Zoom è
