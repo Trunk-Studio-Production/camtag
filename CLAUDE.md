@@ -63,6 +63,11 @@ cd device && ../.venv/bin/pio run -e x3 -t upload        # carica (vedi sotto)
 python3 -m http.server 8766    # dalla radice; poi apri http://localhost:8766/companion/
 ```
 
+Sessioni cloud (environment su claude.ai/code): l'hook SessionStart in
+`.claude/settings.json` lancia `scripts/cloud-setup.sh` (fa i passi qui sopra
+e scarica i pacchetti del firmware) solo con `CLAUDE_CODE_REMOTE=true`. Nel
+cloud niente X3 e niente browser integrato.
+
 Nel browser integrato usa un server avviato da Bash: `preview_start` legge
 ancora un `launch.json` vecchio e serve la cartella sbagliata.
 
