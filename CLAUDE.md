@@ -171,8 +171,7 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   numerati da 1 = lato lente; ogni stadio ha un vetro o è vuoto (`—`), e un
   vetro sta in un posto solo. Non esiste "montato": la schermata mostra sempre
   tutti gli stadi sotto ND e diottria. Un vetro occupa uno stadio, o due se la
-  famiglia è segnata così (`e.slots`, `glassSlots`; il Rota Pola lo è già nel
-  catalogo): sulla schermata è una casella alta due righe. **L'ND, quando c'è,
+  famiglia è segnata così nel kit (`e.slots`, `glassSlots`): sulla schermata è una casella alta due righe. **L'ND, quando c'è,
   occupa i primi stadi** (uno, o due per una coppia) **e la diottria gli
   ultimi**, davanti a tutto (due, o uno se segnata: `dioSlots`); le loro righe
   non si selezionano. Se insieme non entrano, la diottria resta solo nel

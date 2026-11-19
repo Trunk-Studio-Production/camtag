@@ -14,12 +14,12 @@ il simulatore e per il firmware (`device/`), che devono restare allineati.
 - **Kit dei vetri**: i vetri che ci sono nella valigetta, esclusi gli ND pieni.
   Ogni voce è una famiglia con una gradazione (es. "Black Pro-Mist 1/4"), o un
   vetro senza gradazione. Uno per tipo: non ci sono doppioni. Una famiglia può
-  essere segnata "2 stadi": è il caso del Rota Pola, che nel catalogo lo è già.
-- **Stadi**: i cassetti del mattebox, di solito da 1 a 4, numerati da
+  essere segnata "2 stadi" nel kit (nel catalogo nessuna lo è).
+- **Stadi**: i cassetti del mattebox, di solito da 1 a 3, numerati da
   **1 = lato lente** verso il fronte. Ogni stadio contiene un vetro del kit
-  oppure è vuoto. Si arriva fino a 6: il 5 e il 6 servono per un vetro montato
-  fuori dal mattebox (per esempio fissato con il nastro), e sono stadi come gli
-  altri.
+  oppure è vuoto. Si arriva fino a 6, per mattebox più grandi o per un vetro
+  montato fuori dal mattebox (per esempio fissato con il nastro): sono stadi
+  come gli altri.
 
 Non esiste più il concetto di "montato": un vetro è montato se sta in uno stadio.
 Un vetro sta in un posto solo; uno da due stadi ne occupa due di seguito.

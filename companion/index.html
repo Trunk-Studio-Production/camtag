@@ -487,7 +487,7 @@ function addToKit(f, id, name, strengths, mounted = []) {
 }
 // Stadi del mattebox: filters.stages[i] = chiave del vetro che comincia nello
 // stadio i+1 (1 = lato lente) oppure null. Un vetro sta in un posto solo; uno da
-// due stadi (glassSlots, es. un Rota Pola) occupa anche lo stadio dopo, che resta null.
+// due stadi (glassSlots) occupa anche lo stadio dopo, che resta null.
 // L'ND, quando c'è, occupa i primi stadi (uno, o due per una coppia) e la diottria
 // gli ultimi (due, o uno: dioSlots), davanti a tutto: lì stages[i] resta null e la
 // riga mostra l'ND o la diottria. Ai vetri restano gli stadi in mezzo (stageRange).
@@ -1815,7 +1815,7 @@ function filtersEditor(ed) {
       const v = ev.target.value.trim(); if (v) { addToKit(f, e.id, e.name, [v]); changed(true); }
     } });
     const two = pill('2 stadi', e.slots === 2, on => { if (on) e.slots = 2; else delete e.slots; refit(); changed(true); });
-    two.title = 'Questo vetro occupa due stadi del mattebox (per esempio un Rota Pola)';
+    two.title = 'Questo vetro occupa due stadi del mattebox';
     kitBody.push(h('div', { class: 'kit' },
       h('div', { class: 'kit-head' }, h('strong', {}, e.name), two,
         h('button', { class: 'small danger', title: 'Togli la famiglia dal kit', 'aria-label': 'Togli la famiglia dal kit', onclick: () => { f.effects = f.effects.filter(x => x !== e); normalizeStages(f); changed(true); } }, '✕')),
@@ -1825,7 +1825,7 @@ function filtersEditor(ed) {
         extra)));
   }
   ed.append(section('flt.kit', 'Vetri nel kit', f.effects.length ? `${plural(f.effects.length, 'famiglia', 'famiglie')} · ${plural(kit.length, 'vetro', 'vetri')}` : 'vuoto', kitBody, true,
-    { tip: 'Quello che hai nella valigetta, ND pieni esclusi: diffusione, polarizzatori, degradanti, colore… Sono i vetri che puoi mettere negli stadi. Un vetro che ne occupa due, come un Rota Pola, si segna con "2 stadi".' }));
+    { tip: 'Quello che hai nella valigetta, ND pieni esclusi: diffusione, polarizzatori, degradanti, colore… Sono i vetri che puoi mettere negli stadi. Un vetro che ne occupa due si segna con "2 stadi".' }));
 
   // Catalogo: si cerca come nel database lenti; le famiglie si aprono e mostrano le gradazioni.
   const cat = [h('p', { class: 'warn' }, 'Catalogo provvisorio: le gradazioni sono da verificare.')];
