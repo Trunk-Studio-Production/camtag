@@ -1734,15 +1734,17 @@ function renderFilterResults(box, searching = false) {
     const top = box.scrollTop; renderFilterResults(box); box.scrollTop = top;
   };
   const add = (x, list) => { const had = f.effects.some(e => e.id === x.id), e = addToKit(f, x.id, x.name, list); if (!had && x.slots === 2) e.slots = 2; keepScroll(() => changed(true)); };
-  // In ordine alfabetico, ma colore e degradanti (usati meno) in fondo.
+  // In ordine alfabetico per nome, con il marchio in fondo ("Black Pro-Mist (Tiffen)"):
+  // si cerca per nome del vetro. Colore e degradanti (usati meno) in fondo.
   const late = x => (FILTER_LATE.includes(x.category) ? 1 : 0);
-  const sorted = [...hits].sort((a, b) => late(a) - late(b) || `${a.brand} ${a.name}`.localeCompare(`${b.brand} ${b.name}`, 'it', { sensitivity: 'base', numeric: true }));
+  const title = x => `${x.name}${x.brand ? ` (${x.brand})` : ''}`;
+  const sorted = [...hits].sort((a, b) => late(a) - late(b) || title(a).localeCompare(title(b), 'it', { sensitivity: 'base', numeric: true }));
   for (const x of sorted) {
     const e = f.effects.find(y => y.id === x.id), have = new Set(e ? e.strengths.map(y => y.s) : []);
     const all = x.strengths.length ? x.strengths : [''], missing = all.filter(s => !have.has(s)), open = fltOpen.has(x.id);
     box.append(h('div', { class: 'grp' },
       h('button', { class: 'tog', 'aria-expanded': String(open), onclick: () => toggle(x.id) },
-        h('span', {}, `${x.brand ? x.brand + ' ' : ''}${x.name}`), h('span', { class: 'n' }, x.category)),
+        h('span', {}, title(x)), h('span', { class: 'n' }, x.category)),
       h('button', { class: 'small', disabled: !missing.length, onclick: () => add(x, missing) }, missing.length ? (all.length > 1 ? `+ tutte (${missing.length})` : '+') : 'aggiunto')));
     if (!open) continue;
     for (const st of all) box.append(h('div', { class: 'it' }, h('span', {}, st || 'senza gradazione'),
