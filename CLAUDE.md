@@ -70,14 +70,11 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   `pixelated` (che butta via righe); i pixel veri si vedono con "Pixel 1:1".
 - Disegnando per l'e-paper, righe sottili su pixel interi e spesse almeno 2 px:
   una riga da 1 px a mezzo pixel diventa grigia e la soglia a 1 bit la cancella.
-- Tipografia (`state.typo`): font tra sistema, Atkinson Hyperlegible, Inter,
-  IBM Plex Sans e soglia del testo 128 o 170, scelti dai menu nell'intestazione.
-  **Scelta dell'utente: Inter, soglia normale (128)**, che è il predefinito.
-  Inter 4.1 è incluso in `companion/fonts/` (variabile, licenza SIL OFL nel
-  file accanto) e funziona offline; gli altri due vengono da Google Fonts. I
-  font vanno caricati (`document.fonts.load`) prima di disegnare, altrimenti il
-  canvas usa il font di riserva. Le immagini di confronto stanno in
-  `confronto-font/` (fuori da git, si rigenerano).
+- Tipografia fissa, senza opzioni: Inter, soglia del testo 128 (`FONT`,
+  `TEXT_T`). Inter 4.1 è incluso in `companion/fonts/` (variabile, licenza SIL
+  OFL nel file accanto) e funziona offline. Il font va caricato
+  (`document.fonts.load`) prima di disegnare, altrimenti il canvas usa il font
+  di riserva.
 - microSD su SPI condiviso con il display; batteria 650 mAh con fuel gauge
   BQ27220; RTC DS3231; IMU QMI8658 (accelerometro + giroscopio).
 - Niente touch. Posizione naturale **verticale**: in basso due bilancieri,
@@ -122,8 +119,7 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 ## Decisioni di prodotto
 
 - Solo X3 per ora; l'X4 è un futuro lontano.
-- Decimali sulle schermate: punto predefinito (0.9), virgola selezionabile dal
-  menu nell'intestazione (`state.decimal`).
+- Decimali sulle schermate: sempre il punto (0.9), senza opzione.
 - Lens chart: focale, T, MOD, Ø frontale (più piccolo, dato secondario). Niente
   colonna serie: in basso un riquadro con il nome per esteso del set principale
   e "Serie (SIGLA)" per le altre; la sigla piccola compare accanto alla focale

@@ -6,14 +6,11 @@
 <title>CamTag Cards</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <!-- Inter (font delle schermate) è incluso nel repo: funziona offline e uguale su ogni computer.
-     Licenza: fonts/Inter-LICENSE.txt (SIL OFL 1.1). Gli altri font del menu vengono da Google Fonts. -->
+     Licenza: fonts/Inter-LICENSE.txt (SIL OFL 1.1). -->
 <style>
   @font-face { font-family: "Inter"; src: url("fonts/InterVariable.woff2") format("woff2");
                font-weight: 100 900; font-style: normal; font-display: block; }
 </style>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #f4f3ef; --panel: #ffffff; --ink: #161616; --muted: #6b6b66; --line: #dcdad3;
@@ -87,7 +84,10 @@
   .out { background: var(--ink); color: var(--panel); padding: 0 4px; border-radius: 3px; }
   .db { max-height: 420px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; margin-top: 8px; }
   .db .grp { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--sel); position: sticky; top: 0; font-weight: 600; font-size: 13px; }
-  .db .grp span { flex: 1; }
+  .db .grp .tog { flex: 1; display: flex; align-items: center; gap: 6px; background: none; border: 0; border-radius: 0; padding: 0; text-align: left; font-weight: 600; }
+  .db .grp .tog .n { color: var(--muted); font-weight: 400; font-size: 12px; }
+  .db .grp .tog::before { content: "▸"; width: 12px; color: var(--muted); }
+  .db .grp .tog[aria-expanded="true"]::before { content: "▾"; }
   .db .it { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-top: 1px solid var(--line); font-size: 13px; }
   .db .it span { flex: 1; font-variant-numeric: tabular-nums; }
   .db .it .meta { color: var(--muted); font-size: 12px; flex: 2; }
@@ -140,12 +140,6 @@
   <h1>CAMTAG · CARDS</h1>
   <span class="hint" id="dims"></span>
   <span class="sp"></span>
-  <select id="decimal" title="Separatore decimale">
-    <option value=".">Decimali: 0.9</option>
-    <option value=",">Decimali: 0,9</option>
-  </select>
-  <select id="typoFont" title="Font delle schermate"></select>
-  <select id="typoT" title="Soglia del testo: più scura = tratti più pieni"></select>
   <select id="device" title="Dispositivo">
     <option value="x3">Xteink X3 · 528×792 (verticale)</option>
   </select>
@@ -232,17 +226,9 @@
 // Costanti e stato
 // ============================================================================
 const DEVICES = { x3: { w: 792, h: 528 } };
-// Tipografia delle schermate: font e soglia del testo (più alta = tratti più pieni).
-const FONTS = {
-  system: { label: 'Font di sistema', css: '-apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif' },
-  atkinson: { label: 'Atkinson Hyperlegible', css: '"Atkinson Hyperlegible", sans-serif' },
-  inter: { label: 'Inter', css: '"Inter", sans-serif' },
-  plex: { label: 'IBM Plex Sans', css: '"IBM Plex Sans", sans-serif' },
-};
-const TEXT_THRESHOLDS = { 128: 'normale', 170: 'più scura' };
-let FONT = FONTS.inter.css;
-let TEXT_T = 128;
-function applyTypo() { FONT = (FONTS[state.typo.font] || FONTS.system).css; TEXT_T = state.typo.threshold || 128; }
+// Tipografia delle schermate: Inter, e soglia a metà per portare il testo a 1 bit.
+const FONT = '"Inter", sans-serif';
+const TEXT_T = 128;
 const STORE_KEY = 'camtag.project.v1';
 const LENS_ROWS_PER_PAGE = 11;
 // Fasce libere sui lati corti (dove stanno i tasti) per le indicazioni del firmware.
@@ -265,7 +251,7 @@ const TYPE_LABEL = { lens: 'Lente', crew: 'Crew', notes: 'Note', patch: 'Patch' 
 
 function freshState() {
   return {
-    version: 5, device: 'x3', decimal: '.', production: '', typo: { font: 'inter', threshold: 128 },
+    version: 6, device: 'x3', production: '',
     auto: { lenschart: true, filters: true },
     lenses: [],
     filters: { ndFormat: 'density', ndType: 'ND', nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], ndCombos: [], dio: [], effects: [], stages: [null, null, null], previewNd: 0, previewDio: 0 },
@@ -277,7 +263,7 @@ function migrate(s) {
   if (!s || !Array.isArray(s.cards)) return s;
   for (const c of s.cards) { if (!c.formats) c.formats = 'both'; delete c.orient; delete c.mount; }
   const f = freshState(), hadStages = Array.isArray(s.filters?.stages);
-  for (const k of ['decimal', 'production', 'typo', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
+  for (const k of ['production', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
   s.filters = Object.assign(f.filters, s.filters);
   if ('ir' in s.filters) { if (s.filters.ir) s.filters.ndType = 'IRND'; delete s.filters.ir; }  // vecchia casella IRND
   // Vecchi "filtri di stile" (un elemento per filtro montato) -> kit con gradazioni montate.
@@ -294,11 +280,9 @@ function migrate(s) {
   for (const e of s.filters.effects) for (const x of e.strengths) delete x.on;
   normalizeStages(s.filters);
   if (s.filters.previewNd > 0 && s.filters.nd.length) makeRoomForNd(s.filters.stages);
-  // v3: Inter con soglia normale è la tipografia scelta (prima: font di sistema).
-  if ((s.version || 0) < 3) s.typo = { font: 'inter', threshold: 128 };
-  // v5: il punto è il separatore decimale predefinito (prima la virgola, mai scelta apposta).
-  if ((s.version || 0) < 5) s.decimal = '.';
-  s.device = 'x3'; s.version = 5;
+  // v6: font, soglia del testo e separatore decimale non sono più opzioni (Inter, 128, punto).
+  delete s.typo; delete s.decimal;
+  s.device = 'x3'; s.version = 6;
   return s;
 }
 
@@ -381,6 +365,7 @@ let view = 'land';
 let page = 0;
 let lensDb = null, lensDbError = '';
 let dbSearch = { q: '', brand: '', type: '' };
+const dbOpen = new Set();  // serie aperte nel database lenti ("Marca Serie"); le altre mostrano solo l'intestazione
 let filterDb = [];
 const imgCache = new Map();
 
@@ -390,7 +375,7 @@ const imgCache = new Map();
 function fmt(n, max = 2) {
   if (n === null || n === undefined || n === '') return '—';
   const r = Math.round(Number(n) * 10 ** max) / 10 ** max;
-  return String(r).replace('.', state.decimal);
+  return String(r);
 }
 function focalText(l) { return l.focal != null ? fmt(l.focal, 1) : `${fmt(l.focalMin, 1)}-${fmt(l.focalMax, 1)}`; }
 function focalSort(l) { return l.focal != null ? l.focal : (l.focalMin ?? 0); }
@@ -402,7 +387,7 @@ function ndLabel(d) {
   const stops = Math.round(d / 0.3 * 10) / 10;
   if (state.filters.ndFormat === 'stops') return `${fmt(stops, 1)} stop`;
   if (state.filters.ndFormat === 'factor') return `${state.filters.ndType}${Math.round(2 ** stops)}`;
-  return Number.isInteger(d) ? `${d}${state.decimal}0` : fmt(d, 2);  // 3,0 e non "3"
+  return Number.isInteger(d) ? `${d}.0` : fmt(d, 2);  // 3.0 e non "3"
 }
 function dioLabel(d) { return d ? `${DIO_LABEL[d.v] || '+' + fmt(d.v)}${d.split ? ' SPLIT' : ''}` : '—'; }
 // Totali che si ottengono con due ND del kit e che il kit non ha già come vetro
@@ -1190,8 +1175,9 @@ function lensEditor(ed) {
     const fb = h('select', {}, h('option', { value: '' }, 'Tutte le marche'), ...brands.map(b => h('option', { value: b, selected: dbSearch.brand === b }, b)));
     const ft = h('select', {}, h('option', { value: '' }, 'Tutti i tipi'), ...Object.entries(LENS_TYPES).map(([k, v]) => h('option', { value: k, selected: dbSearch.type === k }, v)));
     const box = h('div', { class: 'db' });
-    const run = () => { dbSearch = { q: q.value, brand: fb.value, type: ft.value }; renderDbResults(box, q.value, fb.value, ft.value); };
-    q.addEventListener('input', run); fb.addEventListener('change', run); ft.addEventListener('change', run);
+    // searching = l'utente ha appena cambiato la ricerca: se resta una sola serie si apre da sola.
+    const run = searching => { dbSearch = { q: q.value, brand: fb.value, type: ft.value }; renderDbResults(box, q.value, fb.value, ft.value, searching === true); };
+    q.addEventListener('input', () => run(true)); fb.addEventListener('change', () => run(true)); ft.addEventListener('change', () => run(true));
     ed.append(q, h('div', { class: 'two', style: 'margin-top:6px' }, fb, ft), box);
     ed.append(h('p', { class: 'hint' }, `${lensDb.length} lenti. Dati dalle schede tecniche dei costruttori; "—" = dato non pubblicato in modo affidabile.`));
     run();
@@ -1264,7 +1250,7 @@ function addDbLens(l) {
 
 // Ricerca senza accenti né maiuscole ("ange" trova "Angénieux"); virgola e punto decimali si equivalgono.
 function searchFold(s) { return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/,/g, '.'); }
-function renderDbResults(box, query, brand, type) {
+function renderDbResults(box, query, brand, type, searching = false) {
   box.innerHTML = '';
   const terms = searchFold(query).split(/\s+/).filter(Boolean);
   const hits = lensDb.filter(l => {
@@ -1277,15 +1263,21 @@ function renderDbResults(box, query, brand, type) {
   const groups = new Map();
   for (const l of hits) { const k = `${l.brand} ${l.series}`; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(l); }
   const chosen = new Set(state.lenses.map(l => l.dbId));
-  let shown = 0;
+  if (searching && groups.size === 1) dbOpen.add(groups.keys().next().value);
+  // Le serie sono richiuse: un clic sull'intestazione mostra le focali. Se ne possono aprire più insieme.
+  const toggle = name => {
+    dbOpen.has(name) ? dbOpen.delete(name) : dbOpen.add(name);
+    const top = box.scrollTop; renderDbResults(box, query, brand, type); box.scrollTop = top;
+  };
   for (const [name, ls] of groups) {
-    if (shown > 400) { box.append(h('div', { class: 'empty' }, 'Restringi la ricerca per vedere altre lenti')); break; }
     ls.sort((a, b) => focalSort(a) - focalSort(b));
-    const missing = ls.filter(l => !chosen.has(l.id));
-    box.append(h('div', { class: 'grp' }, h('span', {}, `${name} · ${ls[0].seriesCode}`),
-      h('button', { class: 'small', disabled: !missing.length, onclick: () => { missing.forEach(addDbLens); changed(true); } }, missing.length ? `+ tutte (${missing.length})` : 'aggiunte')));
+    const missing = ls.filter(l => !chosen.has(l.id)), open = dbOpen.has(name);
+    box.append(h('div', { class: 'grp' },
+      h('button', { class: 'tog', 'aria-expanded': String(open), onclick: () => toggle(name) },
+        h('span', {}, `${name} · ${ls[0].seriesCode}`), h('span', { class: 'n' }, ls.length === 1 ? '1 lente' : `${ls.length} lenti`)),
+      h('button', { class: 'small', disabled: !missing.length, onclick: () => { missing.forEach(addDbLens); keepScroll(() => changed(true)); } }, missing.length ? `+ tutte (${missing.length})` : 'aggiunte')));
+    if (!open) continue;
     for (const l of ls) {
-      shown++;
       const v = effective({ dbId: l.id });
       const meta = `${v.stopType === 'f' ? '' : 'T'}${tText(v)}${star(v, 'tstop', 'tstopLong')} · MOD ${fmt(v.mod_m)}${star(v, 'mod_m')} m · Ø ${v.front_mm != null ? fmt(v.front_mm, 1) : '—'}${star(v, 'front_mm')}${l.type !== 'prime' ? ' · ' + LENS_TYPES[l.type] : ''}${v.squeeze && l.type !== 'anamorphic' ? ` ×${fmt(v.squeeze)}` : ''}`;
       box.append(h('div', { class: 'it' }, h('span', {}, `${focalText(l)} mm`), h('span', { class: 'meta' }, meta),
@@ -1499,11 +1491,8 @@ function ensureImg(url) {
 }
 
 function refresh() {
-  applyTypo();
-  $('#decimal').value = state.decimal;
-  $('#typoFont').value = state.typo.font; $('#typoT').value = String(state.typo.threshold);
   const d = DEVICES[state.device];
-  $('#dims').textContent = `${d.h}×${d.w} · 259 ppi · 1 bit · ${FONTS[state.typo.font].label}, soglia ${TEXT_THRESHOLDS[state.typo.threshold]}`;
+  $('#dims').textContent = `${d.h}×${d.w} · 259 ppi · 1 bit`;
   renderList(); renderEditor(); drawPreview();
   if (simOn) renderSim();
  
@@ -1518,11 +1507,6 @@ document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
   state.cards.push(DEFAULTS[b.dataset.add]()); sel = { kind: 'card', i: state.cards.length - 1 }; save(); refresh();
 });
 document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => { view = b.dataset.view; drawPreview(); });
-$('#decimal').onchange = e => { state.decimal = e.target.value; save(); refresh(); };
-$('#typoFont').append(...Object.entries(FONTS).map(([k, f]) => h('option', { value: k }, `Font: ${f.label}`)));
-$('#typoT').append(...Object.entries(TEXT_THRESHOLDS).map(([k, t]) => h('option', { value: k }, `Soglia: ${t}`)));
-$('#typoFont').onchange = e => { state.typo.font = e.target.value; save(); refresh(); };
-$('#typoT').onchange = e => { state.typo.threshold = Number(e.target.value); save(); refresh(); };
 const moveCard = d => {
   if (sel.kind !== 'card') return; const i = sel.i, j = i + d;
   if (j < 0 || j >= state.cards.length) return;
@@ -2011,7 +1995,7 @@ Promise.all([
   ...state.cards.map(c => ensureImg(c.img)),
   // Il canvas non aspetta i web font: vanno caricati prima di disegnare, altrimenti
   // esce il font di riserva. Tutti i pesi usati dai disegni.
-  ...['Atkinson Hyperlegible', 'Inter', 'IBM Plex Sans'].flatMap(f => [400, 600, 700, 800, 900].map(w => document.fonts.load(`${w} 40px "${f}"`).catch(() => {}))),
+  ...[400, 600, 700, 800, 900].map(w => document.fonts.load(`${w} 40px "Inter"`).catch(() => {})),
 ]).then(refresh);
 refresh();
 </script>
