@@ -181,6 +181,7 @@ chiavi mancanti.
 | Laowa | Probe Zoom | PBZ | 2 | FF |
 | Laowa | 24mm T14 2X PeriProbe | PPR | 1 | FF |
 | Laowa | 24mm T14 2X Macro Probe | MPB | 1 | FF |
+| Laowa | 24mm T14 2X Macro Probe | MPB | 1 | FF |
 | Laowa | Zero-D Cine | ZDC | 4 | S35/FF |
 | Laowa | 2X Macro APO Cine | MAP | 1 | S35 |
 | Sirui | Saturn | SAT | 3 | FF |
