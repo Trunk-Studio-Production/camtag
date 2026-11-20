@@ -20,6 +20,7 @@ costruttori di lenti e filtri nei dati vanno bene.
   composizione dei pezzi, indicazioni); tasti, tempi e refresh sono in `main.cpp`,
   con riposo e spento (`rest`, `powerOff`). `Battery.cpp` legge il fuel gauge e
   scrive il registro dei consumi (`/camtag-batteria.csv`, specifica in `docs/batteria.md`).
+  Problemi aperti dello schermo: `docs/schermo.md`.
 - `companion/index.html` — strumento web a file singolo: lens chart e filtri
   generati in automatico più schede manuali (crew, note, lente singola, patch);
   esporta uno zip di BMP 1 bit o manda gli stessi file all'X3 via Web Bluetooth
@@ -346,6 +347,10 @@ la posizione naturale è `Canvas::ROT_270`).
 
 - Soglie della rotazione (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) su camera vera.
 - Ghosting (`FULL_REFRESH_EVERY`).
+- **Aperto, da qui si riparte**: sui filtri a schermo fermo cresce una grana
+  grigia sul bianco; ipotesi = il passaggio veloce che l'SDK aggiunge dopo ogni
+  refresh completo. Prova in corso e correzione proposta in `docs/schermo.md`,
+  con il riposo che scatta anche con la USB collegata.
 - Energia, provato sull'X3 (20/11/2026): riposo con tasti e rotazione, blocco
   dei tasti, spento e riaccensione con il power tenuto (prima e dopo il
   bianco), passaggio al bianco, registro. Il gauge ha già 642 mAh; la batteria
