@@ -444,7 +444,7 @@ const TYPE_LABEL = { lens: 'Lente', crew: 'Crew', notes: 'Note', patch: 'Patch' 
 
 function freshState() {
   return {
-    version: 6, device: 'x3', production: '', lensSplit: false, lensSeries: 'mix', zoomsLast: true, lensFront: true, lensMount: false,
+    version: 6, device: 'x3', production: '', lensByMount: false, lensSplit: false, lensSeries: 'mix', zoomsLast: true, lensFront: true, lensMount: false,
     auto: { lenschart: true, filters: true, filterlist: false },
     lenses: [],
     filters: { ndFormat: 'density', ndType: 'ND', nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], ndCombos: [], dio: [], effects: [], stages: [null, null, null], previewNd: 0, previewDio: 0 },
@@ -456,7 +456,7 @@ function migrate(s) {
   if (!s || !Array.isArray(s.cards)) return s;
   for (const c of s.cards) { if (!c.formats) c.formats = 'both'; delete c.orient; delete c.mount; }
   const f = freshState(), hadStages = Array.isArray(s.filters?.stages);
-  for (const k of ['production', 'lensSplit', 'lensSeries', 'zoomsLast', 'lensFront', 'lensMount', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
+  for (const k of ['production', 'lensByMount', 'lensSplit', 'lensSeries', 'zoomsLast', 'lensFront', 'lensMount', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
   s.filters = Object.assign(f.filters, s.filters);
   s.auto = Object.assign({ ...f.auto }, s.auto);
   if ('ir' in s.filters) { if (s.filters.ir) s.filters.ndType = 'IRND'; delete s.filters.ir; }  // vecchia casella IRND
@@ -717,34 +717,46 @@ function sortedLenses(list = state.lenses) {
   const last = l => state.zoomsLast && isZoom(l) ? 1 : 0;
   return list.map(effective).sort((a, b) => last(a) - last(b) || focalSort(a) - focalSort(b) || (a.seriesCode || '').localeCompare(b.seriesCode || ''));
 }
-// Gruppi della lens chart. Prima per serie (`state.lensSeries`): tutte insieme
+// La divisione per attacco vale solo se il kit ne ha più d'uno ("nessuno" conta).
+function mountSplit() { return state.lensByMount && new Set(state.lenses.map(lensMount)).size > 1; }
+// Gruppi della lens chart, tre livelli uno dentro l'altro. Per attacco
+// (`state.lensByMount`): uno per attacco dal più numeroso, a parità nell'ordine
+// di `MOUNTS`, le lenti senza attacco in fondo; così le pagine di una macchina
+// da presa restano di fila. Poi per serie (`state.lensSeries`): tutte insieme
 // ('mix'), una per serie ('each', dalla più numerosa) o il set principale da una
 // parte e le altre serie mescolate dall'altra ('main'; con un pareggio nessun
-// principale, quindi tutte insieme). Poi, dentro ognuno, prime e zoom separati
+// principale, quindi tutte insieme). Poi prime e zoom separati
 // (`state.lensSplit`). Ogni gruppo ha le sue pagine, le sue misure, la sua
 // legenda e le sue lenti in negativo, come fosse una lens chart a sé.
+// Rende `{ lenses, mount }`: `mount` è l'attacco del gruppo, solo se si divide per attacco.
 function lensGroups() {
-  const bySeries = new Map();
-  for (const l of state.lenses) { const k = seriesKey(l); bySeries.set(k, [...(bySeries.get(k) || []), l]); }
-  let groups = [state.lenses];
-  if (bySeries.size > 1 && state.lensSeries === 'each')
-    groups = [...bySeries.values()].sort((a, b) => b.length - a.length);
-  else if (bySeries.size > 1 && state.lensSeries === 'main') {
-    const main = plurality(state.lenses.map(seriesKey));
-    if (main) groups = [bySeries.get(main), state.lenses.filter(l => seriesKey(l) !== main)];
+  const split = (L, keyOf) => { const m = new Map(); for (const l of L) { const k = keyOf(l); m.set(k, [...(m.get(k) || []), l]); } return m; };
+  let groups = [{ lenses: state.lenses, mount: null }];
+  if (mountSplit()) {
+    const rank = m => MOUNTS.includes(m) ? MOUNTS.indexOf(m) : MOUNTS.length;
+    groups = [...split(state.lenses, lensMount)]
+      .sort(([a, A], [b, B]) => (a == null) - (b == null) || B.length - A.length || rank(a) - rank(b) || String(a).localeCompare(String(b)))
+      .map(([mount, lenses]) => ({ lenses, mount }));
   }
-  if (!state.lensSplit) return groups;
-  return groups.flatMap(g => {
-    const zooms = g.filter(isZoom), primes = g.filter(l => !isZoom(l));
-    return zooms.length && primes.length ? [primes, zooms] : [g];
-  });
+  const bySeries = L => {
+    const m = split(L, seriesKey);
+    if (m.size > 1 && state.lensSeries === 'each') return [...m.values()].sort((a, b) => b.length - a.length);
+    const main = m.size > 1 && state.lensSeries === 'main' && plurality(L.map(seriesKey));
+    return main ? [m.get(main), L.filter(l => seriesKey(l) !== main)] : [L];
+  };
+  const byType = L => {
+    const zooms = L.filter(isZoom), primes = L.filter(l => !isZoom(l));
+    return state.lensSplit && zooms.length && primes.length ? [primes, zooms] : [L];
+  };
+  return groups.flatMap(g => bySeries(g.lenses).flatMap(byType).map(lenses => ({ lenses, mount: g.mount })));
 }
-// Pagine: `rows` le lenti della pagina, `group` tutte quelle del suo gruppo, in ordine.
+// Pagine: `rows` le lenti della pagina, `group` tutte quelle del suo gruppo, in
+// ordine, `mount` l'attacco da scrivere nel titolo (se si divide per attacco).
 function lensPages() {
   const pages = [];
   for (const g of lensGroups()) {
-    const group = sortedLenses(g);
-    for (let i = 0; i < group.length; i += LENS_ROWS_PER_PAGE) pages.push({ rows: group.slice(i, i + LENS_ROWS_PER_PAGE), group });
+    const group = sortedLenses(g.lenses);
+    for (let i = 0; i < group.length; i += LENS_ROWS_PER_PAGE) pages.push({ rows: group.slice(i, i + LENS_ROWS_PER_PAGE), group, mount: g.mount });
   }
   return pages;
 }
@@ -756,7 +768,7 @@ function plurality(items) {
 }
 // Evidenziata se di serie diversa dal set principale o di tipo diverso dal resto.
 function outliers(L) {
-  if (!L) return new Set(lensGroups().flatMap(g => [...outliers(g)]));  // tutte, gruppo per gruppo
+  if (!L) return new Set(lensGroups().flatMap(g => [...outliers(g.lenses)]));  // tutte, gruppo per gruppo
   const out = new Set();
   const key = l => `${l.brand}|${l.series}`;
   const mainSeries = L.length > 1 ? plurality(L.map(key)) : null;
@@ -801,15 +813,31 @@ function dims(layout) { const { w, h } = DEVICES[state.device]; return layout ==
 // ============================================================================
 // Schermata: lens chart
 // ============================================================================
-function drawLensChart(ctx, W, H, { rows, group }, pageIdx, pageCount) {
+function drawLensChart(ctx, W, H, { rows, group, mount }, pageIdx, pageCount) {
   const out = outliers(group);
   const pad = Math.round(W * 0.035);
   const barH = Math.round(H > W ? 64 : 56);
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, barH);
-  ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle';
+  // Da destra: numero di pagina, poi l'attacco del gruppo in un riquadro bianco
+  // (solo dividendo per attacco); il titolo prende lo spazio che resta.
+  const small = Math.round(barH * 0.4);
+  let right = W - pad;
+  if (pageCount > 1) {
+    const t = `${pageIdx + 1}/${pageCount}`;
+    ctx.textAlign = 'right'; ctx.font = `700 ${small}px ${FONT}`; ctx.fillText(t, right, barH / 2);
+    right -= Math.ceil(ctx.measureText(t).width) + Math.round(pad * 0.6);
+  }
+  if (mount) {
+    ctx.font = `800 ${small}px ${FONT}`;
+    const bw = Math.ceil(ctx.measureText(mount).width) + 20, bh = Math.round(barH * 0.62), bx = Math.round(right - bw);
+    ctx.fillRect(bx, Math.round((barH - bh) / 2), bw, bh);
+    ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.fillText(mount, bx + bw / 2, barH / 2 + 1);
+    ctx.fillStyle = '#fff'; right = bx;
+  }
+  ctx.textAlign = 'left';
   const title = (state.production || 'LENS CHART').toUpperCase();
-  fitFont(ctx, title, 800, W * 0.7, barH * 0.5); ctx.fillText(title, pad, barH / 2);
-  if (pageCount > 1) { ctx.textAlign = 'right'; ctx.font = `700 ${Math.round(barH * 0.4)}px ${FONT}`; ctx.fillText(`${pageIdx + 1}/${pageCount}`, W - pad, barH / 2); }
+  fitFont(ctx, title, 800, Math.min(W * 0.7, right - pad * 2), barH * 0.5); ctx.fillText(title, pad, barH / 2);
 
   // Righe alte quanto lo spazio permette: poche lenti = testo grande. Tutte le
   // pagine usano la misura della pagina più piena, così la scala non cambia.
@@ -829,10 +857,12 @@ function drawLensChart(ctx, W, H, { rows, group }, pageIdx, pageCount) {
   }
   // Sigla piccola solo sulle lenti fuori dal set principale (o su tutte se non c'è).
   // Con l'opzione dell'attacco (`state.lensMount`) vale la stessa regola: quello
-  // principale nella legenda, gli altri accanto alla focale.
-  const leg = seriesLegend(group), mnt = state.lensMount ? mountLegend(group) : { main: null, text: '' };
+  // principale nella legenda, gli altri accanto alla focale. Dividendo per
+  // attacco no: è già nel titolo.
+  const showMount = state.lensMount && !mountSplit();
+  const leg = seriesLegend(group), mnt = showMount ? mountLegend(group) : { main: null, text: '' };
   const tag = l => [leg.main && seriesKey(l) === leg.main ? '' : (l.seriesCode || ''),
-                    state.lensMount && l.mount && l.mount !== mnt.main ? l.mount : ''].filter(Boolean).join(' ');
+                    showMount && l.mount && l.mount !== mnt.main ? l.mount : ''].filter(Boolean).join(' ');
   // "Attacco X" subito dopo la prima serie che lo usa, così non sembra di quella accanto.
   const legParts = [...leg.parts];
   if (mnt.text) {
@@ -1707,9 +1737,13 @@ function changed(redrawEditor = false) { save(); renderList(); drawPreview(); if
 
 // ---------- editor: lens chart ----------
 function lensEditor(ed) {
+  const byMount = mountSplit(), noMount = byMount ? state.lenses.filter(l => !lensMount(l)).length : 0;
   ed.append(editorHead('Lens chart', includeSwitch('lenschart')),
     h('label', { class: 'fld' }, h('span', { class: 'lab' }, 'Titolo (es. nome produzione)'),
       h('input', { type: 'text', value: state.production, placeholder: 'LENS CHART', oninput: e => { state.production = e.target.value; changed(); } })),
+    toggle('Attacchi su pagine separate', state.lensByMount, v => { state.lensByMount = v; changed(true); },
+      { tip: 'Ogni attacco ha le sue pagine, dal più numeroso, con l\'attacco scritto nel titolo: utile con due macchine da presa. Dentro ogni attacco valgono le scelte qui sotto.' }),
+    ...(noMount ? [h('p', { class: 'warn' }, `${plural(noMount, 'lente', 'lenti')} senza attacco: ${noMount > 1 ? 'stanno' : 'sta'} su pagine a parte, in fondo. Scegli l'attacco con ✎.`)] : []),
     h('div', { class: 'srow' }, lab('Serie', 'Insieme: tutte le lenti su un\'unica lens chart. Una per serie: ogni serie ha le sue pagine, dalla più numerosa. Principale a parte: prima le pagine del set con più lenti, poi le altre serie insieme. Ogni gruppo ha la sua misura del testo e la sua legenda.'),
       seg([['mix', 'Insieme'], ['each', 'Una per serie'], ['main', 'Principale a parte']], state.lensSeries, v => { state.lensSeries = v; changed(true); }, 'Serie sulle pagine')),
     toggle('Prime e zoom su pagine separate', state.lensSplit, v => { state.lensSplit = v; changed(true); },
@@ -1718,8 +1752,8 @@ function lensEditor(ed) {
       { tip: 'Senza, gli zoom stanno tra i prime in ordine di focale minima.' })]),
     toggle('Mostra il diametro frontale (Ø)', state.lensFront, v => { state.lensFront = v; changed(); },
       { tip: 'Senza il diametro restano focale, T e CF, più grandi.' }),
-    toggle('Mostra l\'attacco (PL, LPL, EF…)', state.lensMount, v => { state.lensMount = v; changed(); },
-      { tip: 'L\'attacco di quasi tutte le lenti va in basso accanto alla serie; quello delle altre accanto alla focale.' }));
+    ...(byMount ? [] : [toggle('Mostra l\'attacco (PL, LPL, EF…)', state.lensMount, v => { state.lensMount = v; changed(); },
+      { tip: 'L\'attacco di quasi tutte le lenti va in basso accanto alla serie; quello delle altre accanto alla focale.' })]));
 
   // Lenti selezionate
   const rows = [], nPages = lensPages().length;

@@ -171,7 +171,14 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   quando la focale cresce almeno del 20% (`TWO_COLS_GAIN`): in pratica da 6
   lenti. Le pagine restano da 11 lenti in entrambi gli orientamenti.
   Gruppi di pagine (`lensGroups`), ognuno una lens chart a sé con le sue
-  misure, la sua legenda e le sue lenti in negativo: prima per serie ("Serie":
+  misure, la sua legenda e le sue lenti in negativo, su tre livelli uno dentro
+  l'altro. Prima "Attacchi su pagine separate" (`state.lensByMount`, spento di
+  partenza; `mountSplit`: vale solo con più di un attacco): un gruppo per
+  attacco dal più numeroso, le lenti senza attacco in fondo (con un avviso
+  nell'editor), così le pagine di una macchina da presa restano di fila.
+  L'attacco del gruppo sta nella barra del titolo, in un riquadro bianco prima
+  del numero di pagina, e "Mostra l'attacco" sparisce perché sarebbe un
+  doppione. Poi per serie ("Serie":
   Insieme / Una per serie, dalla più numerosa / Principale a parte, il set
   principale e poi le altre mescolate; `state.lensSeries` = mix/each/main),
   poi dentro ognuno "Prime e zoom su pagine separate" (`state.lensSplit`).
