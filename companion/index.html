@@ -30,6 +30,8 @@
          font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
   button, select, input, textarea { font: inherit; color: inherit; }
   button { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-s); padding: 7px 12px; cursor: pointer; }
+  a.btn { display: inline-block; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-s); padding: 7px 12px; color: inherit; text-decoration: none; line-height: inherit; }
+  a.btn:hover { border-color: var(--track); }
   button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
   button.danger { color: var(--danger); }
   button.small { padding: 3px 8px; font-size: 12px; }
@@ -49,7 +51,7 @@
   .bar h1 { font-size: 16px; margin: 0; letter-spacing: .04em; }
   .bar .dev { color: var(--muted); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .bar .sp { flex: 1; }
-  .bar button { flex: none; }
+  .bar button, .bar .btn { flex: none; }
   .dev-s, .bar .s { display: none; }
 
   /* ---------- Riquadri a comparsa: menu e spiegazioni ---------- */
@@ -325,6 +327,7 @@
   <h1>CAMTAG</h1>
   <span class="dev" id="dims"><span class="dev-l"></span><span class="dev-s"></span></span>
   <span class="sp"></span>
+  <a id="helpBtn" class="btn" href="manuale/" target="_blank" rel="noopener" title="Manuale d'uso: tasti, schermate, invio delle card"><span class="l">Manuale</span><span class="s">?</span></a>
   <button id="projBtn"><span class="l">Progetto ▾</span><span class="s">Progetto</span></button>
   <button id="zipBtn" title="Scarica tutte le card (.zip)"><span class="l">Scarica .zip</span><span class="s">.zip</span></button>
   <button id="bleBtn" class="primary" title="Manda le card all'X3 senza microSD, o riprendi il progetto salvato sull'X3">Bluetooth</button>

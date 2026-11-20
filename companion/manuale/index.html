@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#121212">
+<title>CamTag · Manuale</title>
+<!-- Le schermate in questa cartella vengono dal simulatore dello strumento web
+     (stesso disegno del firmware 0.2.4), con un progetto di prova. -->
+<style>
+  @font-face { font-family: "Inter"; src: url("../fonts/InterVariable.woff2") format("woff2");
+               font-weight: 100 900; font-style: normal; font-display: swap; }
+  /* Stesso tema dello strumento web: scuro, accento acid lime. */
+  :root {
+    color-scheme: dark;
+    --bg: #121212; --panel: #1c1c1b; --panel-2: #232322; --ink: #ecebe6; --muted: #9a9993; --line: #33332f;
+    --accent: #bbff00; --accent-ink: #161a00; --accent-soft: #314107; --warn: #ffb347;
+    --r-m: 10px; --r-l: 16px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 24px; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 16px/1.6 "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+         font-feature-settings: "cv11", "ss01"; }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  h1, h2, h3 { line-height: 1.15; letter-spacing: -.01em; margin: 0; }
+  p { margin: 0 0 14px; }
+  ul, ol { margin: 0 0 14px; padding-left: 22px; }
+  li { margin: 4px 0; }
+  strong { font-weight: 650; }
+
+  /* ---------- Struttura: indice fisso a sinistra, testo a destra ---------- */
+  .wrap { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 48px; max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+  nav.toc { position: sticky; top: 0; align-self: start; max-height: 100dvh; overflow: auto; padding: 32px 0; }
+  .toc .brand { display: flex; align-items: baseline; gap: 8px; margin-bottom: 22px; }
+  .toc .brand b { font-size: 15px; letter-spacing: .08em; }
+  .toc .brand span { color: var(--muted); font-size: 12px; }
+  .toc ol { list-style: none; padding: 0; margin: 0; counter-reset: t; }
+  .toc li { margin: 0; counter-increment: t; }
+  .toc li a { display: grid; grid-template-columns: 26px 1fr; padding: 6px 10px; border-radius: 6px; color: var(--muted);
+           text-decoration: none; font-size: 14px; line-height: 1.35; }
+  .toc li a::before { content: counter(t, decimal-leading-zero); font-variant-numeric: tabular-nums; font-size: 11px; padding-top: 2px; opacity: .7; }
+  .toc li a:hover { color: var(--ink); background: var(--panel); }
+  .toc li a.on { color: var(--ink); background: var(--panel); box-shadow: inset 2px 0 0 var(--accent); }
+  .toc .back { display: inline-block; margin-top: 22px; font-size: 13px; color: var(--muted); text-decoration: none; }
+  .toc .back:hover { color: var(--accent); }
+  main { min-width: 0; padding: 32px 0 80px; }
+
+  /* ---------- Apertura ---------- */
+  .hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 32px; align-items: center;
+          padding: 28px 0 40px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+  .eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; font-weight: 600; }
+  .hero h1 { font-size: clamp(40px, 6vw, 64px); font-weight: 800; letter-spacing: -.03em; margin-bottom: 18px; }
+  .hero h1 em { font-style: normal; color: var(--muted); font-weight: 500; }
+  .lede { font-size: 18px; color: #cfcec8; max-width: 34em; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px;
+          font-size: 12px; color: var(--muted); }
+  .hero .fig { background: none; border: 0; padding: 0; }
+
+  /* ---------- Sezioni ---------- */
+  section.s { padding: 56px 0 8px; }
+  .s > header { margin-bottom: 22px; }
+  .s .num { font-size: 12px; letter-spacing: .14em; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .s h2 { font-size: clamp(26px, 3.4vw, 34px); font-weight: 750; margin-top: 6px; }
+  .s h3 { font-size: 17px; font-weight: 650; margin: 26px 0 10px; }
+  .s .intro { font-size: 17px; color: #cfcec8; max-width: 40em; margin-top: 10px; }
+
+  /* Figura + testo affiancati */
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: center; margin: 18px 0; }
+  .row.flip > .fig { order: 2; }
+  .row.top { align-items: start; }
+  .row.wide { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
+  .row.wide.flip { grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); }
+  .fig { margin: 0; background: radial-gradient(120% 90% at 50% 0%, #20201e 0%, var(--panel) 70%); border: 1px solid var(--line);
+         border-radius: var(--r-l); padding: 22px 16px 14px; display: flex; flex-direction: column; align-items: center; }
+  .fig svg { display: block; width: 100%; height: auto; }
+  .fig figcaption { font-size: 13px; color: var(--muted); text-align: center; margin-top: 10px; max-width: 32em; }
+  .figs2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 18px 0; }
+
+  /* Passi numerati */
+  ol.steps { list-style: none; padding: 0; counter-reset: st; }
+  ol.steps > li { counter-increment: st; position: relative; padding: 0 0 0 44px; margin: 0 0 16px; }
+  ol.steps > li::before { content: counter(st); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%;
+                          background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 14px;
+                          display: flex; align-items: center; justify-content: center; }
+
+  /* Tasti scritti nel testo */
+  kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 1.7em; height: 1.55em; padding: 0 .45em;
+        border: 1px solid #4a4a45; border-bottom-width: 2px; border-radius: 5px; background: var(--panel-2);
+        font: 600 .82em/1 "Inter", sans-serif; color: var(--ink); vertical-align: .08em; white-space: nowrap; }
+  .hold { display: inline-block; font-size: .78em; font-weight: 600; color: var(--accent); background: var(--accent-soft);
+          border-radius: 4px; padding: 0 .4em; vertical-align: .1em; white-space: nowrap; }
+
+  /* Riquadri */
+  .note { border: 1px solid var(--line); border-left: 3px solid var(--accent); background: var(--panel); border-radius: 8px;
+          padding: 12px 16px; margin: 16px 0; font-size: 15px; }
+  .note.warn { border-left-color: var(--warn); }
+  .note p:last-child, .note ul:last-child { margin-bottom: 0; }
+  .note b.t { display: block; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+
+  /* Tabelle */
+  .table { width: 100%; overflow-x: auto; margin: 16px 0; border: 1px solid var(--line); border-radius: var(--r-m); }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  th { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; background: var(--panel); }
+  td:first-child { white-space: nowrap; }
+  .msg { font: 600 13px/1.3 ui-monospace, Menlo, monospace; letter-spacing: .04em; background: #f2f1ec; color: #111;
+         padding: 3px 7px; border-radius: 3px; white-space: nowrap; display: inline-block; }
+
+  /* Schede del riepilogo */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin: 18px 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-m); padding: 16px; }
+  .card h3 { margin: 0 0 10px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; font-size: 14px; }
+  .card dt { color: var(--muted); white-space: nowrap; }
+  .card dd { margin: 0; }
+
+  /* Breve o tenuto: la linea del tempo */
+  .timeline { position: relative; margin: 22px 0 12px; padding: 34px 0 30px; }
+  .timeline .bar { position: relative; height: 10px; border-radius: 5px;
+                   background: linear-gradient(90deg, #3a3a36 0 61.5%, var(--accent-soft) 61.5% 76.9%, var(--accent) 76.9% 100%); }
+  .timeline .tick { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px solid var(--ink); }
+  .timeline .tick span { position: absolute; top: 2px; transform: translateX(-50%); font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .timeline .lab { position: absolute; bottom: 0; font-size: 13px; transform: translateX(-50%); white-space: nowrap; }
+  .timeline .lab.l { transform: none; }
+
+  /* Simboli di stato disegnati come sull'e-paper */
+  .st { display: inline-flex; align-items: center; justify-content: center; background: #f2f1ec; color: #111; border-radius: 3px;
+        padding: 2px 6px; font: 700 11px/1 ui-monospace, Menlo, monospace; vertical-align: .1em; gap: 4px; }
+
+  footer.end { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+
+  /* ---------- Schermi stretti ---------- */
+  @media (max-width: 999px) {
+    .wrap { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    nav.toc { position: static; max-height: none; padding: 20px 0 0; }
+    .toc ol { display: none; }
+    .toc .back { margin-top: 0; }
+  }
+  @media (max-width: 759px) {
+    .wrap { padding: 0 16px; }
+    .hero, .row, .row.wide, .row.wide.flip { grid-template-columns: minmax(0, 1fr); }
+    .row.flip > .fig { order: 0; }
+    .hero { padding-top: 8px; }
+    .hero .fig { max-width: 320px; margin: 0 auto; }
+    section.s { padding-top: 44px; }
+    td:first-child { white-space: normal; }
+  }
+  @media (max-width: 479px) { .figs2 { grid-template-columns: 1fr; } }
+
+  /* ---------- Stampa: fogli bianchi, niente indice ---------- */
+  @media print {
+    :root { --bg: #fff; --panel: #f6f6f3; --panel-2: #fff; --ink: #111; --muted: #555; --line: #ccc; --accent: #3d5a00; --accent-soft: #eef7d6; }
+    body { font-size: 11pt; }
+    nav.toc { display: none; }
+    .wrap { display: block; padding: 0; }
+    .fig { background: #fff; break-inside: avoid; }
+    section.s { break-before: page; padding-top: 0; }
+    .lede, .s .intro { color: #333; }
+    a { color: inherit; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="toc" aria-label="Indice">
+    <div class="brand"><b>CAMTAG</b><span>Manuale</span></div>
+    <ol id="toc"></ol>
+    <a class="back" href="../">← Torna allo strumento web</a>
+  </nav>
+
+  <main>
+    <div class="hero">
+      <div>
+        <div class="eyebrow">Manuale d'uso · firmware 0.2.4</div>
+        <h1>CamTag <em>sulla camera</em></h1>
+        <p class="lede">Il badge e-paper del reparto camera: lens chart, filtri, crew e note sempre in vista, anche da spento. Qui trovi i tasti, quando premerli e cosa vedrai sullo schermo.</p>
+        <div class="meta">
+          <span class="chip">Xteink X3</span>
+          <span class="chip">8 tasti, niente touch</span>
+          <span class="chip">Lo schermo resta anche da spento</span>
+        </div>
+      </div>
+      <figure class="fig" data-dev='{"screen":"lens-port","k":0.95}'></figure>
+    </div>
+
+    <!-- 1 -->
+    <section class="s" id="riepilogo" data-title="In breve">
+      <header><div class="num">01</div><h2>In breve</h2>
+        <p class="intro">Tutto quello che serve sul set, in una pagina. I dettagli sono nelle sezioni che seguono.</p></header>
+      <div class="cards">
+        <div class="card"><h3><kbd>X</kbd><kbd>Y</kbd> Lati</h3>
+          <dl><dt>X</dt><dd>schermata precedente</dd><dt>Y</dt><dd>schermata successiva</dd>
+              <dt>X <span class="hold">tieni</span></dt><dd>ricevi le card via Bluetooth</dd>
+              <dt>Y <span class="hold">tieni</span></dt><dd>blocca / sblocca la rotazione</dd></dl></div>
+        <div class="card"><h3><kbd>PWR</kbd> Power</h3>
+          <dl><dt>breve</dt><dd>blocca / sblocca i tasti</dd>
+              <dt><span class="hold">tieni 1 s</span></dt><dd>spegne e accende</dd></dl></div>
+        <div class="card"><h3><kbd>A|B</kbd><kbd>C|D</kbd> In basso</h3>
+          <dl><dt>lens chart</dt><dd>pagine della lens chart</dd>
+              <dt>filtri</dt><dd>A|B diottria, C|D ND</dd>
+              <dt>A o B <span class="hold">tieni</span></dt><dd>modifica gli stadi del mattebox</dd></dl></div>
+        <div class="card"><h3><kbd>RESET</kbd> Riavvio</h3>
+          <dl><dt>breve</dt><dd>riavvia l'X3, se non risponde</dd></dl>
+          <p style="margin:10px 0 0;font-size:13px;color:var(--muted)">Le card e le impostazioni restano.</p></div>
+      </div>
+    </section>
+
+    <!-- 2 -->
+    <section class="s" id="tasti" data-title="I tasti">
+      <header><div class="num">02</div><h2>I tasti</h2>
+        <p class="intro">L'X3 si tiene in verticale, con i due bilancieri in basso. I nomi dei tasti valgono in questa posizione, anche quando lo ruoti.</p></header>
+      <div class="row">
+        <figure class="fig" data-dev='{"screen":"off","k":0.9,"labels":true}'>
+          <figcaption>Da spento le etichette dei tasti sono disegnate sullo schermo, accanto a ogni tasto.</figcaption>
+        </figure>
+        <div>
+          <ul>
+            <li><strong>Power</strong>, in alto a destra: blocca i tasti, e tenuto spegne e accende.</li>
+            <li><strong>Reset</strong>, in alto a sinistra: riavvia.</li>
+            <li><strong>X</strong> sul lato sinistro e <strong>Y</strong> sul destro: cambiano schermata.</li>
+            <li><strong>Due bilancieri</strong> in basso, <kbd>A</kbd>|<kbd>B</kbd> a sinistra e <kbd>C</kbd>|<kbd>D</kbd> a destra: lavorano sulla schermata che hai davanti (pagine della lens chart, ND e diottria).</li>
+          </ul>
+          <p>I bilancieri si premono un capo alla volta: <kbd>A</kbd> è il capo sinistro del primo, <kbd>B</kbd> il destro.</p>
+        </div>
+      </div>
+
+      <h3>Breve o tenuto</h3>
+      <p>Ogni tasto ha due gesti. La <strong>pressione breve</strong> conta quando rilasci. Quella <strong>tenuta</strong> scatta da sola dopo 0,8 secondi (1 secondo per il power), con il dito ancora sul tasto: vedi subito l'effetto, e il rilascio dopo non fa altro.</p>
+      <div class="timeline" aria-hidden="true">
+        <div class="bar">
+          <div class="tick" style="left:0"><span style="transform:none">0 s</span></div>
+          <div class="tick" style="left:61.5%"><span>0,8 s</span></div>
+          <div class="tick" style="left:76.9%"><span>1 s</span></div>
+        </div>
+        <div class="lab l" style="left:0">rilasci prima: <strong>breve</strong></div>
+        <div class="lab" style="left:69%"><strong>tenuto</strong></div>
+        <div class="lab" style="left:89%">power <strong>tenuto</strong></div>
+      </div>
+      <div class="table"><table>
+        <thead><tr><th>Tasto</th><th>Breve</th><th>Tenuto</th></tr></thead>
+        <tbody>
+          <tr><td><kbd>X</kbd></td><td>Schermata precedente</td><td>Ricezione via Bluetooth</td></tr>
+          <tr><td><kbd>Y</kbd></td><td>Schermata successiva</td><td>Blocca / sblocca la rotazione</td></tr>
+          <tr><td><kbd>A</kbd> <kbd>B</kbd></td><td>Lens chart: pagina. Filtri: diottria − / +</td><td>Filtri: modifica gli stadi</td></tr>
+          <tr><td><kbd>C</kbd> <kbd>D</kbd></td><td>Lens chart: pagina. Filtri: ND − / +</td><td>—</td></tr>
+          <tr><td><kbd>PWR</kbd></td><td>Blocca / sblocca i tasti</td><td>Spegne / accende (1 s)</td></tr>
+          <tr><td><kbd>RESET</kbd></td><td>Riavvia</td><td>—</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- 3 -->
+    <section class="s" id="accendere" data-title="Accendere e spegnere">
+      <header><div class="num">03</div><h2>Accendere e spegnere</h2>
+        <p class="intro">Per chi lo usa ci sono due stati: <strong>acceso</strong>, che mostra le card e risponde ai tasti, e <strong>spento</strong>, che mostra la schermata di spento.</p></header>
+      <div class="row">
+        <figure class="fig" data-dev='{"screen":"off","k":0.85,"hi":[{"keys":"P","text":"tieni 1 s"}]}'>
+          <figcaption>Spento: la tua schermata di spento, con la fascia in basso e la batteria rimasta.</figcaption>
+        </figure>
+        <div>
+          <p><strong>Tieni premuto il power per 1 secondo</strong> per spegnere. Per riaccendere, tienilo di nuovo: riparte dall'ultima card. Da spento gli altri tasti non fanno nulla.</p>
+          <p>La schermata di spento la scegli nello strumento web, nella pagina <em>Spento</em> (un'immagine e una scritta, come "CAMERA A"), o con una scheda qualsiasi. Senza, l'X3 mostra solo il nome CAMTAG.</p>
+          <div class="note"><b class="t">Si spegne da solo</b>
+            <ul>
+              <li>dopo <strong>24 ore</strong> senza toccare un tasto;</li>
+              <li>con la <strong>batteria scarica</strong>: la fascia dice <span class="msg">BATTERIA SCARICA - METTI IN CARICA</span>.</li>
+            </ul></div>
+        </div>
+      </div>
+      <h3>Acceso consuma poco anche senza spegnerlo</h3>
+      <p>Dopo 5 secondi senza tocchi l'X3 va a riposo, ma da fuori non cambia nulla: la card resta e il primo tasto risponde come sempre. Non serve spegnerlo tra un'inquadratura e l'altra.</p>
+      <p>Da spento, dopo <strong>tre giorni</strong> lo schermo passa al bianco con la sola fascia, e da lì l'X3 non consuma più nulla. Si riaccende sempre con il power tenuto.</p>
+    </section>
+
+    <!-- 4 -->
+    <section class="s" id="sfogliare" data-title="Sfogliare le schermate">
+      <header><div class="num">04</div><h2>Sfogliare le schermate</h2>
+        <p class="intro">Le schermate sono nell'ordine dello strumento web: la lens chart, i filtri, poi le schede (crew, note, lenti, immagini).</p></header>
+      <div class="row">
+        <figure class="fig" data-dev='{"screen":"crew-port","k":0.85,"hi":[{"keys":"X","text":"precedente"},{"keys":"Y","text":"successiva"}]}'></figure>
+        <div>
+          <p><kbd>X</kbd> torna alla schermata precedente, <kbd>Y</kbd> va alla successiva. Il giro è continuo: dopo l'ultima ricomincia dalla prima.</p>
+          <p>X e Y funzionano allo stesso modo su ogni schermata, anche sulla lens chart e sui filtri.</p>
+        </div>
+      </div>
+      <h3>Lens chart di più pagine</h3>
+      <div class="row flip">
+        <figure class="fig" data-dev='{"screen":"lens-port","k":0.85,"hi":[{"keys":"AB","text":"‹ indietro · avanti ›"},{"keys":"CD","text":"‹ indietro · avanti ›"}]}'></figure>
+        <div>
+          <p>Una lens chart con molte lenti si divide in pagine. Sulla lens chart i bilancieri sfogliano <strong>solo le sue pagine</strong>, in giro: il capo a destra (<kbd>B</kbd> o <kbd>D</kbd>) avanza, quello a sinistra (<kbd>A</kbd> o <kbd>C</kbd>) torna indietro.</p>
+          <p>I due bilancieri fanno la stessa cosa: usa quello più comodo. Con l'X3 ruotato vale la stessa regola per chi guarda: avanza il capo a destra o in basso.</p>
+          <p>Con una sola pagina A–D non fanno nulla.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section class="s" id="rotazione" data-title="Rotazione">
+      <header><div class="num">05</div><h2>Rotazione</h2>
+        <p class="intro">L'X3 sente come lo tieni e gira la schermata nei quattro versi, sempre dritta per chi la guarda.</p></header>
+      <div class="row wide">
+        <figure class="fig" data-dev='{"screen":"lens-land","rot":90,"k":0.8,"hi":[{"keys":"Y","text":"tieni: blocca"}]}'>
+          <figcaption>Ruotato di un quarto di giro: la lens chart passa in orizzontale.</figcaption>
+        </figure>
+        <div>
+          <p>Il cambio avviene dopo circa mezzo secondo di posizione ferma. Appoggiato in piano, l'X3 tiene il verso che aveva.</p>
+          <p><strong>Tieni premuto <kbd>Y</kbd></strong> per bloccare la rotazione nel verso attuale; tienilo di nuovo per sbloccarla. Per un momento compare <span class="msg">ROTAZIONE BLOCCATA</span> o <span class="msg">ROTAZIONE AUTOMATICA</span>. Il blocco resta anche dopo lo spegnimento.</p>
+          <div class="note"><b class="t">Montato a testa in giù</b>
+            <p>Con la rotazione bloccata resta fermo tutto: la schermata, le indicazioni dei tasti e la funzione dei bilancieri sono quelle del verso bloccato. Sbloccando, la schermata raggiunge subito la posizione vera.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section class="s" id="blocco" data-title="Bloccare i tasti">
+      <header><div class="num">06</div><h2>Bloccare i tasti</h2>
+        <p class="intro">Sulla camera i tasti si urtano. Il blocco tiene ferma la schermata finché non lo togli.</p></header>
+      <div class="row">
+        <figure class="fig" data-dev='{"screen":"lock","k":0.85,"hi":[{"keys":"P","text":"breve: blocca"}]}'>
+          <figcaption>Il lucchetto, sotto il power, dice che i tasti sono bloccati.</figcaption>
+        </figure>
+        <div>
+          <p><strong>Premi il power</strong> (breve) per bloccare: compare il lucchetto in alto, sotto il power. <kbd>A</kbd>–<kbd>D</kbd>, <kbd>X</kbd> e <kbd>Y</kbd> non fanno più nulla. Premi di nuovo il power per sbloccare.</p>
+          <p>La rotazione continua a funzionare anche con i tasti bloccati, e il power tenuto spegne come sempre. Spegnendo, il blocco si toglie.</p>
+          <div class="note"><b class="t">Non risponde?</b><p>Guarda se c'è il lucchetto: è quasi sempre il blocco dei tasti.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 -->
+    <section class="s" id="filtri" data-title="Schermata filtri">
+      <header><div class="num">07</div><h2>Schermata filtri</h2>
+        <p class="intro">ND e diottria in grande, e sotto gli stadi del mattebox, dal lato lente (1) verso il fronte. Cambi ND e diottria con i bilancieri, scorrendo solo i vetri del tuo kit.</p></header>
+      <div class="row">
+        <figure class="fig" data-dev='{"screen":"filters-port","k":0.85,"hi":[{"keys":"AB","text":"diottria − / +"},{"keys":"CD","text":"ND − / +"}]}'>
+          <figcaption>Le indicazioni accanto ai tasti dicono cosa fa ognuno.</figcaption>
+        </figure>
+        <div>
+          <p>In verticale <kbd>A</kbd>|<kbd>B</kbd> cambiano la <strong>diottria</strong> e <kbd>C</kbd>|<kbd>D</kbd> l'<strong>ND</strong>. Il "+" sta sempre sul capo a destra o in alto per chi guarda.</p>
+          <p>Ogni bilanciere comanda il valore che gli sta accanto: quando ruoti l'X3 i due si scambiano, e le indicazioni sullo schermo seguono.</p>
+          <p>Nella scala dell'ND ci sono anche i totali fatti con <strong>due vetri</strong>, se li hai scelti nello strumento web: la coppia occupa gli stadi 1 e 2.</p>
+        </div>
+      </div>
+      <div class="row flip top wide">
+        <figure class="fig" data-dev='{"screen":"filters-land","rot":90,"k":0.75,"hi":[{"keys":"AB","text":"ND + / −"},{"keys":"CD","text":"diottria + / −"}]}'>
+          <figcaption>Ruotato in senso orario: A|B, ora in alto, cambiano l'ND.</figcaption>
+        </figure>
+        <div>
+          <h3 style="margin-top:0">Chi sta dove negli stadi</h3>
+          <ul>
+            <li>L'<strong>ND</strong> occupa i primi stadi, dal lato lente.</li>
+            <li>La <strong>diottria</strong> sta davanti a tutti gli altri vetri, di solito su due stadi.</li>
+            <li>Gli <strong>altri vetri</strong> (diffusione, polarizzatori…) stanno in mezzo.</li>
+          </ul>
+          <p>Gli stadi si rimettono a posto da soli quando ND e diottria restano fermi per <strong>2 secondi</strong>: puoi scorrere i valori senza che i vetri saltino a ogni tocco.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 -->
+    <section class="s" id="modifica" data-title="Modificare gli stadi">
+      <header><div class="num">08</div><h2>Modificare gli stadi del mattebox</h2>
+        <p class="intro">Hai cambiato un vetro sul set? Lo aggiorni dall'X3, sulla schermata filtri, senza passare dal telefono.</p></header>
+      <div class="row top">
+        <figure class="fig" data-dev='{"screen":"filters-edit","k":0.85,"hi":[{"keys":"AB","text":"▲ ▼ stadio"},{"keys":"CD","text":"− + vetro"}]}'>
+          <figcaption>In modifica lo stadio scelto è in negativo.</figcaption>
+        </figure>
+        <ol class="steps">
+          <li><strong>Tieni premuto <kbd>A</kbd> o <kbd>B</kbd></strong> sulla schermata filtri. La riga del primo stadio libero va in negativo.</li>
+          <li><strong><kbd>A</kbd> e <kbd>B</kbd></strong> spostano la selezione fra gli stadi. Le righe dell'ND non si scelgono.</li>
+          <li><strong><kbd>C</kbd> e <kbd>D</kbd></strong> cambiano il vetro dello stadio: vuoto (—), poi i vetri del kit che non sono già montati. Arrivato in fondo ricomincia.</li>
+          <li><strong>Fatto.</strong> Dopo 5 secondi senza tocchi la modifica è accettata e si esce da soli. Per uscire subito premi <kbd>X</kbd> o <kbd>Y</kbd>, o tieni di nuovo A o B.</li>
+        </ol>
+      </div>
+      <div class="note"><b class="t">Buono a sapersi</b>
+        <ul>
+          <li>Scegliendo un vetro sulla riga della diottria, il vetro prende quel posto e la diottria avanza di uno.</li>
+          <li>In modifica ND e diottria non cambiano, e X e Y servono solo a uscire.</li>
+          <li>L'X3 ricorda gli stadi, come ND e diottria, anche da spento.</li>
+        </ul></div>
+    </section>
+
+    <!-- 9 -->
+    <section class="s" id="bluetooth" data-title="Card via Bluetooth">
+      <header><div class="num">09</div><h2>Mandare le card via Bluetooth</h2>
+        <p class="intro">Le card si preparano nello strumento web e arrivano all'X3 dal telefono o dal computer, senza togliere la microSD.</p></header>
+      <div class="row top">
+        <figure class="fig" data-dev='{"screen":"bluetooth","k":0.85,"hi":[{"keys":"X","text":"tieni: ricevi"}]}'>
+          <figcaption>In ricezione l'X3 mostra il suo nome: è quello da scegliere.</figcaption>
+        </figure>
+        <ol class="steps">
+          <li>Sull'X3 <strong>tieni premuto <kbd>X</kbd></strong>: compare <span class="msg">BLUETOOTH</span> con il nome del dispositivo (per esempio CAMTAG-1A2B).</li>
+          <li>Nello strumento web tocca <strong>Bluetooth</strong>, poi <strong>Invia le card</strong>, e scegli quel nome.</li>
+          <li>A fine invio l'X3 mostra la prima card con <span class="msg">CARD AGGIORNATE</span>.</li>
+        </ol>
+      </div>
+      <p>Le card nuove sostituiscono le vecchie solo a invio completo: se il collegamento cade, sull'X3 restano quelle di prima. Le card uguali a quelle già sull'X3 non viaggiano, così un ritocco arriva in pochi secondi. <kbd>X</kbd> o <kbd>Y</kbd> escono dalla ricezione; dopo 3 minuti senza invii esce da sola.</p>
+      <h3>Riprendere il progetto dall'X3</h3>
+      <p>Con le card viaggia anche il progetto dello strumento web. Su un altro telefono, o se il browser ha perso il lavoro, metti l'X3 in ricezione e tocca <strong>Bluetooth → Importa dall'X3</strong>: lo strumento riprende il progetto e le card sull'X3 non cambiano.</p>
+      <div class="note warn"><b class="t">Quale browser</b>
+        <ul>
+          <li><strong>Android, Mac, Windows, Linux</strong>: Chrome o Edge. In Brave il Bluetooth va acceso in <code>brave://flags</code>.</li>
+          <li><strong>iPhone e iPad</strong>: Safari non ha il Bluetooth per le pagine web. Serve un browser che lo aggiunga, come BLE Link o Bluefy.</li>
+          <li>La pagina va aperta dall'indirizzo <strong>https://</strong> dello strumento.</li>
+        </ul></div>
+      <h3>Con la microSD</h3>
+      <p>In alternativa scarica lo zip dallo strumento web (<strong>Scarica .zip</strong>) e copia la sua cartella <code>camtag/</code> nella radice della microSD, al posto di quella che c'è.</p>
+    </section>
+
+    <!-- 10 -->
+    <section class="s" id="messaggi" data-title="Messaggi e stato">
+      <header><div class="num">10</div><h2>Messaggi e stato</h2>
+        <p class="intro">Quando non c'è una card da mostrare, l'X3 lo dice in un riquadro al centro dello schermo.</p></header>
+      <div class="row top">
+        <figure class="fig" data-dev='{"screen":"nocard","k":0.8}'>
+          <figcaption>Un X3 nuovo, o con la microSD vuota.</figcaption>
+        </figure>
+        <div class="table" style="margin-top:0"><table>
+          <thead><tr><th>Messaggio</th><th>Cosa fare</th></tr></thead>
+          <tbody>
+            <tr><td><span class="msg">NESSUNA CARD</span></td><td>Tieni premuto X e mandale via Bluetooth.</td></tr>
+            <tr><td><span class="msg">NESSUNA MICROSD</span></td><td>Inserisci la microSD e premi Reset.</td></tr>
+            <tr><td><span class="msg">BMP NON VALIDO</span></td><td>Una card è rovinata: rimandale dallo strumento web.</td></tr>
+            <tr><td><span class="msg">CARD AGGIORNATE</span></td><td>Invio riuscito, nulla da fare.</td></tr>
+            <tr><td><span class="msg">BATTERIA SCARICA</span></td><td>Si è spento per la batteria: mettilo in carica.</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <h3>Batteria e cavo</h3>
+      <p>In alto a destra, sopra la card, l'X3 mostra lo stato solo quando serve:</p>
+      <ul>
+        <li><span class="st">▭ 15%</span> la <strong>batteria</strong>, quando scende sotto il 20% o è in carica;</li>
+        <li><span class="st">ϟ</span> il <strong>fulmine</strong>, mentre si carica;</li>
+        <li><span class="st">USB</span> la <strong>linguetta USB</strong>, quando è collegato a un computer.</li>
+      </ul>
+      <p>Da spento la percentuale rimasta è sulla schermata di spento. La carica si ferma da sola a batteria piena.</p>
+    </section>
+
+    <!-- 11 -->
+    <section class="s" id="problemi" data-title="Se qualcosa non va">
+      <header><div class="num">11</div><h2>Se qualcosa non va</h2></header>
+      <div class="table"><table>
+        <thead><tr><th>Succede che…</th><th>Prova così</th></tr></thead>
+        <tbody>
+          <tr><td>I tasti non fanno nulla</td><td>C'è il lucchetto? Premi il power. Se mostra la schermata di spento, tieni il power per 1 s.</td></tr>
+          <tr><td>La schermata non ruota</td><td>La rotazione è bloccata: tieni premuto Y.</td></tr>
+          <tr><td>A–D non fanno nulla</td><td>È normale fuori dalla lens chart e dai filtri, e su una lens chart di una sola pagina.</td></tr>
+          <tr><td>Il telefono non trova l'X3</td><td>Metti l'X3 in ricezione (X tenuto) prima di toccare "Invia le card", e usa un browser con il Bluetooth.</td></tr>
+          <tr><td>Non risponde per niente</td><td>Premi Reset, in alto a sinistra. Le card restano.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <footer class="end">
+      CamTag · firmware non ufficiale per Xteink X3, sopra FreeInk SDK · licenza GPL-3.0 ·
+      <a href="https://github.com/Trunk-Studio-Production/camtag" target="_blank" rel="noopener">codice sorgente</a><br>
+      Sviluppato da Iacopo Boccalari · Trunk Studio · <a href="https://trunkstudio.it" target="_blank" rel="noopener">trunkstudio.it</a>
+    </footer>
+  </main>
+</div>
+
+<script>
+// ---------- L'X3 disegnato in SVG, con le misure del simulatore dello strumento web ----------
+// Coordinate del corpo in verticale (340 × 521), schermo 277 × 415. a = punto d'aggancio
+// dell'etichetta sul bordo del tasto, n = verso in cui l'etichetta si allontana.
+const BODY = { w: 340, h: 521 }, SCREEN = { x: 32, y: 34, w: 277, h: 415 };
+const KEYS = {
+  P: { r: [244, -7, 46, 14], a: [267, -9], n: [0, -1], name: 'Power' },
+  R: { r: [58, -5, 26, 12], a: [71, -7], n: [0, -1], name: 'Reset' },
+  X: { r: [-7, 110, 14, 92], a: [-9, 156], n: [-1, 0], name: 'X' },
+  Y: { r: [333, 110, 14, 92], a: [349, 156], n: [1, 0], name: 'Y' },
+  A: { r: [46, 479, 59, 20], a: [75, 501], n: [0, 1], name: 'A' },
+  B: { r: [105, 479, 59, 20], a: [134, 501], n: [0, 1], name: 'B' },
+  C: { r: [176, 479, 59, 20], a: [205, 501], n: [0, 1], name: 'C' },
+  D: { r: [235, 479, 59, 20], a: [264, 501], n: [0, 1], name: 'D' },
+};
+const LABELS = [
+  { keys: 'P', text: 'Power' }, { keys: 'R', text: 'Reset' }, { keys: 'X', text: 'X' }, { keys: 'Y', text: 'Y' },
+  { keys: 'AB', text: 'A | B' }, { keys: 'CD', text: 'C | D' },
+];
+const ACCENT = '#bbff00', KEY = '#bdbcb5', NS = 'http://www.w3.org/2000/svg';
+const measure = (() => { const c = document.createElement('canvas').getContext('2d'); return (t, f) => { c.font = f; return c.measureText(t).width; }; })();
+let uid = 0;
+
+function deviceSvg({ screen, rot = 0, hi = [], labels = false }) {
+  const id = `d${uid++}`, cx = BODY.w / 2, cy = BODY.h / 2, th = rot * Math.PI / 180;
+  const R = (x, y) => [cx + (x - cx) * Math.cos(th) - (y - cy) * Math.sin(th), cy + (x - cx) * Math.sin(th) + (y - cy) * Math.cos(th)];
+  const Rn = ([x, y]) => [Math.round(x * Math.cos(th) - y * Math.sin(th)), Math.round(x * Math.sin(th) + y * Math.cos(th))];
+  const tags = labels ? LABELS : hi, lit = new Set((labels ? LABELS : hi).flatMap(h => [...h.keys]));
+  // Etichette diritte fuori dalla scocca, calcolate dopo la rotazione.
+  const font = '600 17px Inter, sans-serif', badges = tags.map(t => {
+    const ks = [...t.keys].map(k => KEYS[k]);
+    const ax = ks.reduce((s, k) => s + k.a[0], 0) / ks.length, ay = ks.reduce((s, k) => s + k.a[1], 0) / ks.length;
+    const [px, py] = R(ax, ay), [nx, ny] = Rn(ks[0].n), gap = 12;
+    const w = Math.ceil(measure(t.text, font)) + 26, h = 34;
+    const x = nx < 0 ? px - gap - w : nx > 0 ? px + gap : px - w / 2;
+    const y = ny < 0 ? py - gap - h : ny > 0 ? py + gap : py - h / 2;
+    return { ...t, x, y, w, h, px, py, nx, ny, lit: !labels || t.keys.split('').some(k => lit.has(k)) };
+  });
+  // Riquadro: la scocca ruotata più le etichette.
+  const corners = [[-8, -10], [BODY.w + 8, -10], [-8, BODY.h], [BODY.w + 8, BODY.h]].map(([x, y]) => R(x, y));
+  let x0 = Math.min(...corners.map(c => c[0])), x1 = Math.max(...corners.map(c => c[0]));
+  let y0 = Math.min(...corners.map(c => c[1])), y1 = Math.max(...corners.map(c => c[1]));
+  for (const b of badges) { x0 = Math.min(x0, b.x); x1 = Math.max(x1, b.x + b.w); y0 = Math.min(y0, b.y); y1 = Math.max(y1, b.y + b.h); }
+  const pad = 10; x0 -= pad; y0 -= pad; x1 += pad; y1 += pad;
+
+  const key = k => {
+    const { r: [x, y, w, h] } = KEYS[k], on = lit.has(k);
+    return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${Math.min(w, h) / 2}" fill="${on ? ACCENT : KEY}"${on ? ` filter="url(#${id}g)"` : ''}/>`;
+  };
+  const rocker = (a, b, x) => {
+    const half = k => { const { r: [kx, ky, kw, kh] } = KEYS[k]; return `<rect x="${kx}" y="${ky}" width="${kw}" height="${kh}" fill="${lit.has(k) ? ACCENT : KEY}"/>`; };
+    return `<g clip-path="url(#${id}${a})">${half(a)}${half(b)}</g>
+      <clipPath id="${id}${a}"><rect x="${x}" y="479" width="118" height="20" rx="10"/></clipPath>
+      <rect x="${x - 2}" y="477" width="122" height="24" rx="12" fill="none" stroke="#c4c3bc" stroke-width="2"/>
+      <line x1="${x + 59}" y1="481" x2="${x + 59}" y2="497" stroke="#9e9d97" stroke-width="1.5"/>`;
+  };
+  const badge = b => {
+    const fill = b.lit ? ACCENT : '#2c2c29', ink = b.lit ? '#161a00' : '#ecebe6';
+    return `<line x1="${b.px}" y1="${b.py}" x2="${b.px + b.nx * 12}" y2="${b.py + b.ny * 12}" stroke="${fill}" stroke-width="2"/>
+      <rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="17" fill="${fill}"${b.lit ? '' : ' stroke="#4a4a45"'}/>
+      <text x="${b.x + b.w / 2}" y="${b.y + b.h / 2 + 6}" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="17" fill="${ink}">${b.text}</text>`;
+  };
+
+  return `<svg xmlns="${NS}" viewBox="${x0} ${y0} ${x1 - x0} ${y1 - y0}" role="img" aria-label="Xteink X3${hi.length ? ': ' + hi.map(h => h.keys.split('').join('|') + ' ' + h.text).join(', ') : ''}">
+    <defs>
+      <linearGradient id="${id}b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e2e1dc"/><stop offset="1" stop-color="#c9c8c2"/></linearGradient>
+      <filter id="${id}g" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <filter id="${id}s" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".45"/></filter>
+    </defs>
+    <g transform="rotate(${rot} ${cx} ${cy})">
+      ${['P', 'R', 'X', 'Y'].map(key).join('')}
+      <rect width="${BODY.w}" height="${BODY.h}" rx="26" fill="url(#${id}b)" filter="url(#${id}s)"/>
+      <rect x="3" y="3" width="${BODY.w - 6}" height="${BODY.h - 6}" rx="23" fill="none" stroke="#f0efea" stroke-opacity=".5" stroke-width="2"/>
+      <rect x="${SCREEN.x - 4}" y="${SCREEN.y - 4}" width="${SCREEN.w + 8}" height="${SCREEN.h + 8}" rx="3" fill="#bdbcb6"/>
+      <image href="${screen}.png" x="${SCREEN.x}" y="${SCREEN.y}" width="${SCREEN.w}" height="${SCREEN.h}" preserveAspectRatio="none"/>
+      ${rocker('A', 'B', 46)}${rocker('C', 'D', 176)}
+    </g>
+    ${badges.map(badge).join('')}
+  </svg>`;
+}
+
+// Le figure si disegnano a font caricato, così le etichette sono misurate giuste.
+// k = grandezza del dispositivo rispetto alle misure del simulatore.
+document.fonts.load('600 17px Inter').finally(() => {
+  for (const f of document.querySelectorAll('[data-dev]')) {
+    const o = JSON.parse(f.dataset.dev);
+    f.insertAdjacentHTML('afterbegin', deviceSvg(o));
+    const svg = f.querySelector('svg'), vb = svg.viewBox.baseVal;
+    svg.style.maxWidth = `${Math.round(vb.width * (o.k || 0.85))}px`;
+  }
+});
+
+// Indice dalle sezioni, con la voce della sezione in vista accesa.
+const toc = document.getElementById('toc'), links = new Map();
+for (const s of document.querySelectorAll('section.s')) {
+  const li = document.createElement('li'), a = document.createElement('a');
+  a.href = `#${s.id}`; a.textContent = s.dataset.title; li.append(a); toc.append(li); links.set(s.id, a);
+}
+const seen = new Set(), io = new IntersectionObserver(es => {
+  for (const e of es) e.isIntersecting ? seen.add(e.target.id) : seen.delete(e.target.id);
+  const first = [...links.keys()].find(id => seen.has(id));
+  if (first) links.forEach((a, id) => a.classList.toggle('on', id === first));
+}, { rootMargin: '-20% 0px -60% 0px' });
+document.querySelectorAll('section.s').forEach(s => io.observe(s));
+</script>
+</body>
+</html>

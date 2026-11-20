@@ -43,6 +43,11 @@ costruttori di lenti e filtri nei dati vanno bene.
   una ⓘ (`info()`): in chiaro restano solo avvisi e stati vuoti. Le preferenze
   dell'interfaccia (sezioni aperte, orientamento, anteprima o simulatore) stanno
   nel localStorage `camtag.ui.v1`: sono del browser, non entrano in `project.json`.
+- `companion/manuale/` — manuale d'uso (pulsante "Manuale" nella barra dello
+  strumento): `index.html` disegna l'X3 in SVG attorno a PNG presi dal
+  simulatore. I PNG non si aggiornano da soli: se cambiano le schermate, il
+  disegno o i tasti, rigenerali con `schermate.js` (istruzioni in testa al
+  file) e correggi il testo del manuale.
 - `data/lenses.json` — database lenti (schema in `data/README.md`), dati solo
   dalle schede dei costruttori, con la fonte per ogni lente. `mounts` = attacchi
   offerti (sigle in `MOUNTS`, uguali in `data/validate.py`). Mai modificarlo per
