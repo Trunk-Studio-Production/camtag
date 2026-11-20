@@ -106,8 +106,8 @@ Una regola sola, ogni volta che ND o diottria cambiano gli stadi che occupano
 - A|B = diottria −/+, C|D = ND −/+. Ruotato di 90° in senso orario i due
   bilancieri si scambiano, così ognuno comanda il valore che gli sta accanto.
   "+" sta sempre sul capo in alto o a destra per chi guarda.
-- E = pagina successiva, F = pagina precedente (in ciclo, su tutte le pagine),
-  E tenuto = blocco rotazione. A e B non cambiano mai pagina.
+- X = pagina precedente, Y = pagina successiva (in ciclo, su tutte le pagine),
+  Y tenuto = blocco rotazione. A e B non cambiano mai pagina.
 - Le pressioni lunghe (0,8 s) scattano allo scadere del tempo, con il tasto
   ancora premuto: si vede subito l'effetto e il rilascio che segue non conta.
   Le pressioni brevi si leggono al rilascio.
@@ -127,8 +127,8 @@ Una regola sola, ogni volta che ND o diottria cambiano gli stadi che occupano
   tutti i vetri del kit nell'ordine del kit (per famiglia), saltando quelli già
   in un altro stadio. Un vetro da due stadi compare solo se anche lo stadio
   dopo è libero. Arrivati in fondo si ricomincia dall'inizio.
-- **E o F** per uscire, con un tocco solo; vale anche tenere di nuovo A o B.
-  In modifica E e F fanno soltanto questo: non cambiano schermata e non
+- **X o Y** per uscire, con un tocco solo; vale anche tenere di nuovo A o B.
+  In modifica X e Y fanno soltanto questo: non cambiano schermata e non
   bloccano la rotazione.
 - Dopo **5 secondi** senza tocchi la modifica è accettata e si esce da soli:
   uscire a mano non è necessario.

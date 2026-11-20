@@ -40,7 +40,7 @@ una pressione più corta di così può sfuggire.
 
 ### Tasti bloccati
 
-- **Power breve** blocca e sblocca i tasti A–F: la pagina resta com'è, per non
+- **Power breve** blocca e sblocca i tasti A–D, X e Y: la pagina resta com'è, per non
   cambiare un valore con un urto. La rotazione continua a seguire il verso.
 - Il segno è un **lucchetto** in un riquadro di 36 px sul bordo fisico, sotto
   il power che sblocca (`drawLock`; nel simulatore `drawLockIcon`): come le

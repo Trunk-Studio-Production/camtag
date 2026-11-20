@@ -12,7 +12,7 @@ alza la versione.
 | CTRL | `c4a70002-1b2e-4f3a-9d6e-3a7c5e0b2f10` | write, notify |
 | DATA | `c4a70003-1b2e-4f3a-9d6e-3a7c5e0b2f10` | write without response, write, notify |
 
-L'X3 fa advertising solo in modalità ricezione (F tenuto premuto): l'UUID del
+L'X3 fa advertising solo in modalità ricezione (X tenuto premuto): l'UUID del
 servizio sta nel pacchetto principale, il nome `CAMTAG-XXXX` (ultimi due byte
 del MAC) nella risposta alla scansione.
 

@@ -223,8 +223,8 @@
   .device .key.held { background: #5a5954; }
   .device .pwr { top: -7px; right: 50px; width: 46px; height: 9px; border-radius: 4px 4px 0 0; }
   .device .side { top: 110px; width: 8px; height: 92px; border-radius: 4px; }
-  .device .side-f { left: -7px; }
-  .device .side-e { right: -7px; }
+  .device .side-x { left: -7px; }
+  .device .side-y { right: -7px; }
   .device .rocker { position: absolute; bottom: 22px; height: 20px; display: flex; border-radius: 10px; overflow: hidden;
                     box-shadow: 0 0 0 2px #c9c8c2; }
   .device .rocker .key { position: static; flex: 1; border-radius: 0; }
@@ -398,15 +398,15 @@
         <div class="simbox"><div class="simscale">
           <div class="device" id="simDevice">
             <button class="key pwr" data-key="P" title="Power: blocca i tasti (tieni premuto: spegne e accende)"></button>
-            <button class="key side side-f" data-key="F" title="F: pagina precedente (tieni premuto: Bluetooth)"></button>
-            <button class="key side side-e" data-key="E" title="E: pagina successiva (tieni premuto: blocco rotazione)"></button>
+            <button class="key side side-x" data-key="X" title="X: pagina precedente (tieni premuto: Bluetooth)"></button>
+            <button class="key side side-y" data-key="Y" title="Y: pagina successiva (tieni premuto: blocco rotazione)"></button>
             <canvas id="simScreen" width="528" height="792"></canvas>
             <div class="rocker r1"><button class="key" data-key="A" title="A"></button><button class="key" data-key="B" title="B"></button></div>
             <div class="rocker r2"><button class="key" data-key="C" title="C"></button><button class="key" data-key="D" title="D"></button></div>
           </div>
         </div></div>
         <p class="sim-status" id="simStatus"></p>
-        <p class="hint" id="simHint">Clic sui tasti come sul dispositivo; da tastiera A B C D E F, P = power. </p>
+        <p class="hint" id="simHint">Clic sui tasti come sul dispositivo; da tastiera A B C D X Y, P = power. </p>
       </div>
     </section>
   </div>
@@ -1556,7 +1556,7 @@ function filtersIni() {
     const [W, H] = dims(layout), L = filtersLayout(W, H);
     out.push(`${layout}.list=${L.list.x},${L.list.y},${L.list.w},${L.list.h}`, `${layout}.listRow=${L.listRow}`, `${layout}.listNum=${L.listNum}`);
   }
-  // Modifica degli stadi (tieni A o B per entrare; E, F o tieni A o B per uscire), per verso: passo delle
+  // Modifica degli stadi (tieni A o B per entrare; X, Y o tieni A o B per uscire), per verso: passo delle
   // righe per A/B (+1 = stadio successivo), verso del vetro per C/D, indicazioni.
   for (const rot of [0, 90, 180, 270]) {
     out.push(`edit.keys.${rot}=A:row${editNavStep('A', rot) > 0 ? '+' : '-'}|B:row${editNavStep('B', rot) > 0 ? '+' : '-'}|C:val${keyDir('C', rot) > 0 ? '+' : '-'}|D:val${keyDir('D', rot) > 0 ? '+' : '-'}`);
@@ -2112,7 +2112,7 @@ function filtersEditor(ed, list = false) {
   const oneSlot = f.dio.filter(d => d.slots === 1).length;
   ed.append(section('flt.dio', 'Diottrie', f.dio.length ? [dioNames(false), dioNames(true) && `split ${dioNames(true)}`, oneSlot && `${oneSlot} da uno stadio`].filter(Boolean).join(' · ') : 'nessuna',
     dioBody, f.dio.length > 0,
-    { tip: 'Con almeno una diottria nel kit, nella schermata filtri i tasti A/B sono diottria −/+ (le pagine si cambiano sempre con E e F). La diottria sta negli stadi del mattebox subito davanti all\'ultimo vetro.' }));
+    { tip: 'Con almeno una diottria nel kit, nella schermata filtri i tasti A/B sono diottria −/+ (le pagine si cambiano sempre con X e Y). La diottria sta negli stadi del mattebox subito davanti all\'ultimo vetro.' }));
 
   // Kit: i vetri che hai nella valigetta (gli ND pieni stanno nel kit ND qui sopra).
   const kit = kitGlasses(), kitBody = [];
@@ -2185,7 +2185,7 @@ function filtersEditor(ed, list = false) {
       h('div', {}, lab('Diottria di partenza'),
         h('select', { 'aria-label': 'Diottria di partenza', disabled: !f.dio.length, onchange: e => { f.previewDio = +e.target.value; refit(); changed(true); } },
           ...dioSteps().map((v, i) => h('option', { value: i, selected: f.previewDio === i }, dioLabel(v)))))),
-    lab('Vetro in ogni stadio', kit.length ? 'Il dispositivo parte da qui. Per cambiare i vetri sul dispositivo: nella schermata filtri tieni A o B, scegli lo stadio con A/B e il vetro con C/D. Dopo 5 secondi senza tocchi la modifica è accettata; per uscire subito premi E o F.' : null),
+    lab('Vetro in ogni stadio', kit.length ? 'Il dispositivo parte da qui. Per cambiare i vetri sul dispositivo: nella schermata filtri tieni A o B, scegli lo stadio con A/B e il vetro con C/D. Dopo 5 secondi senza tocchi la modifica è accettata; per uscire subito premi X o Y.' : null),
     ...cells.map((c, i) => {
       const name = `${i + 1}${i === 0 ? ' · lato lente' : ''}`, head = c.kind === 'cont' ? cells[c.of] : c;
       const fixed = t => h('div', { class: 'strow' }, name, h('select', { disabled: true, 'aria-label': `Stadio ${i + 1}` }, h('option', {}, t)));
@@ -2396,7 +2396,7 @@ $('#bmpBtn').onclick = () => {
   download(encodeBmp(r.bits, r.w, r.h), `${base}${l === 'port' ? '.p' : ''}.bmp`);
 };
 $('#zipBtn').onclick = async () => download(await (await buildZip()).generateAsync({ type: 'blob' }), 'camtag.zip');
-$('#simHint').append(info('Clic sui tasti come sul dispositivo. Tenuto premuto 0,8 s (o Maiusc+clic): E blocca la rotazione, F apre il Bluetooth, A o B nei filtri aprono la modifica degli stadi (E o F la chiudono). L\'azione scatta mentre tieni premuto, senza aspettare il rilascio.\nIl power breve blocca e sblocca i tasti: la pagina resta, con un lucchetto accanto al power. Tenuto premuto un secondo spegne e riaccende: da spento resta la schermata di spento (una scheda con "Schermata di spento" accesa, o il solo nome) e gli altri tasti non fanno nulla. Da acceso l\'X3 sente i tasti in ogni momento.\nDa tastiera: A B C D E F, P = power. Le funzioni seguono il comportamento previsto per il firmware.'));
+$('#simHint').append(info('Clic sui tasti come sul dispositivo. Tenuto premuto 0,8 s (o Maiusc+clic): Y blocca la rotazione, X apre il Bluetooth, A o B nei filtri aprono la modifica degli stadi (X o Y la chiudono). L\'azione scatta mentre tieni premuto, senza aspettare il rilascio.\nIl power breve blocca e sblocca i tasti: la pagina resta, con un lucchetto accanto al power. Tenuto premuto un secondo spegne e riaccende: da spento resta la schermata di spento (una scheda con "Schermata di spento" accesa, o il solo nome) e gli altri tasti non fanno nulla. Da acceso l\'X3 sente i tasti in ogni momento.\nDa tastiera: A B C D X Y, P = power. Le funzioni seguono il comportamento previsto per il firmware.'));
 
 // Anteprima e simulatore stanno sempre tutti nello schermo: lo spazio libero sotto la
 // barra, tolti i comandi, limita l'altezza dell'anteprima (--prev-max-h) e scala il
@@ -2433,7 +2433,7 @@ new ResizeObserver(fitStage).observe($('.pbar'));  // i comandi vanno a capo: ca
 
 // ============================================================================
 // Invio via Bluetooth LE (Web Bluetooth). Protocollo: docs/bluetooth.md.
-// Sull'X3: tieni premuto F per la ricezione. Manda gli stessi file dello zip.
+// Sull'X3: tieni premuto X per la ricezione. Manda gli stessi file dello zip.
 // ============================================================================
 const PROJECT_FILE = 'project.json';  // in /camtag, accanto alle card
 const BLE = {
@@ -2493,7 +2493,7 @@ function bleUi(msg, { detail = '', progress = null, error = false, busy = false 
 async function bleSession(work, onFail) {
   const devicePromise = navigator.bluetooth.requestDevice({ filters: [{ services: [BLE.service] }, { namePrefix: 'CAMTAG' }], optionalServices: [BLE.service] });
   let device;
-  try { device = await devicePromise; } catch (e) { bleUi('Nessun dispositivo scelto.', { detail: 'Sull\'X3 tieni premuto F finché compare BLUETOOTH, poi riprova.' }); return; }
+  try { device = await devicePromise; } catch (e) { bleUi('Nessun dispositivo scelto.', { detail: 'Sull\'X3 tieni premuto X finché compare BLUETOOTH, poi riprova.' }); return; }
   let cancelled = false, disconnected = false, waiter = null;
   const link = { acked: 0, inbox: [], rx: [], rxBytes: 0, device };
   const wake = () => { if (waiter) { const w = waiter; waiter = null; w(); } };
@@ -2658,7 +2658,7 @@ async function bleGet() {
 
 $('#bleBtn').onclick = () => {
   const note = bleSupportNote();
-  if (note) bleUi(note, { error: true }); else bleUi('Sull\'X3 tieni premuto F finché compare BLUETOOTH, poi scegli cosa fare.', { detail: 'Con le card arriva sull\'X3 anche il progetto, che puoi riprendere da qui con "Importa dall\'X3".' });
+  if (note) bleUi(note, { error: true }); else bleUi('Sull\'X3 tieni premuto X finché compare BLUETOOTH, poi scegli cosa fare.', { detail: 'Con le card arriva sull\'X3 anche il progetto, che puoi riprendere da qui con "Importa dall\'X3".' });
   $('#bleStart').hidden = $('#bleGet').hidden = !!note;
   $('#bleDlg').showModal();
 };
@@ -2730,7 +2730,7 @@ function rockerHint(k, rot) {
 }
 
 // ---------- Modifica degli stadi del mattebox ----------
-// Si entra tenendo A o B nella schermata filtri; si esce con E o F, o tenendo
+// Si entra tenendo A o B nella schermata filtri; si esce con X o Y, o tenendo
 // di nuovo A o B (o da soli dopo EDIT_TIMEOUT_S). Lo stadio selezionato
 // è in negativo sulla stessa schermata: A/B cambiano stadio, C/D cambiano vetro.
 // Gli stadi di ND e diottria non si selezionano; un vetro da due stadi si seleziona intero.
@@ -2748,7 +2748,7 @@ function editHint(k, rot) {
 
 function simEditPress(k, long) {
   const ed = sim.edit, st = sim.stages;
-  if (k === 'E' || k === 'F' || (long && (k === 'A' || k === 'B'))) { sim.edit = null; sim.msg = 'Stadi salvati.'; return; }
+  if (k === 'X' || k === 'Y' || (long && (k === 'A' || k === 'B'))) { sim.edit = null; sim.msg = 'Stadi salvati.'; return; }
   if (k === 'A' || k === 'B') {
     const ok = editableStages(st, sim.ndShown, sim.dioShown);
     ed.i = ok[Math.max(0, Math.min(ok.length - 1, ok.indexOf(ed.i) + editNavStep(k, simContentRot())))];
@@ -2805,17 +2805,17 @@ function simPress(k, long) {
     if (!stageCount()) { sim.msg = 'Nessun vetro nel kit: aggiungili nello strumento web.'; return renderSim(); }
     const ok = editableStages(sim.stages, sim.ndShown, sim.dioShown);
     if (!ok.length) { sim.msg = 'Tutti gli stadi sono occupati da ND e diottria.'; return renderSim(); }
-    sim.edit = { i: ok[0] }; sim.msg = `Modifica stadi: A/B stadio, C/D vetro. Si chiude da sola dopo ${EDIT_TIMEOUT_S} s, o subito con E o F.`; simEditArm();
+    sim.edit = { i: ok[0] }; sim.msg = `Modifica stadi: A/B stadio, C/D vetro. Si chiude da sola dopo ${EDIT_TIMEOUT_S} s, o subito con X o Y.`; simEditArm();
     return renderSim();
   }
   const act = rockerAction(k, isFilters, simContentRot());
   const step = d => { sim.i = (sim.i + d + plan.length) % plan.length; };
   sim.msg = '';
-  if (k === 'E' && long) {
+  if (k === 'Y' && long) {
     sim.locked = !sim.locked; sim.lockRot = sim.rot;
     sim.msg = sim.locked ? 'ROTAZIONE BLOCCATA' : 'ROTAZIONE AUTOMATICA';
-  } else if (k === 'F' && long) {
-    sim.msg = 'BLUETOOTH: in attesa dello strumento ("Bluetooth"). E o F per uscire.';
+  } else if (k === 'X' && long) {
+    sim.msg = 'BLUETOOTH: in attesa dello strumento ("Bluetooth"). X o Y per uscire.';
   } else if (act.role === 'dio' || act.role === 'nd') {
     if (act.role === 'dio') sim.dio = Math.max(0, Math.min(dioSteps().length - 1, sim.dio + act.dir));
     else sim.nd = Math.max(0, Math.min(ndSteps().length - 1, sim.nd + act.dir));
@@ -2823,11 +2823,11 @@ function simPress(k, long) {
     simSettleTimer = setTimeout(() => { sim.msg = ''; simSettle(); renderSim(); }, SETTLE_S * 1000);
   } else if (cur.kind === 'lenschart' && 'ABCD'.includes(k)) {
     const lens = plan.map((p, i) => (p.kind === 'lenschart' ? i : -1)).filter(i => i >= 0);
-    if (lens.length < 2) sim.msg = 'La lens chart ha una sola pagina: A–D non fanno nulla. Le schermate si cambiano con E e F.';
+    if (lens.length < 2) sim.msg = 'La lens chart ha una sola pagina: A–D non fanno nulla. Le schermate si cambiano con X e Y.';
     else sim.i = lens[(lens.indexOf(sim.i) + lensPageDir(k, simContentRot()) + lens.length) % lens.length];
-  } else if (k === 'E') step(1);       // E (lato destro) = pagina successiva, in ciclo
-  else if (k === 'F') step(-1);        // F (lato sinistro) = pagina precedente
-  else sim.msg = 'Nessuna funzione per questo tasto qui: le pagine si cambiano con E e F.';
+  } else if (k === 'Y') step(1);       // Y (lato destro) = pagina successiva, in ciclo
+  else if (k === 'X') step(-1);        // X (lato sinistro) = pagina precedente
+  else sim.msg = 'Nessuna funzione per questo tasto qui: le pagine si cambiano con X e Y.';
   renderSim();
 }
 
@@ -2944,7 +2944,7 @@ document.querySelectorAll('#simDevice .key').forEach(b => {
   b.addEventListener('pointerleave', () => simUp(k, true));
   b.addEventListener('pointercancel', () => simUp(k, true));
 });
-const simKeyOf = e => { const k = e.key.toUpperCase(); return k.length === 1 && 'ABCDEFP'.includes(k) ? k : ''; };
+const simKeyOf = e => { const k = e.key.toUpperCase(); return k.length === 1 && 'ABCDXYP'.includes(k) ? k : ''; };
 document.addEventListener('keydown', e => {
   if (!simOn || e.repeat || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
   const k = simKeyOf(e);

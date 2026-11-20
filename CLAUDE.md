@@ -112,7 +112,7 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
 - microSD su SPI condiviso con il display; batteria 650 mAh con fuel gauge
   BQ27220; RTC DS3231; IMU QMI8658 (accelerometro + giroscopio).
 - Niente touch. Posizione naturale **verticale**: in basso due bilancieri,
-  A|B a sinistra e C|D a destra; F sul lato sinistro, E sul destro, power in
+  A|B a sinistra e C|D a destra; X sul lato sinistro, Y sul destro, power in
   alto a destra. I 4 in basso sono su un solo ingresso analogico (uno alla
   volta): dal sonno profondo li sveglierebbe solo in parte, quindi da spento
   **accende solo il power**, e da acceso i tasti si leggono a intervalli nel
@@ -252,7 +252,7 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   stato (`sim.nd`, `sim.dio`, `sim.stages`) separato dai valori di partenza. Sul dispositivo si cambiano in
   **modifica** (`simEditPress`), sulla stessa schermata: tieni A o B per
   entrare; dopo 5 s senza tocchi la modifica è accettata e si esce da soli
-  (subito con E o F, o tenendo A o B); A/B scelgono lo stadio, C/D
+  (subito con X o Y, o tenendo A o B); A/B scelgono lo stadio, C/D
   scorrono vuoto + i vetri liberi del kit, ricominciando in fondo. Selezione =
   riga in negativo, niente cursore lampeggiante; aggiornamenti parziali,
   completo all'uscita. Diottrie e ND restano su A|B e C|D fuori dalla modifica.
@@ -266,22 +266,22 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   solo dopo 24 h senza tasti e a batteria scarica (sotto 3,3 V, con l'avviso).
   Niente segni di "pausa" sulle card: se mostra una card, risponde.
 - **Power breve = tasti bloccati** (`keysLocked`, `toggleKeyLock`; nel
-  simulatore `sim.keyLock`): la pagina resta, A–F non fanno nulla, la rotazione
+  simulatore `sim.keyLock`): la pagina resta, A–D, X e Y non fanno nulla, la rotazione
   continua. Il segno è un lucchetto sul bordo fisico sotto il power
   (`drawLock`), come le indicazioni dei tasti: segue la rotazione del
   dispositivo, dritto per chi legge. A riposo da bloccato il chip dorme un
   secondo alla volta. Spegnendo il blocco si toglie.
-- Tasti: E (successiva) e F (precedente) cambiano pagina in ciclo su tutte.
+- Tasti: X (precedente) e Y (successiva) cambiano pagina in ciclo su tutte.
   Schermata filtri A/B = diottria −/+, C/D = ND −/+. Lens chart di più pagine:
   A–D sfogliano solo le sue pagine, in ciclo; i due tasti di un bilanciere fanno
   lo stesso, avanza quello a destra o in basso per chi guarda, arretra quello a
   sinistra o in alto (`lensPageDir`, `stepLensChart`). Altrove i bilancieri non
-  fanno nulla. E tenuto =
-  blocco rotazione. F tenuto = ricezione via Bluetooth (E o F escono). La
+  fanno nulla. Y tenuto =
+  blocco rotazione. X tenuto = ricezione via Bluetooth (X o Y escono). La
   pressione breve si legge al rilascio; quella lunga (0,8 s, anche A o B per la
   modifica) scatta allo scadere del tempo con il tasto ancora giù, e il
   rilascio che segue non conta (`holdFired` nel firmware, `simDown`/`simUp`).
-  Nel firmware i tasti A–F li legge `keyScan` (compito a parte, ogni 5 ms, anche
+  Nel firmware i tasti A–D, X e Y li legge `keyScan` (compito a parte, ogni 5 ms, anche
   durante gli aggiornamenti dello schermo) in una coda con l'ora: una pressione
   fatta mentre lo schermo si aggiorna si esegue dopo, breve o lunga secondo la
   durata vera. ADC condiviso con `input.update()` (power) sotto `adcLock`.
@@ -327,8 +327,8 @@ non è più vero invece di aggiungere note.
 
 ## Da tarare sull'hardware (aperto)
 
-Provati sull'X3: ricezione Bluetooth dal Mac (1,1 MB in ~40 s) e "Importa dall'X3", card vere, E/F, rotazione e
-blocco, bilancieri della lens chart nei 4 versi. Tasti, assi IMU e verso dello schermo sono tarati sull'X3 (`kKeyA`…`kKeyF`,
+Provati sull'X3: ricezione Bluetooth dal Mac (1,1 MB in ~40 s) e "Importa dall'X3", card vere, X/Y, rotazione e
+blocco, bilancieri della lens chart nei 4 versi. Tasti, assi IMU e verso dello schermo sono tarati sull'X3 (`kKeyA`…`kKeyD`, `kKeyX`, `kKeyY`,
 `kImuSwapXY`, `kImuSignX`, `kImuSignY`, `kQuarterTurns` in `device/src/main.cpp`:
 la posizione naturale è `Canvas::ROT_270`).
 

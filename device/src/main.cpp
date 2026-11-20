@@ -5,10 +5,10 @@
 // L'accelerometro (solo X3) sceglie orientamento e variante.
 //
 // Tasti (come nel simulatore dello strumento web):
-//         E (lato destro)           = card successiva, in ciclo
-//         F (lato sinistro)         = card precedente, in ciclo
-//         E tenuto premuto          = blocca/sblocca la rotazione
-//         F tenuto premuto          = ricezione delle card via Bluetooth
+//         X (lato sinistro)         = card precedente, in ciclo
+//         Y (lato destro)           = card successiva, in ciclo
+//         X tenuto premuto          = ricezione delle card via Bluetooth
+//         Y tenuto premuto          = blocca/sblocca la rotazione
 //         La pressione lunga scatta allo scadere di LONG_PRESS_MS, con il tasto
 //         ancora giù; quella breve al rilascio. I tasti li legge keyScan anche
 //         durante gli aggiornamenti dello schermo: nessuna pressione va persa.
@@ -19,7 +19,7 @@
 //         power                     = blocca/sblocca i tasti: la pagina resta, con un
 //                                     lucchetto accanto al power
 //         power tenuto premuto      = spegni; da spento, accendi
-// In ricezione: E o F escono; senza collegamenti per RECEIVE_IDLE_MS esce da sola.
+// In ricezione: X o Y escono; senza collegamenti per RECEIVE_IDLE_MS esce da sola.
 //
 // Acceso, a riposo e spento (docs/batteria.md):
 //   acceso  mostra le card e sente i tasti in ogni momento. Dopo AWAKE_MS senza
@@ -97,11 +97,11 @@ constexpr uint32_t BANNER_MS = 1500;
 
 // --- Tasti fisici -> tasti logici dell'SDK ------------------------------------
 // I quattro tasti in basso (A|B, C|D) stanno sull'ingresso analogico 1, che
-// l'SDK chiama BACK/CONFIRM/LEFT/RIGHT; i due laterali (E, F) sull'ingresso 2,
+// l'SDK chiama BACK/CONFIRM/LEFT/RIGHT; i due laterali (X, Y) sull'ingresso 2,
 // UP/DOWN. Verificato sull'X3 (con CAMTAG_DEBUG il monitor seriale stampa il
-// tasto logico di ogni pressione): F, sul lato sinistro, è UP; E è DOWN.
-constexpr uint8_t kKeyE = InputManager::BTN_DOWN;
-constexpr uint8_t kKeyF = InputManager::BTN_UP;
+// tasto logico di ogni pressione): X, sul lato sinistro, è UP; Y è DOWN.
+constexpr uint8_t kKeyX = InputManager::BTN_UP;
+constexpr uint8_t kKeyY = InputManager::BTN_DOWN;
 // Bilancieri in basso: A|B a sinistra, C|D a destra (dispositivo verticale).
 // Verificato sull'X3: da sinistra a destra sono BACK, CONFIRM, LEFT, RIGHT.
 constexpr uint8_t kKeyA = InputManager::BTN_BACK;
@@ -166,7 +166,7 @@ uint32_t lastImuPollMs = 0;
 constexpr uint8_t kOffShown = 1, kOffBlank = 2, kOffEmpty = 3;  // kOffEmpty: a schermo l'avviso di batteria scarica
 enum class Off : uint8_t { User = 0, Idle = 1, Empty = 2, Blank = 3 };
 // Tasti bloccati (power breve): la pagina resta com'è, con il lucchetto accanto al
-// power; A-F non fanno nulla, la rotazione continua. In NVS "keylock".
+// power; A–D, X e Y non fanno nulla, la rotazione continua. In NVS "keylock".
 bool keysLocked = false;
 bool powerArmed = false;   // dopo l'accensione il power va prima rilasciato
 uint32_t powerDownAt = 0;  // da quando il power è giù; 0 = su
@@ -290,7 +290,7 @@ int batteryPercent() {
 // a parte ogni 5 ms (anche durante gli aggiornamenti, che aspettano con delay()) e
 // mette pressioni e rilasci in coda con l'ora; il loop li smaltisce appena può e
 // distingue breve e lunga dalla durata vera. Il power resta all'InputManager.
-// Due analogRead insieme fanno fallire uno dei due, che legge 0 (= D o E premuti):
+// Due analogRead insieme fanno fallire uno dei due, che legge 0 (= D o Y premuti):
 // il loop (input.update) e il compito si passano l'ADC con adcLock.
 struct KeyEvent {
   uint8_t btn;  // InputManager::BTN_*
@@ -608,12 +608,12 @@ bool filtersFlush() {
   return dirty && filtersOn();
 }
 
-// Pressione breve sulla schermata filtri ('A'…'F'). false = il tasto non è suo
-// (E e F fuori dalla modifica cambiano pagina).
+// Pressione breve sulla schermata filtri ('A'…'D', 'X', 'Y'). false = il tasto non è suo
+// (X e Y fuori dalla modifica cambiano pagina).
 bool filtersPress(char k) {
   const int q = kQuarterTurns[rotation];  // con il blocco i tasti restano quelli del contenuto
   if (fltSel >= 0) {
-    if (k == 'E' || k == 'F') {
+    if (k == 'X' || k == 'Y') {
       filtersExitEdit();
       return true;
     }
@@ -633,7 +633,7 @@ bool filtersPress(char k) {
   const filters::Config::Key a = k <= 'D' ? fltCfg.keys[q][k - 'A'] : filters::Config::Key();
   if (a.role == filters::kNone) {
     // Qualsiasi altro tasto applica subito il riordino in sospeso.
-    const bool stay = k != 'E' && k != 'F';
+    const bool stay = k != 'X' && k != 'Y';
     filtersSettle(stay);
     return stay;
   }
@@ -678,7 +678,7 @@ void drawReceive(const char* status, const char* detail, bool full) {
   c.textCentered(mid - 60, bleName, port ? 3 : 4);
   c.textCentered(mid + 20, status, port ? 3 : 4);
   if (detail) c.textCentered(mid + 80, detail, 2);
-  c.textCentered(c.height() - 64, "E O F PER USCIRE", 2);
+  c.textCentered(c.height() - 64, "X O Y PER USCIRE", 2);
   present(full);
   lastReceiveDrawMs = millis();
   LOGF("[camtag] schermo ricezione: %lu ms\n", static_cast<unsigned long>(lastReceiveDrawMs - t0));
@@ -689,7 +689,7 @@ void showCurrentOrEmpty() {
   if (!sdReady)
     showMessage("NESSUNA MICROSD", nullptr);
   else if (cards.empty())
-    showMessage("NESSUNA CARD", "TIENI F PER RICEVERLE");
+    showMessage("NESSUNA CARD", "TIENI X PER RICEVERLE");
   else
     showCard(current, true);
 }
@@ -731,7 +731,7 @@ void receiveDone() {
   loadFilters();
   current = 0;
   if (cards.empty()) {
-    showMessage("NESSUNA CARD", "TIENI F PER RICEVERLE");
+    showMessage("NESSUNA CARD", "TIENI X PER RICEVERLE");
     return;
   }
   showCard(0, true, "CARD AGGIORNATE");
@@ -739,7 +739,7 @@ void receiveDone() {
 }
 
 void loopReceive() {
-  if (!receiving) return;  // E o F l'hanno appena chiusa (shortPress)
+  if (!receiving) return;  // X o Y l'hanno appena chiusa (shortPress)
 
   char line[24];
   switch (bleupload::poll()) {
@@ -1181,7 +1181,7 @@ void setup() {
   loadCardList();
   loadFilters();
   if (cards.empty()) {
-    showMessage("NESSUNA CARD", "TIENI F PER RICEVERLE");
+    showMessage("NESSUNA CARD", "TIENI X PER RICEVERLE");
     return;
   }
 
@@ -1197,24 +1197,24 @@ char keyName(uint8_t btn) {
   static constexpr struct {
     uint8_t btn;
     char key;
-  } kMap[] = {{kKeyA, 'A'}, {kKeyB, 'B'}, {kKeyC, 'C'}, {kKeyD, 'D'}, {kKeyE, 'E'}, {kKeyF, 'F'}};
+  } kMap[] = {{kKeyA, 'A'}, {kKeyB, 'B'}, {kKeyC, 'C'}, {kKeyD, 'D'}, {kKeyX, 'X'}, {kKeyY, 'Y'}};
   for (const auto& m : kMap)
     if (m.btn == btn) return m.key;
   return 0;
 }
 
-// Tasti che fanno qualcosa anche tenuti: E (blocco), F (ricezione) e, sulla schermata
+// Tasti che fanno qualcosa anche tenuti: X (ricezione), Y (blocco) e, sulla schermata
 // filtri, A o B (modifica degli stadi).
-bool hasLongPress(char k) { return k == 'E' || k == 'F' || (filtersOn() && (k == 'A' || k == 'B')); }
+bool hasLongPress(char k) { return k == 'X' || k == 'Y' || (filtersOn() && (k == 'A' || k == 'B')); }
 
 void longPress(char k) {
   if (fltSel >= 0) {
-    filtersExitEdit();  // in modifica E, F e A o B tenuti chiudono soltanto
+    filtersExitEdit();  // in modifica X, Y e A o B tenuti chiudono soltanto
   } else if (k == 'A' || k == 'B') {
     filtersEnterEdit();
   } else {
     filtersSettle(false);
-    if (k == 'F')
+    if (k == 'X')
       enterReceive();
     else if (!cards.empty())
       toggleRotationLock();
@@ -1223,15 +1223,15 @@ void longPress(char k) {
 
 void shortPress(char k) {
   if (receiving) {
-    if (k == 'E' || k == 'F') exitReceive();
+    if (k == 'X' || k == 'Y') exitReceive();
     return;
   }
   if (cards.empty()) return;
   if (filtersOn() && filtersPress(k)) {
     // fatto dalla schermata filtri
-  } else if (k == 'E' || k == 'F') {
+  } else if (k == 'X' || k == 'Y') {
     bannerUntilMs = 0;
-    showCard(current + (k == 'E' ? 1 : -1), false);
+    showCard(current + (k == 'Y' ? 1 : -1), false);
   } else if (isLensChart(cards[current])) {
     // Con la rotazione bloccata vale il verso del contenuto, come per i filtri.
     stepLensChart(k == 'A' || k == 'B', rotation);

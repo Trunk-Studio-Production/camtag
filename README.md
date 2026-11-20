@@ -33,21 +33,21 @@ git clone --depth 1 https://github.com/crosspoint-reader/crosspoint-reader refer
 
 1. Nello strumento web crei le card.
 2. Le mandi all'X3 in uno di due modi:
-   - **Bluetooth**: sull'X3 tieni premuto **F** finché compare BLUETOOTH, poi
+   - **Bluetooth**: sull'X3 tieni premuto **X** finché compare BLUETOOTH, poi
      nello strumento web tocca **Bluetooth** e poi **Invia le card** (vedi sotto);
    - **microSD**: scarichi lo zip e copi la sua cartella `camtag/` nella radice
      della microSD.
 3. Sul dispositivo:
-   - **E** (lato destro): card successiva; **F** (lato sinistro): precedente,
+   - **X** (lato sinistro): card precedente; **Y** (lato destro): successiva,
      in ciclo
-   - **E tenuto premuto (0,8 s)**: blocca/sblocca la rotazione
-   - **F tenuto premuto (0,8 s)**: ricezione delle card via Bluetooth
+   - **X tenuto premuto (0,8 s)**: ricezione delle card via Bluetooth
+   - **Y tenuto premuto (0,8 s)**: blocca/sblocca la rotazione
    - le pressioni lunghe scattano mentre tieni premuto, allo scadere del
      tempo: non serve rilasciare per vedere l'effetto
    - A, B, C, D non cambiano card: sfogliano le pagine della lens chart e, sulla
      schermata filtri, cambiano ND e diottria (indicazioni accanto ai tasti)
    - **schermata filtri**: tieni **A** o **B** per modificare gli stadi del
-     mattebox (A/B scelgono lo stadio, C/D il vetro); si esce con E o F, tenendo
+     mattebox (A/B scelgono lo stadio, C/D il vetro); si esce con X o Y, tenendo
      di nuovo A o B, o da soli dopo 5 s senza tocchi (`docs/filtri.md`)
    - **power**: blocca e sblocca i tasti. La pagina resta com'è, con un
      lucchetto accanto al power
@@ -66,7 +66,7 @@ git clone --depth 1 https://github.com/crosspoint-reader/crosspoint-reader refer
 Lo strumento web può mandare le card all'X3 senza togliere la microSD, con il
 Bluetooth LE del browser (Web Bluetooth).
 
-1. Sull'X3 tieni premuto **F** per 0,8 s: compare **BLUETOOTH** con il nome
+1. Sull'X3 tieni premuto **X** per 0,8 s: compare **BLUETOOTH** con il nome
    del dispositivo (es. `CAMTAG-1A2B`).
 2. Nello strumento web tocca **Bluetooth**, poi **Invia le card** e
    scegli il dispositivo.
@@ -74,7 +74,7 @@ Bluetooth LE del browser (Web Bluetooth).
 
 Le card arrivano in una cartella temporanea e sostituiscono quelle di prima
 solo a invio completo e controllato: se il collegamento cade o qualcosa va
-storto, sull'X3 restano le card di prima. **E** o **F** escono dalla
+storto, sull'X3 restano le card di prima. **X** o **Y** escono dalla
 ricezione; dopo 3 minuti senza invii esce da sola. Il Bluetooth è acceso
 solo in ricezione.
 
@@ -148,9 +148,9 @@ Schermate:
 radice della microSD.
 
 **Simulatore** (pulsante sopra l'anteprima): l'X3 disegnato con tutti i tasti
-cliccabili (anche da tastiera: A–F, P = power). Le pagine si sfogliano
-in ciclo con E (successiva) e F (precedente); A e B non cambiano mai pagina. Si può ruotare, bloccare la
-rotazione (E tenuto premuto) e spegnere (power tenuto premuto), e si comporta
+cliccabili (anche da tastiera: A–D, X e Y, P = power). Le pagine si sfogliano
+in ciclo con X (precedente) e Y (successiva); A e B non cambiano mai pagina. Si può ruotare, bloccare la
+rotazione (Y tenuto premuto) e spegnere (power tenuto premuto), e si comporta
 come è previsto per il firmware. Le schermate sono a risoluzione piena (792×528 e 528×792); il
 simulatore le mostra a circa metà scala, vicino alla dimensione reale.
 
@@ -283,7 +283,7 @@ schermo, e aspetta l'X3 se si spegne:
 ```
 
 - [x] Rilevamento dell'X3, display e microSD
-- [x] Mappatura dei tasti (`kKeyA`…`kKeyF` in `device/src/main.cpp`)
+- [x] Mappatura dei tasti (`kKeyA`…`kKeyD`, `kKeyX`, `kKeyY` in `device/src/main.cpp`)
 - [x] Assi IMU e verso dello schermo (`kImuSwapXY`, `kImuSignX`, `kImuSignY`,
       `kQuarterTurns`): la scritta resta dritta nei 4 versi
 - [x] Riaccensione con il power
@@ -296,8 +296,8 @@ schermo, e aspetta l'X3 se si spegne:
 - [x] Ricezione via Bluetooth da Brave sul Mac: crea `/camtag` anche la prima
       volta e mostra quanti file ha ricevuto; "Importa dall'X3" riporta il
       progetto nel browser e lascia le card come sono
-- [x] Card vere in verticale e in orizzontale, E/F in ciclo, rotazione
-      automatica e blocco (E tenuto)
+- [x] Card vere in verticale e in orizzontale, X/Y in ciclo, rotazione
+      automatica e blocco (Y tenuto)
 - [x] Bilancieri sulla lens chart di più pagine nei 4 versi (come
       `lensPageDir` nel simulatore)
 - [x] Velocità di ricezione dal Mac: 98 file, 1,1 MB in circa 40 s (erano
@@ -314,7 +314,7 @@ schermo, e aspetta l'X3 se si spegne:
 - [x] Schermata filtri (`taratura.py filtri`): legge le card dello strumento
       così come sono; ND e diottria con i bilancieri e indicazioni dei tasti nei
       4 versi, riordino degli stadi dopo 2 s, modifica degli stadi (entrata,
-      scelta di stadio e vetro, uscita da sola dopo 5 s e con E); il mezzo
+      scelta di stadio e vetro, uscita da sola dopo 5 s e con Y); il mezzo
       refresh dopo 2 s fermi toglie l'ombra dei cambi veloci di ND e diottria
 - [x] Rotazione bloccata che ferma tutto: girando l'X3 schermata filtri,
       indicazioni e bilancieri restano quelli del verso bloccato

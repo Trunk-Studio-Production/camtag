@@ -56,15 +56,15 @@ import serial
 REPO = Path(__file__).resolve().parent.parent
 B, DIM, OK, BAD, WARN, X = '\033[1m', '\033[2m', '\033[32m', '\033[31m', '\033[33m', '\033[0m'
 
-# Tasto logico dell'SDK -> tasto fisico secondo kKeyA…kKeyF in device/src/main.cpp.
-KEY_NAMES = {0: 'A', 1: 'B', 2: 'C', 3: 'D', 4: 'F', 5: 'E', 6: 'power'}
+# Tasto logico dell'SDK -> tasto fisico secondo kKeyA…kKeyD, kKeyX, kKeyY in device/src/main.cpp.
+KEY_NAMES = {0: 'A', 1: 'B', 2: 'C', 3: 'D', 4: 'X', 5: 'Y', 6: 'power'}
 KEY_STEPS = [
     ('A', 'bilanciere in basso a sinistra, capo sinistro'),
     ('B', 'bilanciere in basso a sinistra, capo destro'),
     ('C', 'bilanciere in basso a destra, capo sinistro'),
     ('D', 'bilanciere in basso a destra, capo destro'),
-    ('F', 'tasto sul lato sinistro'),
-    ('E', 'tasto sul lato destro'),
+    ('X', 'tasto sul lato sinistro'),
+    ('Y', 'tasto sul lato destro'),
 ]
 POSITIONS = [
     'verticale, tasti in basso',
@@ -363,14 +363,14 @@ def test_cards(x3, start=1):
             break
         except Restart:
             print(f'   {WARN}l\'X3 si è riavviato: rifaccio la prova del blocco{X}')
-            # dopo il riavvio il blocco resta salvato: lo si toglie con E tenuto
-            print(f'   Se lo schermo dice ROTAZIONE BLOCCATA, tieni E per sbloccare prima di ripartire.')
+            # dopo il riavvio il blocco resta salvato: lo si toglie con Y tenuto
+            print(f'   Se lo schermo dice ROTAZIONE BLOCCATA, tieni Y per sbloccare prima di ripartire.')
     print(f'\n{OK}Tutto come previsto.{X}' if not bad else f'\n{BAD}Da correggere:{X}\n   ' + '\n   '.join(bad))
 
 
 def to_lens_page(x3):
     if not is_lens(x3.card):
-        print('   Premi E o F fino a una pagina della lens chart.')
+        print('   Premi X o Y fino a una pagina della lens chart.')
         wait_until(x3, lambda: is_lens(x3.card), lambda: f'{DIM}in attesa…{X}')
 
 
@@ -396,7 +396,7 @@ def lock_test(x3):
     print(f'{B}Blocco della rotazione{X}')
     print('   Rimetti l\'X3 verticale con i tasti in basso.')
     wait_until(x3, lambda: x3.verso == 3, lambda: f'{DIM}aspetto il verso verticale (ora {x3.verso}){X}')
-    print(f'   Tieni premuto {B}E{X} finché compare ROTAZIONE BLOCCATA.')
+    print(f'   Tieni premuto {B}Y{X} finché compare ROTAZIONE BLOCCATA.')
     x3.events.clear()
     wait_until(x3, lambda: 'locked' in x3.events, lambda: f'{DIM}in attesa…{X}')
     print(f'   {OK}✓ bloccata{X}')
@@ -407,7 +407,7 @@ def lock_test(x3):
     print(f'   {DIM}Con la rotazione bloccata i bilancieri restano quelli del verso bloccato (A|B arretra).{X}')
     if not press_rocker(x3, 'A', -1, 'A|B, come in verticale'):
         bad.append('blocco: A nel verso sbagliato')
-    print(f'   Tieni premuto {B}E{X} per sbloccare.')
+    print(f'   Tieni premuto {B}Y{X} per sbloccare.')
     wait_until(x3, lambda: 'auto' in x3.events, lambda: f'{DIM}in attesa…{X}')
     x3.verso = None
     wait_until(x3, lambda: x3.verso == 2, lambda: f'{DIM}aspetto che la card giri…{X}')
@@ -433,7 +433,7 @@ def is_filters(card):
 
 def to_filters_page(x3):
     if not is_filters(x3.card):
-        print('   Premi E o F fino alla schermata filtri.')
+        print('   Premi X o Y fino alla schermata filtri.')
         wait_until(x3, lambda: is_filters(x3.card), lambda: f'{DIM}in attesa…{X}')
 
 
@@ -466,10 +466,10 @@ def press_filters(x3, key, where, done=None, wait=1.5):
 
 
 def leave_edit(x3):
-    """Un A o B tenuto troppo apre la modifica degli stadi: si esce con E."""
-    print(f'   {WARN}hai tenuto premuto: si è aperta la modifica degli stadi.{X} Premi {B}E{X} per uscire.')
+    """Un A o B tenuto troppo apre la modifica degli stadi: si esce con Y."""
+    print(f'   {WARN}hai tenuto premuto: si è aperta la modifica degli stadi.{X} Premi {B}Y{X} per uscire.')
     x3.flt_events.clear()
-    wait_until(x3, lambda: 'fine modifica' in x3.flt_events, lambda: f'{DIM}in attesa di E…{X}')
+    wait_until(x3, lambda: 'fine modifica' in x3.flt_events, lambda: f'{DIM}in attesa di Y…{X}')
 
 
 def check_value(x3, key, role, where, sign):
@@ -559,22 +559,22 @@ def edit_test(x3):
     else:
         bad.append('modifica: non si chiude da sola')
         print(f'   {BAD}✗ la modifica non si è chiusa{X}')
-    print(f'   Tieni premuto {B}B{X} per riaprirla, poi premi {B}E{X} per uscire.')
+    print(f'   Tieni premuto {B}B{X} per riaprirla, poi premi {B}Y{X} per uscire.')
     x3.flt_events.clear()
     wait_until(x3, lambda: 'modifica' in x3.flt_events, lambda: f'{DIM}in attesa di B tenuto…{X}')
     card = x3.card
-    _, after = press_filters(x3, 'E', 'esce dalla modifica', done=lambda: 'fine modifica' in x3.flt_events)
+    _, after = press_filters(x3, 'Y', 'esce dalla modifica', done=lambda: 'fine modifica' in x3.flt_events)
     ok = x3.card == card and after['sel'] == -1
-    print(f'   {OK + "✓ uscito, stessa schermata" if ok else BAD + "✗ E ha cambiato schermata"}{X}')
+    print(f'   {OK + "✓ uscito, stessa schermata" if ok else BAD + "✗ Y ha cambiato schermata"}{X}')
     if not ok:
-        bad.append('modifica: E cambia schermata invece di uscire')
+        bad.append('modifica: Y cambia schermata invece di uscire')
     return bad
 
 
 def filters_lock_test(x3):
     bad = []
     print(f'{B}Rotazione bloccata{X}')
-    print(f'   Con l\'X3 verticale (tasti in basso) tieni premuto {B}E{X} finché compare ROTAZIONE BLOCCATA.')
+    print(f'   Con l\'X3 verticale (tasti in basso) tieni premuto {B}Y{X} finché compare ROTAZIONE BLOCCATA.')
     x3.events.clear()
     wait_until(x3, lambda: 'locked' in x3.events, lambda: f'{DIM}in attesa…{X}')
     print('   Gira l\'X3 di un quarto in senso orario (tasti a sinistra).')
@@ -588,7 +588,7 @@ def filters_lock_test(x3):
     # Il blocco ferma anche i bilancieri: valgono quelli della posizione verticale.
     if not check_value(x3, 'D', 'nd', '+ND: D come in verticale, anche se ora è in alto', 1):
         bad.append('bloccata: D non fa più +ND')
-    print(f'   Tieni premuto {B}E{X} per sbloccare.')
+    print(f'   Tieni premuto {B}Y{X} per sbloccare.')
     wait_until(x3, lambda: 'auto' in x3.events, lambda: f'{DIM}in attesa…{X}')
     print(f'   {OK}✓ sbloccata{X}')
     return bad
@@ -681,7 +681,7 @@ def show_log(x3, path):
 def test_reactivity(x3):
     print(f"""
 {B}Reattività dei tasti{X}: usa l'X3 come al solito. Sulla schermata filtri cambia ND e
-diottria, anche in fretta e subito dopo un cambio; sulle altre card E e F.
+diottria, anche in fretta e subito dopo un cambio; sulle altre card X e Y.
 Ogni pressione che l'hardware sente compare qui: {OK}✓{X} letta dal firmware, {BAD}✗{X} persa.
 Se premi un tasto e qui {B}non compare nulla{X}, non l'ha sentita nemmeno l'hardware.
 ctrl-C per finire e vedere il riepilogo.
