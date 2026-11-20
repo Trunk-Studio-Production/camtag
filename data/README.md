@@ -57,6 +57,7 @@ Ogni lente ha **tutti** i campi qui sotto (quelli non pertinenti valgono `null`)
 | `coverage` | stringa | Classe: `MFT`, `S35`, `S35+`, `FF`, `LF`, `65` (vedi convenzioni). |
 | `imageCircle_mm` | numero, mm | Cerchio immagine se pubblicato in mm. |
 | `squeeze` | numero | Anamorfiche fisse e zoom anamorfici (es. `2`); `null` sugli altri. Sulla lens chart va accanto al nome della serie (`×2`). |
+| `mounts` | lista di sigle | Attacchi offerti dal costruttore, il nativo per primo: `PL`, `LPL`, `EF`, `EF-S`, `EF-M`, `RF`, `E` (Sony), `L`, `Z`, `X`, `G` (Fujifilm), `MFT`, `F` (Nikon), `M` (Leica), `SA`, `A` (Sony), `K` (Pentax), `DL` (DJI), `PV`, `SP70`, `PV65` (Panavision System 65), `B4`. `null` se non dichiarati. Con più attacchi lo strumento web chiede quale quando la lente entra nel kit. |
 | `sources` | lista di URL | Le pagine o i PDF del costruttore da cui sono stati letti i valori. |
 | `checked` | data ISO | Giorno della verifica. |
 | `notes` | stringa | Motivo dei `null`, conflitti tra fonti, varianti, stato di produzione. |
@@ -99,7 +100,22 @@ chiavi mancanti.
   Sentinel; Angénieux Optimo Anamorphic): `type: "zoom"` con `squeeze`. Anche i
   Laowa Probe Zoom sono `zoom`, non `probe`.
 - **Solo mirrorless.** Sono incluse anche le ottiche cine (T-stop, ghiere a
-  ingranaggi) senza attacco PL; l'attacco è in `notes`.
+  ingranaggi) senza attacco PL.
+- **Attacchi** (`mounts`, 2026-11-19). Solo quelli che il costruttore vende o
+  monta lui (kit IMS, baionette intercambiabili), non gli adattatori né i kit di
+  terzi (ZEISS Nano Prime: solo E). I protocolli dati (/i, LDS, eXtended Data)
+  non sono attacchi. Se cambiano da una focale all'altra la differenza è nella
+  singola lente (Canon CN-E Zoom, Laowa Zero-D, Sirui Night Walker). La fonte
+  dell'elenco è in `sources`. Casi da sapere:
+  - Panavision non dichiara l'attacco sulle pagine prodotto: `null`, tranne le
+    serie 65 e large format che lo scrivono (SP70, PV65). ZEISS B Speed:
+    `null` (baionetta ARRI solo da un noleggio).
+  - Vantage: dalla Vantage Lens Table 2023, "PL-Mount, unless stated
+    otherwise" (LPL dove indicato).
+  - Da schede di noleggio (come per gli altri dati di queste serie): ZEISS
+    Super Speed, Standard Speed, Variable Prime, Oppenheimer Zeiss Macro.
+  - Laowa: laowacine.com bloccava la lettura diretta; elenchi presi dalle sue
+    pagine attraverso la ricerca, da ricontrollare.
 - **Ottiche fotografiche** (dal 2026-11-19: Sony, Panasonic LUMIX, Sigma,
   Voigtländer): catalogo attuale del costruttore, `stopType: "f"`, zoom ad
   apertura variabile con `tstopLong`. `front_mm` è il diametro massimo del

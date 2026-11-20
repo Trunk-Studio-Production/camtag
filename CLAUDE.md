@@ -33,7 +33,8 @@ costruttori di lenti e filtri nei dati vanno bene.
   dell'interfaccia (sezioni aperte, orientamento, anteprima o simulatore) stanno
   nel localStorage `camtag.ui.v1`: sono del browser, non entrano in `project.json`.
 - `data/lenses.json` — database lenti (schema in `data/README.md`), dati solo
-  dalle schede dei costruttori, con la fonte per ogni lente. Mai modificarlo per
+  dalle schede dei costruttori, con la fonte per ogni lente. `mounts` = attacchi
+  offerti (sigle in `MOUNTS`, uguali in `data/validate.py`). Mai modificarlo per
   un esemplare: le differenze (es. Ø frontale del noleggio) sono modifiche
   locali per `id` nello strumento web (localStorage `camtag.lensOverrides.v1`,
   esportabili), applicate sopra il database quando si disegna. Un valore
@@ -139,7 +140,12 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 - Solo X3 per ora; l'X4 è un futuro lontano.
 - Decimali sulle schermate: sempre il punto (0.9), senza opzione.
 - Lens chart: focale, T, CF (close focus), Ø frontale (più piccolo, dato secondario, si può
-  nascondere: `state.lensFront`). Le lenti a focale fissa si chiamano "prime"
+  nascondere: `state.lensFront`). Attacco (`state.lensMount`, spento di
+  partenza): come le sigle, quello principale in basso ("Attacco LPL"), gli
+  altri accanto alla focale. L'attacco è della lente nel progetto (`l.mount`,
+  `lensMount`): se la serie ne offre più d'uno lo si chiede quando la lente
+  entra nel kit (`addDbLenses`), salvo che il kit abbia già una lente della
+  serie con un attacco valido; si cambia con ✎. Le lenti a focale fissa si chiamano "prime"
   anche nei testi in italiano, mai "fissi". Niente
   colonna serie: in basso un riquadro con il nome per esteso del set principale
   e "Serie (SIGLA)" per le altre; la sigla piccola compare accanto alla focale

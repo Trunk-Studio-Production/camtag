@@ -14,8 +14,8 @@ from pathlib import Path
 TYPES = {"prime", "macro", "zoom", "anamorphic", "probe", "specialty"}
 COVERAGES = {"MFT", "S35", "S35+", "FF", "LF", "65"}
 # Attacchi: stesse sigle di MOUNTS in companion/index.html.
-MOUNTS = {"PL", "LPL", "EF", "RF", "E", "L", "Z", "X", "G", "MFT", "F", "M", "EF-M",
-          "SA", "A", "K", "PV", "SP70", "PV65", "B4"}
+MOUNTS = {"PL", "LPL", "EF", "RF", "E", "L", "Z", "X", "G", "MFT", "F", "M", "EF-M", "EF-S",
+          "SA", "A", "K", "PV", "SP70", "PV65", "B4", "DL"}
 FIELDS = [
     "id", "brand", "series", "seriesCode", "name", "type",
     "focal", "focalMin", "focalMax", "tstop", "tstopLong", "stopType",

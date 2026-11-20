@@ -194,6 +194,8 @@
   .db .it { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-top: 1px solid var(--line); font-size: 13px; }
   .db .it span { flex: 1; font-variant-numeric: tabular-nums; }
   .db .it .meta { color: var(--muted); font-size: 12px; flex: 2; }
+  .db .ask { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px; border-top: 1px solid var(--line); font-size: 13px; }
+  .db .ask span { flex: 1 0 100%; }
   .kit { border: 1px solid var(--line); border-radius: var(--r-s); padding: 8px; margin-top: 8px; }
   .kit-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 13px; }
   .kit-head .pill { margin-left: auto; margin-right: 8px; padding: 2px 9px; font-size: 12px; min-height: 0; }
@@ -442,7 +444,7 @@ const TYPE_LABEL = { lens: 'Lente', crew: 'Crew', notes: 'Note', patch: 'Patch' 
 
 function freshState() {
   return {
-    version: 6, device: 'x3', production: '', lensSplit: false, zoomsLast: true, lensFront: true,
+    version: 6, device: 'x3', production: '', lensSplit: false, zoomsLast: true, lensFront: true, lensMount: false,
     auto: { lenschart: true, filters: true },
     lenses: [],
     filters: { ndFormat: 'density', ndType: 'ND', nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], ndCombos: [], dio: [], effects: [], stages: [null, null, null], previewNd: 0, previewDio: 0 },
@@ -454,7 +456,7 @@ function migrate(s) {
   if (!s || !Array.isArray(s.cards)) return s;
   for (const c of s.cards) { if (!c.formats) c.formats = 'both'; delete c.orient; delete c.mount; }
   const f = freshState(), hadStages = Array.isArray(s.filters?.stages);
-  for (const k of ['production', 'lensSplit', 'zoomsLast', 'lensFront', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
+  for (const k of ['production', 'lensSplit', 'zoomsLast', 'lensFront', 'lensMount', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
   s.filters = Object.assign(f.filters, s.filters);
   if ('ir' in s.filters) { if (s.filters.ir) s.filters.ndType = 'IRND'; delete s.filters.ir; }  // vecchia casella IRND
   // Vecchi "filtri di stile" (un elemento per filtro montato) -> kit con gradazioni montate.
@@ -676,15 +678,23 @@ let editingUid = null;
 
 // Valori della scheda + modifiche locali, mantenendo le scelte della produzione (sigla, negativo).
 function dbWithOverrides(dbLens) { const o = lensOverrides[dbLens.id]; return o ? { ...dbLens, ...o } : dbLens; }
+// Attacco della lente nella produzione: quello scelto (`l.mount`, null = nessuno),
+// altrimenti l'unico che il costruttore offre. Con più attacchi lo si chiede
+// quando la lente entra nel kit (`askMount`).
+function lensMount(l) {
+  if (l.mount !== undefined) return l.mount;
+  const m = l.dbId && lensById.get(l.dbId)?.mounts;
+  return m && m.length === 1 ? m[0] : null;
+}
 function effective(l) {
   const base = l.dbId && lensById.get(l.dbId);
-  if (!base) return l;
+  if (!base) return { ...l, mount: l.mount ?? null };
   const tech = {};
   for (const [k] of OVR_FIELDS) tech[k] = base[k];
   tech.stopType = base.stopType;
   const o = lensOverrides[l.dbId] || {};
   // _mod: campi diversi dalla scheda, segnati con * sulla lens chart.
-  return { ...l, ...tech, ...o, _mod: new Set(Object.keys(o).filter(k => k !== 'note')) };
+  return { ...l, ...tech, ...o, mount: lensMount(l), _mod: new Set(Object.keys(o).filter(k => k !== 'note')) };
 }
 // "*" accanto a un valore modificato rispetto alla scheda del costruttore.
 function star(l, ...keys) { return l._mod && keys.some(k => l._mod.has(k)) ? '*' : ''; }
@@ -802,8 +812,12 @@ function drawLensChart(ctx, W, H, { rows, group }, pageIdx, pageCount) {
     return;
   }
   // Sigla piccola solo sulle lenti fuori dal set principale (o su tutte se non c'è).
-  const leg = seriesLegend(group);
-  const tag = l => leg.main && seriesKey(l) === leg.main ? '' : (l.seriesCode || '');
+  // Con l'opzione dell'attacco (`state.lensMount`) vale la stessa regola: quello
+  // principale nella legenda, gli altri accanto alla focale.
+  const leg = seriesLegend(group), mnt = state.lensMount ? mountLegend(group) : { main: null, text: '' };
+  const tag = l => [leg.main && seriesKey(l) === leg.main ? '' : (l.seriesCode || ''),
+                    state.lensMount && l.mount && l.mount !== mnt.main ? l.mount : ''].filter(Boolean).join(' ');
+  const legText = [leg.text, mnt.text].filter(Boolean).join('  ·  ');
   // Dati accanto alla focale: T, CF e, se l'utente lo vuole, il Ø frontale (sempre ultimo, indice 2).
   const specs = l => [['T', tText(l) + star(l, 'tstop', 'tstopLong')], ['CF m', fmt(l.mod_m) + star(l, 'mod_m')],
                       ...(state.lensFront ? [['Ø mm', (l.front_mm != null ? fmt(l.front_mm, 1) : '—') + star(l, 'front_mm')]] : [])];
@@ -823,7 +837,7 @@ function drawLensChart(ctx, W, H, { rows, group }, pageIdx, pageCount) {
   // Riquadro in basso con il nome della serie per esteso (e la legenda delle sigle).
   ctx.fillStyle = '#000'; ctx.fillRect(pad, H - footH, inner, 2);
   ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-  fitFont(ctx, leg.text, 700, inner, footH * 0.46, 11); ctx.fillText(leg.text, pad, H - footH / 2 + 1);
+  fitFont(ctx, legText, 700, inner, footH * 0.46, 11); ctx.fillText(legText, pad, H - footH / 2 + 1);
 
   if (tall) {
     // Sopra: focale grande (e sigla piccola). Sotto: T, CF, Ø con l'etichetta sopra.
@@ -931,6 +945,14 @@ function seriesLegend(L = state.lenses.map(effective)) {
   if (main) parts.push(seriesName(first(main)));
   for (const k of keys) if (k !== main) parts.push(`${seriesName(first(k))} (${first(k).seriesCode})`);
   return { main, text: parts.join('  ·  ') };
+}
+
+// Attacco principale: quello di tutte le lenti che ne hanno uno, o il più
+// frequente; con un pareggio nessuno, e ogni lente porta il suo.
+function mountLegend(L) {
+  const ms = L.map(l => l.mount).filter(Boolean);
+  const main = new Set(ms).size === 1 ? ms[0] : plurality(ms);
+  return { main, text: main ? `Attacco ${main}` : '' };
 }
 
 // ============================================================================
@@ -1566,7 +1588,9 @@ function lensEditor(ed) {
     ...(state.lensSplit ? [] : [toggle('Zoom in fondo, dopo i prime', state.zoomsLast, v => { state.zoomsLast = v; changed(true); },
       { tip: 'Senza, gli zoom stanno tra i prime in ordine di focale minima.' })]),
     toggle('Mostra il diametro frontale (Ø)', state.lensFront, v => { state.lensFront = v; changed(); },
-      { tip: 'Senza il diametro restano focale, T e CF, più grandi.' }));
+      { tip: 'Senza il diametro restano focale, T e CF, più grandi.' }),
+    toggle('Mostra l\'attacco (PL, LPL, EF…)', state.lensMount, v => { state.lensMount = v; changed(); },
+      { tip: 'L\'attacco di quasi tutte le lenti va in basso accanto alla serie; quello delle altre accanto alla focale.' }));
 
   // Lenti selezionate
   const rows = [], nPages = lensPages().length;
@@ -1580,7 +1604,7 @@ function lensEditor(ed) {
         h('div', { class: 'foc', title: `${l.brand} ${l.series}` },
           h('span', { class: out.has(l.uid) ? 'out' : '' }, focalText(e)),
           isModified(l) ? h('span', { class: 'mod', title: 'Dati modificati rispetto alla scheda del costruttore' }, '*') : null,
-          h('span', { class: 'ser' }, l.series)),
+          h('span', { class: 'ser' }, l.series + (e.mount ? ` · ${e.mount}` : ''))),
         h('input', { type: 'text', 'aria-label': 'Sigla', value: l.seriesCode || '', maxlength: 5, oninput: ev => { l.seriesCode = ev.target.value.toUpperCase(); changed(); } }),
         h('select', { 'aria-label': 'Negativo', onchange: ev => { l.highlight = ev.target.value; changed(true); } },
           ...[['auto', 'auto'], ['on', 'sempre'], ['off', 'mai']].map(([v, t]) => h('option', { value: v, selected: (l.highlight || 'auto') === v }, t))),
@@ -1610,7 +1634,7 @@ function lensEditor(ed) {
     run();
   }
   // Inserimento manuale
-  const m = { brand: '', series: '', seriesCode: '', type: 'prime', focal: '', tstop: '', mod_m: '', front_mm: '' };
+  const m = { brand: '', series: '', seriesCode: '', type: 'prime', focal: '', tstop: '', mod_m: '', front_mm: '', mount: '' };
   const inp = (k, ph, type = 'text') => h('input', { type, placeholder: ph, 'aria-label': ph, step: 'any', oninput: e => m[k] = e.target.value });
   // Focale e T accettano un valore o un'escursione ("24-70", "2.8-4"; anche virgola e trattino lungo).
   const range = v => {
@@ -1623,6 +1647,7 @@ function lensEditor(ed) {
     h('div', { class: 'three mt' }, inp('seriesCode', 'Sigla'), rangeInp('focal', 'Focale mm', 'Focale (24-70)'), rangeInp('tstop', 'T', 'T (2.8-4)')),
     h('div', { class: 'three mt' }, inp('mod_m', 'CF m', 'number'), inp('front_mm', 'Ø mm', 'number'),
       h('select', { 'aria-label': 'Tipo', onchange: e => m.type = e.target.value }, ...Object.entries(LENS_TYPES).map(([k, v]) => h('option', { value: k }, v)))),
+    h('div', { class: 'three mt' }, mountSelect('', v => m.mount = v)),
     h('div', { class: 'acts' }, h('button', { class: 'primary', onclick: () => {
       if (!m.focal.trim()) { alert('Serve almeno la focale.'); return; }
       const f = range(m.focal), t = m.tstop.trim() ? range(m.tstop) : [null];
@@ -1632,7 +1657,7 @@ function lensEditor(ed) {
       state.lenses.push({ uid: 'm-' + Date.now(), dbId: null, brand: m.brand || 'Manuale', series: m.series || m.brand || 'Manuale',
         seriesCode: (m.seriesCode || slug(m.series).slice(0, 3)).toUpperCase(), type: zoom && m.type === 'prime' ? 'zoom' : m.type,
         focal: zoom ? null : f[0], focalMin: zoom ? Math.min(...f) : null, focalMax: zoom ? Math.max(...f) : null,
-        tstop: t[0], tstopLong: t[1] ?? null, mod_m: num(m.mod_m), front_mm: num(m.front_mm), filterThread: null, squeeze: null, highlight: 'auto' });
+        tstop: t[0], tstopLong: t[1] ?? null, mod_m: num(m.mod_m), front_mm: num(m.front_mm), filterThread: null, squeeze: null, mount: m.mount || null, highlight: 'auto' });
       changed(true);
     } }, 'Aggiungi'))], false, { sub: true }));
   ed.append(section('lens.db', 'Database lenti', lensDb ? `${lensDb.length} lenti` : null, db, true,
@@ -1659,6 +1684,9 @@ function lensEditor(ed) {
 function lensDataEditor(l, e) {
   const base = l.dbId && lensById.get(l.dbId);
   const box = h('div', {});
+  // L'attacco è una scelta della produzione, non una modifica dell'esemplare.
+  box.append(h('div', { class: 'three' }, h('label', { class: 'fld' }, h('span', { class: 'lab' }, 'Attacco'),
+    mountSelect(e.mount, v => { l.mount = v || null; changed(true); }, base?.mounts))));
   const grid = h('div', { class: 'three' });
   for (const [k, label, type] of OVR_FIELDS) {
     const cur = e[k] ?? '';
@@ -1695,10 +1723,35 @@ function keepScroll(fn) {
   const nb = document.querySelector('.db'); if (nb) nb.scrollTop = top;
 }
 
-function addDbLens(l) {
+function addDbLens(l, mount) {
   if (state.lenses.some(x => x.dbId === l.id)) return;
   const { id, brand, series, seriesCode, type, focal, focalMin, focalMax, tstop, tstopLong, stopType, mod_m, front_mm, filterThread, squeeze } = l;
-  state.lenses.push({ uid: 'db-' + id, dbId: id, brand, series, seriesCode, type, focal, focalMin, focalMax, tstop, tstopLong, stopType, mod_m, front_mm, filterThread, squeeze, highlight: 'auto' });
+  const m = l.mounts || [];
+  // Attacco scelto solo se la lente lo offre; con un attacco solo decide lensMount().
+  const pick = mount && m.includes(mount) ? { mount } : m.length > 1 ? { mount: null } : {};
+  state.lenses.push({ uid: 'db-' + id, dbId: id, brand, series, seriesCode, type, focal, focalMin, focalMax, tstop, tstopLong, stopType, mod_m, front_mm, filterThread, squeeze, ...pick, highlight: 'auto' });
+}
+
+// Attacchi: sigle come le scrivono i costruttori (schema in data/README.md).
+const MOUNTS = ['PL', 'LPL', 'EF', 'RF', 'E', 'L', 'Z', 'X', 'G', 'MFT', 'F', 'M', 'EF-M', 'EF-S', 'SA', 'A', 'K', 'PV', 'SP70', 'PV65', 'B4', 'DL'];
+// Scelta dell'attacco: quelli della scheda (se noti) o tutti, più "—" (nessuno).
+function mountSelect(cur, onchange, known) {
+  const list = known?.length ? [...known] : [...MOUNTS];
+  if (cur && !list.includes(cur)) list.push(cur);
+  return h('select', { 'aria-label': 'Attacco', onchange: ev => onchange(ev.target.value) },
+    h('option', { value: '', selected: !cur }, 'Attacco —'), ...list.map(v => h('option', { value: v, selected: cur === v }, v)));
+}
+// Aggiunge lenti del database. Se una serie ha più attacchi chiede quale
+// (`mountAsk`, mostrata sotto la serie) prima di metterle nel kit; se il kit ha
+// già una lente della serie con un attacco che vale anche per queste, usa quello.
+let mountAsk = null;  // { name: serie, lenses, mounts }
+function addDbLenses(name, ls) {
+  const keyOf = l => `${l.brand}|${l.series}`;
+  const kitMount = l => state.lenses.map(effective).find(x => keyOf(x) === keyOf(l) && x.mount && (l.mounts || []).includes(x.mount))?.mount;
+  const ask = ls.filter(l => (l.mounts || []).length > 1 && !kitMount(l));
+  if (!ask.length) { ls.forEach(l => addDbLens(l, kitMount(l))); mountAsk = null; return true; }
+  mountAsk = { name, lenses: ls, mounts: [...new Set(ask.flatMap(l => l.mounts))] };
+  return false;
 }
 
 // Ricerca senza accenti né maiuscole ("ange" trova "Angénieux"); virgola e punto decimali si equivalgono.
@@ -1709,7 +1762,7 @@ function renderDbResults(box, query, brand, type, searching = false) {
   const hits = lensDb.filter(l => {
     if (brand && l.brand !== brand) return false;
     if (type && l.type !== type) return false;
-    const hay = searchFold(`${l.brand} ${l.series} ${l.name} ${l.seriesCode} ${LENS_TYPES[l.type] || ''} ${focalText(l)} ${focalText(l)}mm`);
+    const hay = searchFold(`${l.brand} ${l.series} ${l.name} ${l.seriesCode} ${LENS_TYPES[l.type] || ''} ${focalText(l)} ${focalText(l)}mm ${(l.mounts || []).join(' ')}`);
     return terms.every(t => hay.includes(t));
   });
   if (!hits.length) { box.append(h('div', { class: 'empty' }, 'Nessuna lente trovata')); return; }
@@ -1730,14 +1783,22 @@ function renderDbResults(box, query, brand, type, searching = false) {
     box.append(h('div', { class: 'grp' },
       h('button', { class: 'tog', 'aria-expanded': String(open), onclick: () => toggle(name) },
         h('span', {}, `${name} · ${ls[0].seriesCode}`)),
-      h('button', { class: 'small', disabled: !missing.length, onclick: () => { missing.forEach(addDbLens); keepScroll(() => changed(true)); } }, missing.length ? `+ tutte (${missing.length})` : 'aggiunte')));
+      h('button', { class: 'small', disabled: !missing.length, onclick: () => { addDbLenses(name, missing); keepScroll(() => changed(true)); } }, missing.length ? `+ tutte (${missing.length})` : 'aggiunte')));
+    if (mountAsk?.name === name) {
+      const a = mountAsk, done = mount => { a.lenses.forEach(l => addDbLens(l, mount)); mountAsk = null; keepScroll(() => changed(true)); };
+      box.append(h('div', { class: 'ask' },
+        h('span', {}, a.lenses.length > 1 ? `Con quale attacco? (${a.lenses.length} lenti)` : `Con quale attacco? (${focalText(a.lenses[0])} mm)`),
+        ...a.mounts.map(m => h('button', { class: 'small primary', onclick: () => done(m) }, m)),
+        h('button', { class: 'small', title: 'Aggiungi senza attacco', onclick: () => done(null) }, 'Non so'),
+        h('button', { class: 'small', onclick: () => { mountAsk = null; keepScroll(() => changed(true)); } }, 'Annulla')));
+    }
     if (!open) continue;
     for (const l of ls) {
       const v = effective({ dbId: l.id });
-      const meta = `${v.stopType === 'f' ? '' : 'T'}${tText(v)}${star(v, 'tstop', 'tstopLong')} · CF ${fmt(v.mod_m)}${star(v, 'mod_m')} m · Ø ${v.front_mm != null ? fmt(v.front_mm, 1) : '—'}${star(v, 'front_mm')}${l.type !== 'prime' ? ' · ' + LENS_TYPES[l.type] : ''}${v.squeeze && l.type !== 'anamorphic' ? ` ×${fmt(v.squeeze)}` : ''}`;
+      const meta = `${v.stopType === 'f' ? '' : 'T'}${tText(v)}${star(v, 'tstop', 'tstopLong')} · CF ${fmt(v.mod_m)}${star(v, 'mod_m')} m · Ø ${v.front_mm != null ? fmt(v.front_mm, 1) : '—'}${star(v, 'front_mm')}${l.type !== 'prime' ? ' · ' + LENS_TYPES[l.type] : ''}${v.squeeze && l.type !== 'anamorphic' ? ` ×${fmt(v.squeeze)}` : ''}${l.mounts?.length ? ' · ' + l.mounts.join('/') : ''}`;
       box.append(h('div', { class: 'it' }, h('span', {}, `${focalText(l)} mm`), h('span', { class: 'meta' }, meta),
         chosen.has(l.id) ? h('button', { class: 'small', disabled: true }, '✓') :
-        h('button', { class: 'small', onclick: () => { addDbLens(l); keepScroll(() => changed(true)); } }, '+')));
+        h('button', { class: 'small', onclick: () => { addDbLenses(name, [l]); keepScroll(() => changed(true)); } }, '+')));
     }
   }
 }
