@@ -444,8 +444,8 @@ const TYPE_LABEL = { lens: 'Lente', crew: 'Crew', notes: 'Note', patch: 'Patch' 
 
 function freshState() {
   return {
-    version: 6, device: 'x3', production: '', lensSplit: false, zoomsLast: true, lensFront: true, lensMount: false,
-    auto: { lenschart: true, filters: true },
+    version: 6, device: 'x3', production: '', lensSplit: false, lensSeries: 'mix', zoomsLast: true, lensFront: true, lensMount: false,
+    auto: { lenschart: true, filters: true, filterlist: false },
     lenses: [],
     filters: { ndFormat: 'density', ndType: 'ND', nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], ndCombos: [], dio: [], effects: [], stages: [null, null, null], previewNd: 0, previewDio: 0 },
     cards: [DEFAULTS.crew()],
@@ -456,8 +456,9 @@ function migrate(s) {
   if (!s || !Array.isArray(s.cards)) return s;
   for (const c of s.cards) { if (!c.formats) c.formats = 'both'; delete c.orient; delete c.mount; }
   const f = freshState(), hadStages = Array.isArray(s.filters?.stages);
-  for (const k of ['production', 'lensSplit', 'zoomsLast', 'lensFront', 'lensMount', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
+  for (const k of ['production', 'lensSplit', 'lensSeries', 'zoomsLast', 'lensFront', 'lensMount', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
   s.filters = Object.assign(f.filters, s.filters);
+  s.auto = Object.assign({ ...f.auto }, s.auto);
   if ('ir' in s.filters) { if (s.filters.ir) s.filters.ndType = 'IRND'; delete s.filters.ir; }  // vecchia casella IRND
   // Vecchi "filtri di stile" (un elemento per filtro montato) -> kit con gradazioni montate.
   if (Array.isArray(s.filters.style)) {
@@ -716,12 +717,27 @@ function sortedLenses(list = state.lenses) {
   const last = l => state.zoomsLast && isZoom(l) ? 1 : 0;
   return list.map(effective).sort((a, b) => last(a) - last(b) || focalSort(a) - focalSort(b) || (a.seriesCode || '').localeCompare(b.seriesCode || ''));
 }
-// Gruppi della lens chart: tutte le lenti insieme, oppure prime e zoom separati
+// Gruppi della lens chart. Prima per serie (`state.lensSeries`): tutte insieme
+// ('mix'), una per serie ('each', dalla più numerosa) o il set principale da una
+// parte e le altre serie mescolate dall'altra ('main'; con un pareggio nessun
+// principale, quindi tutte insieme). Poi, dentro ognuno, prime e zoom separati
 // (`state.lensSplit`). Ogni gruppo ha le sue pagine, le sue misure, la sua
 // legenda e le sue lenti in negativo, come fosse una lens chart a sé.
 function lensGroups() {
-  const zooms = state.lenses.filter(isZoom), primes = state.lenses.filter(l => !isZoom(l));
-  return state.lensSplit && zooms.length && primes.length ? [primes, zooms] : [state.lenses];
+  const bySeries = new Map();
+  for (const l of state.lenses) { const k = seriesKey(l); bySeries.set(k, [...(bySeries.get(k) || []), l]); }
+  let groups = [state.lenses];
+  if (bySeries.size > 1 && state.lensSeries === 'each')
+    groups = [...bySeries.values()].sort((a, b) => b.length - a.length);
+  else if (bySeries.size > 1 && state.lensSeries === 'main') {
+    const main = plurality(state.lenses.map(seriesKey));
+    if (main) groups = [bySeries.get(main), state.lenses.filter(l => seriesKey(l) !== main)];
+  }
+  if (!state.lensSplit) return groups;
+  return groups.flatMap(g => {
+    const zooms = g.filter(isZoom), primes = g.filter(l => !isZoom(l));
+    return zooms.length && primes.length ? [primes, zooms] : [g];
+  });
 }
 // Pagine: `rows` le lenti della pagina, `group` tutte quelle del suo gruppo, in ordine.
 function lensPages() {
@@ -1051,6 +1067,79 @@ function drawFiltersBackground(ctx, W, H) {
   return L;
 }
 
+// ============================================================================
+// Elenco filtri: pagina facoltativa con tutti i vetri a disposizione
+// ============================================================================
+// Righe { name, values }: ND del kit, diottrie (intere e split), poi le famiglie
+// del kit con le loro gradazioni. Le coppie di ND non sono vetri, quindi non ci sono.
+function filterListRows(f = state.filters) {
+  const rows = [];
+  if (f.nd.length) rows.push({ name: f.ndType, values: [...f.nd].sort((a, b) => a - b).map(ndLabel) });
+  for (const split of [false, true]) {
+    const d = dioSteps().filter(x => x && x.split === split);
+    if (d.length) rows.push({ name: split ? 'Diottrie split' : 'Diottrie', values: d.map(x => DIO_LABEL[x.v] || '+' + fmt(x.v)) });
+  }
+  for (const e of f.effects) rows.push({ name: e.name, values: e.strengths.map(x => x.s).filter(Boolean) });
+  return rows;
+}
+// Nome a sinistra (colonna larga quanto il nome più lungo), gradazioni a destra
+// che vanno a capo; una misura sola per tutta la pagina, la più grande che entra.
+// In orizzontale, con tante righe, due colonne affiancate se il testo cresce.
+function drawFilterList(ctx, W, H) {
+  const pad = Math.round(W * 0.035), barH = H > W ? 64 : 56;
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, barH);
+  ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  const title = state.production ? `${state.production.toUpperCase()} · KIT FILTRI` : 'KIT FILTRI';
+  fitFont(ctx, title, 800, W - pad * 2, barH * 0.5); ctx.fillText(title, pad, barH / 2);
+  const rows = filterListRows();
+  ctx.fillStyle = '#000';
+  if (!rows.length) {
+    ctx.textAlign = 'center'; ctx.font = `600 ${Math.round(H * 0.045)}px ${FONT}`;
+    ctx.fillText('Nessun filtro nel kit', W / 2, barH + (H - barH) / 2);
+    return;
+  }
+  const top = barH + Math.round(pad * 0.6), availH = H - top - pad * 0.6;
+  // Misura una disposizione: per ogni riga le righe di testo delle gradazioni.
+  const plan = (s, cols) => {
+    const colW = (W - pad * (cols + 1)) / cols, gap = Math.round(s * 0.7), rowPad = Math.round(s * 0.45);
+    ctx.font = `800 ${s}px ${FONT}`;
+    const nameW = Math.min(Math.max(...rows.map(r => ctx.measureText(r.name.toUpperCase()).width)), colW * 0.55);
+    if (rows.some(r => ctx.measureText(r.name.toUpperCase()).width > colW * 0.55)) return null;
+    const valW = colW - nameW - gap;
+    ctx.font = `600 ${s}px ${FONT}`;
+    const laid = rows.map(r => {
+      const lines = [[]]; let x = 0;
+      for (const v of r.values) {
+        const w = ctx.measureText(v).width;
+        if (w > valW) return null;
+        if (x && x + w > valW) { lines.push([]); x = 0; }
+        lines[lines.length - 1].push({ v, x }); x += w + gap;
+      }
+      return { ...r, lines, h: Math.max(1, lines.length) * s * 1.2 + rowPad * 2 };
+    });
+    if (laid.some(r => !r)) return null;
+    const per = Math.ceil(laid.length / cols), colsH = [];
+    for (let c = 0; c < cols; c++) colsH.push(laid.slice(c * per, (c + 1) * per).reduce((a, r) => a + r.h, 0));
+    return Math.max(...colsH) <= availH ? { s, cols, colW, nameW, gap, rowPad, laid, per } : null;
+  };
+  const best = cols => { for (let s = 52; s >= 12; s -= 2) { const p = plan(s, cols); if (p) return p; } return plan(12, cols) || null; };
+  let L = best(1);
+  if (W > H && rows.length > 4) { const two = best(2); if (two && (!L || two.s >= L.s * 1.2)) L = two; }
+  if (!L) return;
+  const { s, colW, nameW, gap, rowPad, laid, per } = L;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  laid.forEach((r, i) => {
+    const c = Math.floor(i / per), x = Math.round(pad + c * (colW + pad));
+    let y = top + laid.slice(c * per, i).reduce((a, q) => a + q.h, 0);
+    // Separatore da 2 px su pixel interi (vedi drawLensChart).
+    if (i % per) ctx.fillRect(x, Math.round(y), Math.round(colW), 2);
+    const base = y + rowPad + s * 0.92;
+    ctx.font = `800 ${s}px ${FONT}`; ctx.fillText(r.name.toUpperCase(), x, base);
+    ctx.font = `600 ${s}px ${FONT}`;
+    r.lines.forEach((line, j) => line.forEach(t => ctx.fillText(t.v, x + nameW + gap + t.x, base + j * s * 1.2)));
+  });
+}
+
 // Riquadro di un valore: testo grande centrato su bianco.
 function drawTile(ctx, x, y, w, h, text) {
   ctx.fillStyle = '#fff'; ctx.fillRect(x, y, w, h);
@@ -1281,6 +1370,8 @@ function renderScreen(s, layout, opts = {}) {
       if (stageCount()) drawStages(ctx, L, stageCells(opts.stages ?? f.stages, opts.ndStages ?? opts.nd ?? f.previewNd, opts.dioStages ?? opts.dio ?? f.previewDio), opts.sel ?? -1);
       if (!opts.noHints) drawHintsPreview(ctx, W, H);
     }
+  } else if (s.kind === 'filterlist') {
+    drawFilterList(ctx, W, H);
   } else {
     const c = s.card;
     ({ lens: drawLens, crew: drawCrew, notes: drawNotes, patch: drawPatch })[c.type](ctx, W, H, c);
@@ -1312,6 +1403,7 @@ function exportPlan() {
   if (state.auto.lenschart && state.lenses.length)
     lensPages().forEach((_, i) => plan.push({ kind: 'lenschart', page: i, base: i ? `lenschart-${i + 1}` : 'lenschart' }));
   if (state.auto.filters) plan.push({ kind: 'filters', base: 'filters' });
+  if (state.auto.filterlist) plan.push({ kind: 'filterlist', base: 'filterlist' });
   state.cards.forEach(c => plan.push({ kind: 'card', card: c, base: `${c.type}_${slug(cardTitle(c))}` }));
   plan.forEach((p, i) => p.name = `${String(i + 1).padStart(2, '0')}_${p.base}`);
   return plan;
@@ -1525,6 +1617,7 @@ function cardTitle(c) {
 function selectedScreen() {
   if (sel.kind === 'lenschart') return { kind: 'lenschart', page: Math.min(page, Math.max(lensPages().length - 1, 0)) };
   if (sel.kind === 'filters') return { kind: 'filters' };
+  if (sel.kind === 'filterlist') return { kind: 'filterlist' };
   const c = state.cards[sel.i]; return c ? { kind: 'card', card: c } : null;
 }
 function availableLayouts() { const s = selectedScreen(); return s && s.kind === 'card' ? layoutsOf(s.card) : ['land', 'port']; }
@@ -1570,6 +1663,7 @@ function renderList() {
   };
   item('◆', 'Lens chart', `${plural(state.lenses.length, 'lente', 'lenti')}${pages > 1 ? ` · ${pages} pag.` : ''}`, { kind: 'lenschart' }, !state.auto.lenschart || !state.lenses.length);
   item('◆', 'Filtri', 'ND, diottrie, stadi', { kind: 'filters' }, !state.auto.filters);
+  item('◆', 'Elenco filtri', 'tutti i vetri del kit', { kind: 'filterlist' }, !state.auto.filterlist);
   state.cards.forEach((c, i) => item(String(i + 1).padStart(2, '0'), cardTitle(c), TYPE_LABEL[c.type], { kind: 'card', i }));
 }
 // Sceglie una schermata; nella striscia (sotto i 1100 px) la porta in vista.
@@ -1583,11 +1677,23 @@ function selectScreen(to) {
 
 function changed(redrawEditor = false) { save(); renderList(); drawPreview(); if (simOn) renderSim(); if (redrawEditor) renderEditor(); }
 
+// ---------- editor: elenco filtri ----------
+function filterListEditor(ed) {
+  const rows = filterListRows();
+  ed.append(editorHead('Elenco filtri', includeSwitch('filterlist')),
+    rows.length ? h('p', { class: 'hint' }, `${plural(rows.length, 'riga', 'righe')}: ${rows.map(r => r.name).join(', ')}.`)
+                : h('p', { class: 'warn' }, 'Il kit è vuoto: aggiungi ND, diottrie o vetri nella schermata Filtri.'),
+    h('div', { class: 'srow' }, lab('Contenuto', 'Una pagina facoltativa con tutti i filtri a disposizione: gli ND del kit, le diottrie e i vetri con le loro gradazioni. Si compila da sola con quello che scegli nella schermata Filtri; il titolo della lens chart compare anche qui.'),
+      h('button', { class: 'small', onclick: () => selectScreen({ kind: 'filters' }) }, 'Modifica il kit')));
+}
+
 // ---------- editor: lens chart ----------
 function lensEditor(ed) {
   ed.append(editorHead('Lens chart', includeSwitch('lenschart')),
     h('label', { class: 'fld' }, h('span', { class: 'lab' }, 'Titolo (es. nome produzione)'),
       h('input', { type: 'text', value: state.production, placeholder: 'LENS CHART', oninput: e => { state.production = e.target.value; changed(); } })),
+    h('div', { class: 'srow' }, lab('Serie', 'Insieme: tutte le lenti su un\'unica lens chart. Una per serie: ogni serie ha le sue pagine, dalla più numerosa. Principale a parte: prima le pagine del set con più lenti, poi le altre serie insieme. Ogni gruppo ha la sua misura del testo e la sua legenda.'),
+      seg([['mix', 'Insieme'], ['each', 'Una per serie'], ['main', 'Principale a parte']], state.lensSeries, v => { state.lensSeries = v; changed(true); }, 'Serie sulle pagine')),
     toggle('Prime e zoom su pagine separate', state.lensSplit, v => { state.lensSplit = v; changed(true); },
       { tip: 'Prima le pagine dei prime, poi quelle degli zoom. Ogni gruppo ha la sua misura del testo: utile con tanti prime e pochi zoom.' }),
     ...(state.lensSplit ? [] : [toggle('Zoom in fondo, dopo i prime', state.zoomsLast, v => { state.zoomsLast = v; changed(true); },
@@ -2104,6 +2210,7 @@ function renderEditor() {
   const ed = $('#editor'); ed.innerHTML = '';
   if (sel.kind === 'lenschart') return lensEditor(ed);
   if (sel.kind === 'filters') return filtersEditor(ed);
+  if (sel.kind === 'filterlist') return filterListEditor(ed);
   const c = state.cards[sel.i];
   if (!c) { ed.append(h('div', { class: 'empty' }, 'Seleziona una schermata')); return; }
   cardEditor(ed, c, sel.i);
@@ -2640,7 +2747,7 @@ function renderSim() {
       }
     }
   }
-  const name = sim.edit ? 'Filtri · modifica stadi' : item ? (item.kind === 'lenschart' ? `Lens chart${plan.filter(p => p.kind === 'lenschart').length > 1 ? ` ${item.page + 1}` : ''}` : item.kind === 'filters' ? 'Filtri' : cardTitle(item.card)) : '—';
+  const name = sim.edit ? 'Filtri · modifica stadi' : item ? (item.kind === 'lenschart' ? `Lens chart${plan.filter(p => p.kind === 'lenschart').length > 1 ? ` ${item.page + 1}` : ''}` : item.kind === 'filters' ? 'Filtri' : item.kind === 'filterlist' ? 'Elenco filtri' : cardTitle(item.card)) : '—';
   $('#simStatus').textContent = [`${sim.i + 1}/${plan.length} · ${name}`, sim.locked ? 'rotazione bloccata' : '', sim.asleep ? 'spento' : '', sim.msg].filter(Boolean).join(' · ');
 }
 

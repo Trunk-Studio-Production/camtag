@@ -162,9 +162,11 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
   In orizzontale la tabella si divide in due affiancate (prima metà a sinistra)
   quando la focale cresce almeno del 20% (`TWO_COLS_GAIN`): in pratica da 6
   lenti. Le pagine restano da 11 lenti in entrambi gli orientamenti.
-  Opzione "Prime e zoom su pagine separate" (`state.lensSplit`, `lensGroups`):
-  prima le pagine dei prime, poi quelle degli zoom; ogni gruppo è una lens
-  chart a sé, con le sue misure, la sua legenda e le sue lenti in negativo.
+  Gruppi di pagine (`lensGroups`), ognuno una lens chart a sé con le sue
+  misure, la sua legenda e le sue lenti in negativo: prima per serie ("Serie":
+  Insieme / Una per serie, dalla più numerosa / Principale a parte, il set
+  principale e poi le altre mescolate; `state.lensSeries` = mix/each/main),
+  poi dentro ognuno "Prime e zoom su pagine separate" (`state.lensSplit`).
   Ordine per focale (minima per gli zoom); "Zoom in fondo, dopo i prime"
   (`state.zoomsLast`, in `sortedLenses`) li mette dopo i prime sulla stessa
   lens chart (accesa di partenza), ed è nascosta quando le pagine sono separate.
