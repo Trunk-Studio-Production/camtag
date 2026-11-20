@@ -151,11 +151,15 @@ cd device && ../.venv/bin/pio run -e x3
 1. **Fai un backup completo della flash originale.** Collega l'X3 via USB-C e:
 
    ```bash
-   .venv/bin/python -m esptool --chip esp32c3 read_flash 0 0x1000000 backup-x3-originale.bin
+   ~/.platformio/penv/bin/python -m esptool --chip esp32c3 read-flash 0 0x1000000 backup-x3-originale.bin
    ```
 
    Conserva questo file: è il modo più sicuro per tornare allo stato di fabbrica.
-   (`esptool` è incluso in PlatformIO; se manca: `.venv/bin/pip install esptool`.)
+   L'X3 deve essere acceso e sveglio, altrimenti non compare sulla USB. La lettura
+   dura circa un minuto; rifalla su un secondo file e confronta le impronte
+   (`shasum -a 256`) prima di fidarti.
+   (`esptool` è quello che PlatformIO installa alla prima compilazione; se manca:
+   `.venv/bin/pip install esptool` e usa `.venv/bin/python -m esptool`.)
 2. **Verifica che il caricamento via USB non sia bloccato** (unità da negozi terzi).
    Se il backup fallisce o il dispositivo non viene visto, fermati: non forzare.
 3. Solo dopo, carica:
@@ -167,7 +171,7 @@ cd device && ../.venv/bin/pio run -e x3
 ### Ripristino
 
 - Firmware originale Xteink o CrossPoint: dal flasher web su crosspointreader.com.
-- Backup completo: `esptool --chip esp32c3 write_flash 0 backup-x3-originale.bin`.
+- Backup completo: `~/.platformio/penv/bin/python -m esptool --chip esp32c3 write-flash 0 backup-x3-originale.bin`.
 
 La tabella partizioni è la stessa di CrossPoint, quindi i suoi strumenti di
 ripristino restano compatibili.
