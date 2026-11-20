@@ -817,7 +817,13 @@ function drawLensChart(ctx, W, H, { rows, group }, pageIdx, pageCount) {
   const leg = seriesLegend(group), mnt = state.lensMount ? mountLegend(group) : { main: null, text: '' };
   const tag = l => [leg.main && seriesKey(l) === leg.main ? '' : (l.seriesCode || ''),
                     state.lensMount && l.mount && l.mount !== mnt.main ? l.mount : ''].filter(Boolean).join(' ');
-  const legText = [leg.text, mnt.text].filter(Boolean).join('  ·  ');
+  // "Attacco X" subito dopo la prima serie che lo usa, così non sembra di quella accanto.
+  const legParts = [...leg.parts];
+  if (mnt.text) {
+    const at = leg.keys.findIndex(k => group.some(l => seriesKey(l) === k && l.mount === mnt.main));
+    legParts.splice(at < 0 ? legParts.length : at + 1, 0, mnt.text);
+  }
+  const legText = legParts.join('  ·  ');
   // Dati accanto alla focale: T, CF e, se l'utente lo vuole, il Ø frontale (sempre ultimo, indice 2).
   const specs = l => [['T', tText(l) + star(l, 'tstop', 'tstopLong')], ['CF m', fmt(l.mod_m) + star(l, 'mod_m')],
                       ...(state.lensFront ? [['Ø mm', (l.front_mm != null ? fmt(l.front_mm, 1) : '—') + star(l, 'front_mm')]] : [])];
@@ -941,10 +947,9 @@ function seriesLegend(L = state.lenses.map(effective)) {
   const keys = [...new Set(L.map(seriesKey))];
   const main = keys.length === 1 ? keys[0] : plurality(L.map(seriesKey));
   const first = k => L.find(l => seriesKey(l) === k);
-  const parts = [];
-  if (main) parts.push(seriesName(first(main)));
-  for (const k of keys) if (k !== main) parts.push(`${seriesName(first(k))} (${first(k).seriesCode})`);
-  return { main, text: parts.join('  ·  ') };
+  const order = main ? [main, ...keys.filter(k => k !== main)] : keys;
+  const parts = order.map(k => k === main ? seriesName(first(k)) : `${seriesName(first(k))} (${first(k).seriesCode})`);
+  return { main, keys: order, parts, text: parts.join('  ·  ') };
 }
 
 // Attacco principale: quello di tutte le lenti che ne hanno uno, o il più
