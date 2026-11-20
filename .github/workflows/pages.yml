@@ -18,12 +18,12 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+# Due job: preparare e caricare l'archivio, poi pubblicarlo. Nello stesso job il
+# deploy a volte partiva prima che GitHub avesse registrato l'archivio ("No
+# artifacts named github-pages"); il passaggio tra i job gli dà il tempo.
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}companion/
     steps:
       - uses: actions/checkout@v4
       - name: Prepara il sito
@@ -43,5 +43,13 @@ jobs:
         with:
           path: _site
           include-hidden-files: true  # .nojekyll
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}companion/
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v5
