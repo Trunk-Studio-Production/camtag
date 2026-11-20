@@ -1,4 +1,4 @@
-# Protocollo Bluetooth (v2)
+# Protocollo Bluetooth (v3)
 
 Contratto tra `companion/index.html` (funzioni `bleSend` e `bleGet`) e il firmware
 (`device/src/BleUpload.cpp`, `UploadProto.h`). Se cambi uno, aggiorna l'altro e
@@ -25,6 +25,7 @@ client scrive, il dispositivo risponde con una notify.
 |---|---|---|
 | `HELLO` | `OK CAMTAG <versione> MTU <mtu> FW <firmware>` | il client usa pacchetti di MTU − 3 byte (da 20 a 512); `FW` (es. `0.1.0`, `CAMTAG_FW_VERSION` in `device/src/Version.h`) manca nei firmware precedenti alla 0.1.0 |
 | `BEGIN` | `OK` | svuota e crea `/camtag.new` |
+| `KEEP <byte> <crc32 hex> <percorso>` | `DONE <byte>` o `NO` | dalla v3: se `/camtag/<percorso>` ha quella dimensione e quel CRC lo copia in `/camtag.new` (`DONE`), se no `NO` e il client lo manda con `FILE` |
 | `FILE <byte> <crc32 hex> <percorso>` | `OK`, o subito `DONE 0` per un file vuoto | apre il file in `/camtag.new` |
 | *(dati su DATA)* | `ACK <byte>` ogni 2 KB, `DONE <byte>` alla fine | `DONE` solo se il CRC torna |
 | `COMMIT` | `OK` | `/camtag.new` prende il posto di `/camtag` |
@@ -33,7 +34,7 @@ client scrive, il dispositivo risponde con una notify.
 | `ACK <byte>` | — | durante un `GET`: byte ricevuti dal client |
 
 La versione del firmware non cambia il protocollo: con la stessa versione del
-protocollo firmware e strumento sono compatibili, e lo strumento mostra la
+protocollo (o una di `BLE.oldVersions`) firmware e strumento sono compatibili, e lo strumento mostra la
 versione dell'X3 senza avvisi (con un firmware più vecchio dice anche qual è
 la più recente). Solo un protocollo diverso è un conflitto: l'invio si ferma
 e chiede di aggiornarli insieme.
@@ -90,6 +91,24 @@ volte): dice il totale ricevuto, quindi ripeterlo non cambia nulla. Con un
 firmware senza "write without response" su CTRL il client torna alla scrittura
 con risposta.
 
+## Solo le pagine cambiate
+
+Ogni invio è completo (le pagine tolte nello strumento spariscono dall'X3), ma
+viaggiano solo i file cambiati: per ogni file il client chiede prima `KEEP`, e
+manda i dati con `FILE` solo dopo un `NO`. L'X3 copia sulla microSD i file
+uguali dalle card attuali, controllando il CRC mentre copia (se non torna
+cancella la copia e risponde `NO`); `/camtag` non si tocca fino al `COMMIT`.
+Niente `KEEP` per i file vuoti e per `project.json`, che cambia a ogni invio
+(`savedAt`).
+
+Perché funzioni, la stessa card deve uscire uguale byte per byte da
+un'esportazione all'altra: lo strumento disegna su canvas in software
+(`willReadFrequently` in `newCanvas`), perché Chromium passerebbe dalla GPU al
+software a metà e l'antialiasing diverso sposterebbe qualche pixel dopo la soglia.
+
+Con un X3 a protocollo 2 lo strumento non usa `KEEP` e manda tutto: è l'unica
+versione precedente che accetta (`BLE.oldVersions`).
+
 ## Sostituzione delle card
 
 Al `COMMIT`: `/camtag` diventa `/camtag.old`, `/camtag.new` diventa
@@ -99,7 +118,7 @@ Al `COMMIT`: `/camtag` diventa `/camtag.old`, `/camtag.new` diventa
 ## Test
 
 - Host, senza hardware: `c++ -std=c++17 -I device/src device/test/upload_proto_test.cpp -o /tmp/upt && /tmp/upt`
-  (CRC, percorsi, lettura dei comandi, `GET` e `ACK`).
+  (CRC, percorsi, lettura dei comandi, `KEEP`, `GET` e `ACK`).
 - Lato client il flusso si prova nel browser sostituendo
   `navigator.bluetooth.requestDevice` con un dispositivo finto che segue questa
   tabella.

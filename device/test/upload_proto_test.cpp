@@ -43,6 +43,12 @@ int main() {
   assert(parse("FILE x 1a a.bmp").cmd == Cmd::Unknown);
   assert(parse("hello").cmd == Cmd::Unknown);
 
+  Command k = parse("KEEP 52334 cbf43926 01_lenschart.p.bmp");
+  assert(k.cmd == Cmd::Keep && k.size == 52334 && k.crc == 0xCBF43926u);
+  assert(std::string(k.path) == "01_lenschart.p.bmp");
+  assert(parse("KEEP 10 1a ../a.bmp").cmd == Cmd::Unknown);
+  assert(parse("KEEP 10 a.bmp").cmd == Cmd::Unknown);
+
   Command g = parse("GET project.json");
   assert(g.cmd == Cmd::Get && std::string(g.path) == "project.json");
   assert(parse("GET ../segreto").cmd == Cmd::Unknown);

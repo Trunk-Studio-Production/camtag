@@ -9,7 +9,7 @@
 
 namespace upload {
 
-constexpr int kProtocolVersion = 2;
+constexpr int kProtocolVersion = 3;
 constexpr size_t kMaxPath = 96;
 constexpr uint32_t kMaxFileBytes = 2u * 1024u * 1024u;
 
@@ -45,17 +45,33 @@ inline bool validPath(const char* p) {
   return true;
 }
 
-enum class Cmd { Unknown, Hello, Begin, File, Commit, Abort, Get, Ack };
+enum class Cmd { Unknown, Hello, Begin, File, Keep, Commit, Abort, Get, Ack };
 
 struct Command {
   Cmd cmd = Cmd::Unknown;
-  uint32_t size = 0;  // FILE: byte del file; ACK: byte ricevuti dal client
+  uint32_t size = 0;  // FILE, KEEP: byte del file; ACK: byte ricevuti dal client
   uint32_t crc = 0;
   char path[kMaxPath + 1] = {0};
 };
 
-// "HELLO" | "BEGIN" | "FILE <byte> <crc32 esadecimale> <percorso>" | "COMMIT" | "ABORT"
-// | "GET <percorso>" | "ACK <byte>"
+// "<byte> <crc32 esadecimale> <percorso>", la coda di FILE e KEEP.
+inline bool parseFileSpec(const char* s, Command& c) {
+  char* end = nullptr;
+  const unsigned long size = strtoul(s, &end, 10);
+  if (end == s || *end != ' ') return false;
+  s = end + 1;
+  const unsigned long crc = strtoul(s, &end, 16);
+  if (end == s || *end != ' ') return false;
+  s = end + 1;
+  if (size > kMaxFileBytes || !validPath(s)) return false;
+  c.size = static_cast<uint32_t>(size);
+  c.crc = static_cast<uint32_t>(crc);
+  strncpy(c.path, s, kMaxPath);
+  return true;
+}
+
+// "HELLO" | "BEGIN" | "FILE <byte> <crc32 esadecimale> <percorso>" | "KEEP <come FILE>"
+// | "COMMIT" | "ABORT" | "GET <percorso>" | "ACK <byte>"
 inline Command parse(const char* line) {
   Command c;
   if (strcmp(line, "HELLO") == 0) c.cmd = Cmd::Hello;
@@ -73,19 +89,9 @@ inline Command parse(const char* line) {
     c.cmd = Cmd::Ack;
     c.size = static_cast<uint32_t>(n);
   } else if (strncmp(line, "FILE ", 5) == 0) {
-    const char* s = line + 5;
-    char* end = nullptr;
-    const unsigned long size = strtoul(s, &end, 10);
-    if (end == s || *end != ' ') return c;
-    s = end + 1;
-    const unsigned long crc = strtoul(s, &end, 16);
-    if (end == s || *end != ' ') return c;
-    s = end + 1;
-    if (size > kMaxFileBytes || !validPath(s)) return c;
-    c.cmd = Cmd::File;
-    c.size = static_cast<uint32_t>(size);
-    c.crc = static_cast<uint32_t>(crc);
-    strncpy(c.path, s, kMaxPath);
+    if (parseFileSpec(line + 5, c)) c.cmd = Cmd::File;
+  } else if (strncmp(line, "KEEP ", 5) == 0) {
+    if (parseFileSpec(line + 5, c)) c.cmd = Cmd::Keep;
   }
   return c;
 }

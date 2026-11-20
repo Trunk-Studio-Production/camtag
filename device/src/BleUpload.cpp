@@ -76,6 +76,7 @@ uint32_t expectedCrc = 0;
 uint32_t received = 0;
 uint32_t lastAck = 0;
 uint16_t files = 0;
+uint16_t kept = 0;  // file della sessione copiati dalle card attuali (KEEP)
 uint32_t sent = 0;   // GET: byte inviati
 uint32_t acked = 0;  // GET: byte confermati dal client
 uint32_t notifyFails = 0;  // GET: pacchetti che NimBLE non ha preso (solo per il registro)
@@ -149,7 +150,7 @@ void cleanup() {
   if (SdMan.exists(kTmpDir)) SdMan.removeDir(kTmpDir);
   phase = Phase::Idle;
   received = fileSize = 0;
-  files = 0;
+  files = kept = 0;
   sent = acked = 0;
   pendingLen = 0;
   xStreamBufferReset(dataBuf);
@@ -176,6 +177,52 @@ bool swapIn() {
   }
   if (hadOld) SdMan.removeDir(kOldDir);
   return true;
+}
+
+// Apre in scrittura un file di /camtag.new, creando la sua cartella.
+FsFile openNew(const char* rel) {
+  const String path = String(kTmpDir) + "/" + rel;
+  const int slash = path.lastIndexOf('/');
+  if (slash > static_cast<int>(strlen(kTmpDir))) SdMan.mkdir(path.substring(0, slash).c_str());
+  return SdMan.open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
+}
+
+enum class KeepResult { Copied, Different, Failed };
+
+// KEEP: copia /camtag/<percorso> in /camtag.new se ha la dimensione e il CRC
+// dati. Il CRC si controlla mentre si copia; se non torna la copia si cancella.
+// Le card attuali non si toccano: restano com'erano fino al COMMIT.
+KeepResult keepFile(const upload::Command& c) {
+  FsFile src = SdMan.open((String(kCardDir) + "/" + c.path).c_str(), O_RDONLY);
+  if (!src || src.isDirectory() || src.size() != c.size) {
+    if (src) src.close();
+    return KeepResult::Different;
+  }
+  FsFile dst = openNew(c.path);
+  if (!dst) {
+    src.close();
+    return KeepResult::Failed;
+  }
+  uint8_t buf[512];
+  uint32_t crc = 0, copied = 0;
+  bool ok = true;
+  int n;
+  while ((n = src.read(buf, sizeof(buf))) > 0) {
+    if (dst.write(buf, n) != static_cast<size_t>(n)) {
+      ok = false;
+      break;
+    }
+    crc = upload::crc32(crc, buf, n);
+    copied += n;
+  }
+  src.close();
+  dst.close();
+  if (!ok) return KeepResult::Failed;
+  if (n < 0 || copied != c.size || crc != c.crc) {
+    SdMan.remove((String(kTmpDir) + "/" + c.path).c_str());
+    return KeepResult::Different;
+  }
+  return KeepResult::Copied;
 }
 
 Event finishFile() {
@@ -217,11 +264,8 @@ Event handle(const char* line) {
 
     case upload::Cmd::File: {
       if (phase != Phase::Session) return fail("STATO", "ERRORE DI PROTOCOLLO");
-      String path = String(kTmpDir) + "/" + c.path;
-      const int slash = path.lastIndexOf('/');
-      if (slash > static_cast<int>(strlen(kTmpDir))) SdMan.mkdir(path.substring(0, slash).c_str());
       const uint32_t t = micros();
-      file = SdMan.open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
+      file = openNew(c.path);
       sdUs += micros() - t;
       if (!file) return fail("SD", "MICROSD NON SCRIVIBILE");
       fileSize = c.size;
@@ -235,12 +279,31 @@ Event handle(const char* line) {
       return Event::None;
     }
 
+    // Il file è già sull'X3, uguale: lo si copia dalle card attuali invece di
+    // riceverlo. "NO" se manca o è diverso, e allora il client lo manda con FILE.
+    case upload::Cmd::Keep: {
+      if (phase != Phase::Session) return fail("STATO", "ERRORE DI PROTOCOLLO");
+      const uint32_t t = micros();
+      const KeepResult r = keepFile(c);
+      sdUs += micros() - t;
+      if (r == KeepResult::Failed) return fail("SD", "MICROSD NON SCRIVIBILE");
+      if (r == KeepResult::Different) {
+        reply("NO");
+        return Event::None;
+      }
+      files++;
+      kept++;
+      snprintf(msg, sizeof(msg), "DONE %lu", static_cast<unsigned long>(c.size));
+      reply(msg);
+      return Event::Progress;
+    }
+
     case upload::Cmd::Commit:
       if (phase != Phase::Session || files == 0) return fail("STATO", "ERRORE DI PROTOCOLLO");
       {
         const uint32_t ms = millis() - sessionStartMs;
-        BLOG("[ble] totale: %u file, %lu B in %lu ms = %.1f KB/s; microSD %lu ms\n", files,
-             static_cast<unsigned long>(sessionBytes), static_cast<unsigned long>(ms),
+        BLOG("[ble] totale: %u file (%u uguali, copiati sull'X3), %lu B in %lu ms = %.1f KB/s; microSD %lu ms\n",
+             files, kept, static_cast<unsigned long>(sessionBytes), static_cast<unsigned long>(ms),
              ms ? sessionBytes / 1.024f / ms : 0.0f, static_cast<unsigned long>(sdUs / 1000));
       }
       if (!swapIn()) return fail("SD", "MICROSD NON SCRIVIBILE");

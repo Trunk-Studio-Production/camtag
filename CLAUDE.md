@@ -14,7 +14,8 @@ costruttori di lenti e filtri nei dati vanno bene.
 
 - `device/` — firmware PlatformIO (C++/Arduino, ESP32-C3). È il nostro codice.
   `BleUpload.cpp` riceve le card via Bluetooth (NimBLE-Arduino, acceso solo in
-  ricezione) e rimanda al telefono `project.json` (`GET`); `UploadProto.h` ha le parti provabili sull'host (`device/test/`).
+  ricezione; i file uguali non viaggiano, li copia lui dalle card attuali: `KEEP`)
+  e rimanda al telefono `project.json` (`GET`); `UploadProto.h` ha le parti provabili sull'host (`device/test/`).
   `Version.h` ha la versione del firmware (`CAMTAG_FW_VERSION`), scritta sulla
   schermata Bluetooth con i credits e mandata nella risposta a `HELLO`: lo
   strumento web la mostra accanto a `FW_VERSION`; si ferma solo se il protocollo è diverso. Si cambiano
@@ -105,6 +106,9 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
 - Vetro 528×792 in verticale (area attiva 51,84 × 77,76 mm, ~259 ppi); il
   framebuffer dell'SDK è 792×528 (orizzontale), MSB-first, **1 = bianco**.
   Controller UC8253 o UC8279 secondo il lotto, rilevato all'avvio.
+- Nello strumento web i canvas si creano con `newCanvas` (software,
+  `willReadFrequently`): la stessa card deve uscire uguale byte per byte, se no
+  l'invio Bluetooth la rimanda.
 - Nello strumento web le immagini rimpicciolite vanno ammorbidite, non
   `pixelated` (che butta via righe); i pixel veri si vedono con "Pixel 1:1".
 - Disegnando per l'e-paper, righe sottili su pixel interi e spesse almeno 2 px:
@@ -131,9 +135,11 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   `powerDownRailsForSleep` finché serve il timer). A riposo GPIO13 non si tocca.
 - Nel sonno leggero il framework isola i pin: le uscite che devono restare
   ferme vanno escluse (`keepOutputsInRest`).
-- Dopo ogni aggiornamento il pannello va spento (`displayBuffer(…, true)`, o
-  `turnOffScreen` nelle altre chiamate): lasciato alimentato, in pochi minuti
-  l'immagine scivola verso quella precedente (fantasma).
+- Dopo ogni aggiornamento il pannello va spento (`displayBuffer(…, true)`) e,
+  4 s dopo l'ultimo (`DISPLAY_SLEEP_MS`), il controller va in sonno profondo
+  (`sleepDisplay`; `wakeDisplay` in `canvas()` lo risveglia e svuota il
+  framebuffer): solo spento, in un paio di minuti affiora il negativo delle
+  schermate precedenti (`docs/schermo.md`).
 
 ## Formato card
 
@@ -358,10 +364,9 @@ la posizione naturale è `Canvas::ROT_270`).
 
 - Soglie della rotazione (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) su camera vera.
 - Ghosting (`FULL_REFRESH_EVERY`).
-- **Aperto, da qui si riparte**: sui filtri a schermo fermo cresce una grana
-  grigia sul bianco; ipotesi = il passaggio veloce che l'SDK aggiunge dopo ogni
-  refresh completo. Prova in corso e correzione proposta in `docs/schermo.md`,
-  con il riposo che scatta anche con la USB collegata.
+- Negativo a schermo fermo: corretto con il sonno profondo del controller
+  (firmware 0.2.4), da confermare con ore d'uso. Aperto in `docs/schermo.md`:
+  il riavvio da solo dopo il riposo e il riposo che scatta con la USB.
 - Energia, provato sull'X3 (20/11/2026): riposo con tasti e rotazione, blocco
   dei tasti, spento e riaccensione con il power tenuto (prima e dopo il
   bianco), passaggio al bianco, registro. Il gauge ha già 642 mAh; la batteria

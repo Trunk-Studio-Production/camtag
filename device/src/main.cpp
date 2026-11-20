@@ -214,7 +214,34 @@ uint32_t fltSettleAt = 0;     // quando rimettere a posto gli stadi; 0 = nulla i
 uint32_t fltEditUntil = 0;    // fine della modifica senza tocchi
 bool fltDrawn = false;        // il framebuffer ha la schermata filtri: si aggiorna a pezzi
 
+// Lasciato solo spento (POF), dopo un minuto o due il pannello fa affiorare il negativo
+// delle schermate precedenti (docs/schermo.md); in sonno profondo no. Ci va
+// DISPLAY_SLEEP_MS dopo l'ultimo aggiornamento, così i cambi ravvicinati dei filtri
+// restano veloci. Risvegliarlo (begin) svuota il framebuffer, quindi si fa prima di
+// disegnare, al primo canvas(); il primo aggiornamento dopo il risveglio non può
+// essere veloce (la RAM del controller non ha più il frame di prima).
+constexpr uint32_t DISPLAY_SLEEP_MS = 4000;
+bool displayAsleep = false;
+bool displayFresh = false;
+uint32_t lastPresentMs = 0;
+
+void wakeDisplay() {
+  if (!displayAsleep) return;
+  display->begin();
+  display->skipInitialResync();
+  displayAsleep = false;
+  displayFresh = true;
+  fltDrawn = false;  // framebuffer bianco: la schermata filtri va ricomposta tutta
+}
+
+void sleepDisplay() {
+  display->deepSleep();
+  displayAsleep = true;
+  displayFresh = false;
+}
+
 Canvas canvas(Canvas::Rotation rot) {
+  wakeDisplay();
   return Canvas(display->getFrameBuffer(), display->getDisplayWidth(), display->getDisplayHeight(),
                 display->getDisplayWidthBytes(), rot);
 }
@@ -427,11 +454,14 @@ void keyScan(void*) {
 #endif
 
 void present(bool forceFull) {
+  wakeDisplay();
   const bool full = forceFull || changesSinceFull >= FULL_REFRESH_EVERY;
   // Pannello spento subito dopo ogni aggiornamento: lasciato alimentato,
   // l'immagine scivola in pochi minuti verso quella di prima (fantasma).
   EPD_BEGIN();
   display->displayBuffer(full ? EInkDisplay::FULL_REFRESH : EInkDisplay::HALF_REFRESH, true);
+  lastPresentMs = millis();
+  displayFresh = false;
   EPD_END(full ? "completo" : "mezzo");
   screenUpdates++;
   changesSinceFull = full ? 0 : changesSinceFull + 1;
@@ -441,8 +471,15 @@ void present(bool forceFull) {
 // Aggiornamento veloce (schermata filtri): anche qui il pannello si spegne subito.
 // Lascia ombra: la toglie il mezzo refresh quando ND e diottria restano fermi.
 void presentFast() {
+  wakeDisplay();
+  if (displayFresh) {
+    present(false);
+    return;
+  }
   EPD_BEGIN();
   display->displayBuffer(EInkDisplay::FAST_REFRESH, true);
+  lastPresentMs = millis();
+  displayFresh = false;
   EPD_END("veloce");
   screenUpdates++;
   fastShadow = true;
@@ -826,7 +863,7 @@ void stepLensChart(bool rockerAB, Canvas::Rotation rot) {
 // Ridisegna solo alcune parti (riquadri, stadi) sopra la schermata già composta.
 // Se il framebuffer non la contiene (dopo l'avvio, con un banner) la ricompone tutta.
 void filtersUpdate(uint8_t parts, Refresh mode) {
-  if (!fltDrawn || bannerUntilMs || drawnRot != rotationFor(cards[current], rotation)) {
+  if (!fltDrawn || displayAsleep || bannerUntilMs || drawnRot != rotationFor(cards[current], rotation)) {
     bannerUntilMs = 0;
     showCard(current, mode == Refresh::Fast ? Refresh::Half : mode);
     return;
@@ -1292,6 +1329,7 @@ void rest() {
   const auto powerPin = static_cast<gpio_num_t>(BoardConfig::ACTIVE.input.power);
   const int powerDown = BoardConfig::ACTIVE.input.powerActiveHigh ? HIGH : LOW;
   LOGF("[riposo] inizio\n");
+  if (!displayAsleep) sleepDisplay();
   // keyScan fermo: a riposo l'ADC lo legge solo questo ciclo. Preso con adcLock, così
   // non resta sospeso a metà lettura.
   xSemaphoreTake(adcLock, portMAX_DELAY);
@@ -1707,6 +1745,7 @@ void loop() {
 #ifdef CAMTAG_DEBUG
   serialCommands();
 #endif
+  if (!displayAsleep && fltSel < 0 && !fltSettleAt && millis() - lastPresentMs >= DISPLAY_SLEEP_MS) sleepDisplay();
   // La capacità vera della batteria nel gauge, che torna al valore di fabbrica quando
   // resta senza alimentazione: un passo per giro, circa 8 s in tutto.
   if (gaugePending) gaugePending = millis() < 30000 && BatteryMonitor::loadDesignCapacity();

@@ -822,9 +822,13 @@ function wrap(ctx, text, maxW) {
   }
   return out;
 }
+// willReadFrequently: sempre disegno in software. Senza, Chromium comincia sulla GPU
+// e passa al software dopo qualche lettura dei pixel: l'antialiasing cambia appena e
+// la soglia a 1 bit sposta qualche pixel, quindi la stessa card uscirebbe diversa da
+// un'esportazione all'altra (e l'invio via Bluetooth la rimanderebbe: KEEP).
 function newCanvas(W, H) {
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  const ctx = cv.getContext('2d', { willReadFrequently: true }); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
   return [cv, ctx];
 }
 function dims(layout) { const { w, h } = DEVICES[state.device]; return layout === 'port' ? [h, w] : [w, h]; }
@@ -2648,12 +2652,13 @@ new ResizeObserver(fitStage).observe($('.pbar'));  // i comandi vanno a capo: ca
 const PROJECT_FILE = 'project.json';  // in /camtag, accanto alle card
 // Firmware che questo strumento si aspetta sull'X3: lo stesso di CAMTAG_FW_VERSION
 // in device/src/Version.h. L'X3 lo dice nella risposta a HELLO (docs/bluetooth.md).
-const FW_VERSION = '0.1.0';
+const FW_VERSION = '0.2.4';
 const BLE = {
   service: 'c4a70001-1b2e-4f3a-9d6e-3a7c5e0b2f10',
   ctrl: 'c4a70002-1b2e-4f3a-9d6e-3a7c5e0b2f10',
   data: 'c4a70003-1b2e-4f3a-9d6e-3a7c5e0b2f10',
-  version: 2,        // protocollo: docs/bluetooth.md
+  version: 3,        // protocollo: docs/bluetooth.md
+  oldVersions: [2],  // ancora accettati: senza KEEP, si manda tutto
   // Byte in volo non ancora confermati (il dispositivo ne tiene 16 KB). Non alzarla:
   // con 24 KB il browser sul Mac intasa la sua coda di scritture e l'invio rallenta o si blocca.
   window: 8192,
@@ -2798,7 +2803,8 @@ async function bleSession(work, onFail) {
         const h = (await link.next()).split(' ');
         if (h[1] !== 'CAMTAG') throw new Error('Il dispositivo non è un CamTag.');
         const fw = h[5] === 'FW' ? h[6] : null;
-        if (+h[2] !== BLE.version) throw new Error(`Il firmware dell'X3 (${fw || 'precedente alla 0.1.0'}) non parla con questo strumento, fatto per la ${FW_VERSION}: aggiornali insieme.`);
+        link.version = +h[2];
+        if (link.version !== BLE.version && !BLE.oldVersions.includes(link.version)) throw new Error(`Il firmware dell'X3 (${fw || 'precedente alla 0.1.0'}) non parla con questo strumento, fatto per la ${FW_VERSION}: aggiornali insieme.`);
         bleShowFw(fw);
         mtu = +h[4] || 23;
       }
@@ -2828,11 +2834,21 @@ async function bleSend() {
     await link.open();
 
     await link.cmd('BEGIN'); await link.next();
-    let sent = 0;
+    let sent = 0, kept = 0, keptBytes = 0;
     const t0 = Date.now();
     for (const [i, f] of files.entries()) {
-      bleUi(`Invio ${i + 1} di ${files.length}…`, { busy: true, progress: sent / total, detail: `${f.path} · ${Math.round(sent / 1024)} di ${Math.round(total / 1024)} KB` });
-      await link.cmd(`FILE ${f.bytes.length} ${crc32(f.bytes).toString(16)} ${f.path}`);
+      const spec = `${f.bytes.length} ${crc32(f.bytes).toString(16)} ${f.path}`;
+      const same = kept ? ` · ${kept} già uguali sull'X3` : '';
+      // Un file uguale a quello che l'X3 ha già lo copia lui dalle card attuali
+      // (KEEP): viaggiano solo le pagine cambiate. project.json cambia sempre (savedAt).
+      if (link.version >= 3 && f.bytes.length && f.path !== PROJECT_FILE) {
+        bleUi(`Confronto ${i + 1} di ${files.length}…`, { busy: true, progress: sent / total, detail: `${f.path}${same}` });
+        await link.cmd(`KEEP ${spec}`);
+        if ((await link.next()).startsWith('DONE')) { kept++; keptBytes += f.bytes.length; sent += f.bytes.length; continue; }
+      }
+      bleUi(`Invio ${i + 1} di ${files.length}…`, { busy: true, progress: sent / total, detail: `${f.path} · ${Math.round(sent / 1024)} di ${Math.round(total / 1024)} KB${same}` });
+      console.info('[ble] invio', f.path, link.version >= 3 ? '(diverso o assente sull\'X3)' : '(protocollo 2: niente confronto)');
+      await link.cmd(`FILE ${spec}`);
       const r = await link.next();
       if (r.startsWith('DONE')) continue;  // file vuoto
       link.acked = 0;
@@ -2849,7 +2865,10 @@ async function bleSend() {
     bleUi('Salvo sul dispositivo…', { busy: true, progress: 1 });
     await link.cmd('COMMIT'); await link.next();
     const secs = Math.max(1, Math.round((Date.now() - t0) / 1000));
-    bleUi('Fatto: le card e il progetto sono sull\'X3.', { progress: 1, detail: `${files.length} file, ${Math.round(total / 1024)} KB in ${secs} s.` });
+    const kb = n => Math.round(n / 1024);
+    bleUi('Fatto: le card e il progetto sono sull\'X3.', { progress: 1, detail: kept
+      ? `Inviati ${files.length - kept} file su ${files.length} (${kb(total - keptBytes)} KB in ${secs} s): gli altri ${kept} erano già uguali sull'X3.`
+      : `${files.length} file, ${kb(total)} KB in ${secs} s.${link.version < 3 ? ' L\'X3 ha un firmware che non confronta le pagine: le riceve tutte.' : ' Nessuno era uguale a quelli sull\'X3.'}` });
   }, async (e, link) => {
     if (link.connected()) { try { await link.cmd('ABORT'); } catch {} }
     const c = link.cancelled();

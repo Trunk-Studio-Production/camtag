@@ -1,6 +1,6 @@
 # Schermo: problemi aperti
 
-## Retinatura che cresce a schermo fermo (aperto, 20/11/2026)
+## Negativo delle schermate precedenti a schermo fermo (corretto, da confermare)
 
 **Sintomo.** Sulla schermata filtri, qualche minuto dopo l'ultimo aggiornamento,
 sul bianco affiora piano una grana grigia uniforme ("retinatura") che diventa
@@ -49,16 +49,41 @@ Registro della seriale (X3 sulla USB, schermata filtri):
 18:36:51 [riposo] inizio                     <- vedi "Riposo con la USB" sotto
 ```
 
-**Prova in corso.** Sulla lens chart, cambiare pagina con X/Y fino al refresh
-completo (lampeggia in negativo, al massimo 6 cambi) e lasciarla ferma 5–10
-minuti, guardando le zone bianche grandi.
-- Se compare la grana: l'ipotesi è confermata. Correzione proposta: in
-  `present()` dopo un completo fare anche un mezzo refresh dello stesso
-  frame, così l'ultima forma d'onda non è mai quella veloce (l'SDK non si
-  modifica). Costa circa un secondo in più sui completi.
-- Se resta pulita: l'ipotesi è sbagliata. Ripartire da cosa si era fatto sui
-  filtri subito prima che ricomparisse, con il registro dal vivo
-  (`.venv/bin/python scripts/taratura.py log`, righe `[epd]` e `[filtri]`).
+**Prove del 20/11/2026 sera: l'ipotesi del passaggio veloce è smentita.**
+Il negativo è quello delle schermate precedenti (Bluetooth, o un misto delle
+pagine viste prima): il bianco si ingrigisce tranne dove prima c'era nero.
+- 0.2.1, mezzo refresh dopo ogni completo: il negativo torna, sui filtri e
+  sulla lens chart.
+- 0.2.2, solo mezzi refresh (`kFullRefresh = false` in `present()`): torna lo
+  stesso. Registro della seriale: uscita dal Bluetooth sui filtri alle 20:21:57
+  (mezzo, `X3_POF` in fondo), negativo visibile verso le 20:23:20; in mezzo
+  nessuna riga: niente comandi allo schermo, niente riposo, niente riavvio, X3
+  sveglio sulla USB.
+
+Quindi la causa non è il tipo di refresh né il riposo: dopo l'aggiornamento il
+pannello scivola da solo, con il controller spento (`POF`) e nessun comando.
+Sospetti: lo stato del controller dopo il `POF` (uscite non scaricate, la
+carica che resta sui pixel), o le forme d'onda dell'SDK (non finiscono a
+tensione zero). Leve senza toccare l'SDK: mettere il controller in sonno
+profondo dopo ogni aggiornamento (`deepSleep`, poi `begin` +
+`skipInitialResync` al successivo), oppure forme d'onda nostre con
+`-DFREEINK_UC8253_X3_CONFIG` (vedi `Uc8253X3Driver.cpp`).
+
+**Correzione (firmware 0.2.3–0.2.4).** Il controller va in sonno profondo
+(`deepSleep`, comando 0x07 A5) dopo ogni aggiornamento: con la 0.2.3, subito,
+il negativo non è più comparso. Risvegliarlo vuol dire `begin` +
+`skipInitialResync`, che svuota il framebuffer, e il primo aggiornamento dopo
+non può essere veloce: i cambi dei filtri diventavano lenti. Nella 0.2.4 il
+sonno arriva `DISPLAY_SLEEP_MS` (4 s, scelti provando) dopo l'ultimo
+aggiornamento, non durante la modifica né prima del riordino degli stadi, e
+all'inizio del riposo (`wakeDisplay`/`sleepDisplay` in `main.cpp`). Da
+confermare con qualche ora d'uso: che il negativo non torni anche con i 4 s
+di pannello solo spento.
+
+**Riavvio da solo (da capire).** Alle 20:19:23 l'X3 è andato a riposo con il
+cavo attaccato; poco dopo la porta USB ha cambiato nome e lo schermo ha fatto
+un completo (con la 0.2.2 solo un avvio lo fa), senza che il cavo fosse
+toccato. Il motivo si è perso perché riaprire la seriale lo ha riavviato di nuovo.
 
 **Strada scartata.** CrossPoint sull'X3 non usa il mezzo refresh dell'SDK:
 prima chiama `requestResync(1)`, che lo trasforma in un completo con un
