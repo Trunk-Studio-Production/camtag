@@ -1,13 +1,15 @@
-// Rigenera le schermate del manuale (companion/manuale/*.png) dal simulatore dello
-// strumento web, con un progetto di prova: dopo ogni cambio di layout basta rifarle.
+// Rigenera le schermate del manuale dal simulatore dello strumento web, con un
+// progetto di prova: dopo ogni cambio di layout basta rifarle. Due lingue, card e
+// scritte dell'X3 nella stessa: 'it' per companion/manuale/, 'en' per companion/manual/.
 //
 // Uso: servi la radice del repo (python3 -m http.server 8766), apri
 // http://localhost:8766/companion/, incolla questo file nella console ed esegui
-// makeManualShots(): scarica manuale-schermate.zip, da scompattare in
-// companion/manuale/ sopra i PNG che ci sono. Lo stato dello strumento non viene
-// toccato (né salvato). makeManualShots(url) invece manda ogni PNG con un PUT a
+// makeManualShots('it') e makeManualShots('en'): ognuna scarica
+// manuale-schermate-<lingua>.zip, da scompattare nella cartella del suo manuale
+// sopra i PNG che ci sono. Lo stato dello strumento non viene toccato (né
+// salvato). makeManualShots(lingua, url) invece manda ogni PNG con un PUT a
 // url + nome.png, per chi ha un piccolo server che li scrive su disco.
-async function makeManualShots(putUrl = null) {
+async function makeManualShots(lang = 'it', putUrl = null) {
   const keep = state, keepSim = { ...sim };
   const files = [];
   try {
@@ -17,6 +19,7 @@ async function makeManualShots(putUrl = null) {
 
     // Progetto di prova: sei prime, un kit filtri con ND, diottria e vetri, una crew.
     state = migrate(freshState());
+    state.lang = state.deviceLang = lang;
     state.production = 'DEMO';
     for (const f of ['18', '25', '35', '47', '75', '125']) addDbLens(lensById.get(`arri-signature-prime-${f}`), 'LPL');
     state.filters = {
@@ -53,12 +56,24 @@ async function makeManualShots(putUrl = null) {
       strokeBox(ctx, 16, 16, W - 32, H - 32, 4);
       tinyCentered(ctx, W, mid - 150, 'BLUETOOTH', 5);
       tinyCentered(ctx, W, mid - 60, 'CAMTAG-1A2B', 3);
-      tinyCentered(ctx, W, mid + 20, 'IN ATTESA', 3);
-      tinyCentered(ctx, W, mid + 80, 'APRI CAMTAG SUL TELEFONO', 2);
-      tinyCentered(ctx, W, mid + 130, 'X O Y PER USCIRE', 2);
+      const en = lang === 'en';
+      tinyCentered(ctx, W, mid + 20, en ? 'WAITING' : 'IN ATTESA', 3);
+      tinyCentered(ctx, W, mid + 80, en ? 'OPEN CAMTAG ON YOUR PHONE' : 'APRI CAMTAG SUL TELEFONO', 2);
+      tinyCentered(ctx, W, mid + 130, en ? 'X OR Y TO EXIT' : 'X O Y PER USCIRE', 2);
       tinyCentered(ctx, W, H - 100, `FIRMWARE ${FW_VERSION}`, 2);
-      tinyCentered(ctx, W, H - 76, 'SVILUPPATO DA IACOPO BOCCALARI', 2);
+      tinyCentered(ctx, W, H - 76, en ? 'DEVELOPED BY IACOPO BOCCALARI' : 'SVILUPPATO DA IACOPO BOCCALARI', 2);
       tinyCentered(ctx, W, H - 52, 'TRUNK STUDIO - TRUNKSTUDIO.IT', 2);
+    } });
+    // Scelta della lingua al primo avvio: come showLangChoice nel firmware.
+    await shot('lang', { draw: (ctx, W, H) => {
+      const mid = H / 2, sc = 4, lh = 7 * sc, gap = 24, pad = 26, l1 = 'A / B  ENGLISH', l2 = 'C / D  ITALIANO';
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#000';
+      tinyCentered(ctx, W, mid - 170, 'CAMTAG', 6);
+      tinyCentered(ctx, W, mid - 80, 'LANGUAGE - LINGUA', 3);
+      const bw = Math.max(tinyWidth(l1, sc), tinyWidth(l2, sc)) + 2 * pad, bh = 2 * lh + gap + 2 * pad, bx = Math.trunc((W - bw) / 2), by = mid - 30;
+      strokeBox(ctx, bx, by, bw, bh, 4);
+      tinyText(ctx, bx + pad, by + pad, l1, sc); tinyText(ctx, bx + pad, by + pad + lh + gap, l2, sc);
+      drawKeyLabels(ctx, 0);
     } });
     // Senza card: come showMessage nel firmware.
     state.auto = { lenschart: false, filters: false, filterlist: false }; state.cards = [];
@@ -75,6 +90,6 @@ async function makeManualShots(putUrl = null) {
   for (const [name, blob] of files) zip.file(name, blob);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(await zip.generateAsync({ type: 'blob' }));
-  a.download = 'manuale-schermate.zip'; a.click();
+  a.download = `manuale-schermate-${lang}.zip`; a.click();
   return files.map(([n]) => n);
 }

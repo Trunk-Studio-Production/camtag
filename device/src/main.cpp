@@ -58,10 +58,12 @@
 #include "BleUpload.h"
 #include "Canvas.h"
 #include "Filters.h"
+#include "Lang.h"
 #include "TinyFont.h"
 #include "Version.h"
 
 namespace {
+using lang::tr;
 
 constexpr const char* kCardDir = "/camtag";
 // Scheda di spento: sta con le card ma non entra nel giro delle pagine.
@@ -270,6 +272,15 @@ void loadCardList() {
   loadSettings();
 }
 
+// Lingua delle scritte del firmware: da NVS, da lang= in settings.ini o dalla
+// schermata di scelta del primo avvio. Senza scelta resta l'inglese.
+bool choosingLang = false;
+void setLang(lang::Lang l) {
+  if (l >= lang::kCount) return;
+  lang::current = l;
+  if (prefs.getUChar("lang", 255) != l) prefs.putUChar("lang", l);
+}
+
 // Legge settings.ini: righe "chiave=valore", il resto si ignora.
 void loadSettings() {
   keyLabels = true;
@@ -290,6 +301,7 @@ void loadSettings() {
         const int v = atoi(eq + 1);
         if (key == "keys") keyLabels = v != 0;
         else if (key == "off.logo") offLogo = v ? 1 : 0;
+        else if (key == "lang") setLang(lang::parse(eq + 1));
       }
       n = 0;
       if (ch < 0) break;
@@ -298,7 +310,7 @@ void loadSettings() {
     }
   }
   f.close();
-  LOGF("[camtag] impostazioni: tasti %d, nome %d\n", keyLabels, offLogo);
+  LOGF("[camtag] impostazioni: tasti %d, nome %d, lingua %d\n", keyLabels, offLogo, lang::current);
 }
 
 // Rotazione effettiva per una card: usa la variante adatta all'orientamento;
@@ -715,6 +727,31 @@ void showMessage(const char* line1, const char* line2) {
   prefs.putString("shown", "");  // al prossimo avvio ridisegna
 }
 
+// Scelta della lingua al primo avvio (finché in NVS non c'è "lang"): A o B
+// inglese, C o D italiano, con le etichette dei tasti per trovarli. Bilingue.
+void showLangChoice() {
+  Canvas c = canvas(rotation);
+  c.clear();
+  const bool port = Canvas::isPortrait(rotation);
+  const int W = c.width(), mid = c.height() / 2;
+  c.textCentered(mid - (port ? 170 : 150), "CAMTAG", port ? 6 : 8);
+  c.textCentered(mid - (port ? 80 : 70), "LANGUAGE - LINGUA", 3);
+  const int s = port ? 4 : 5, lh = 7 * s, gap = 24, pad = 26;
+  const char* l1 = "A / B  ENGLISH";
+  const char* l2 = "C / D  ITALIANO";
+  const int bw = std::max(tinyfont::textWidth(l1, s), tinyfont::textWidth(l2, s)) + 2 * pad;
+  const int bh = 2 * lh + gap + 2 * pad, bx = (W - bw) / 2, by = mid - (port ? 30 : 30);
+  c.strokeRect(bx, by, bw, bh, 4, true);
+  c.text(bx + pad, by + pad, l1, s);
+  c.text(bx + pad, by + pad + lh + gap, l2, s);
+  const bool saved = keyLabels;
+  keyLabels = true;
+  drawKeyLabels(c);
+  keyLabels = saved;
+  present(true);
+  prefs.putString("shown", "");
+}
+
 // Indicazioni nel verso del contenuto: con la rotazione bloccata restano ferme con lui
 // (chi monta l'X3 a testa in giù vuole vedere tutto a testa in giù).
 void drawHints() {
@@ -802,7 +839,7 @@ void showCard(int index, Refresh mode, const char* banner = nullptr) {
   const Canvas::BmpResult res = c.drawBmp(f);
   f.close();
   if (res != Canvas::BmpResult::Ok) {
-    showMessage("BMP NON VALIDO", card.base.c_str());
+    showMessage(tr(lang::BadBmp), card.base.c_str());
     return;
   }
   fltDrawn = filtersOn();
@@ -990,7 +1027,7 @@ void toggleRotationLock() {
   }
   prefs.putBool("lock", rotationLocked);
   prefs.putUChar("rot", rotation);
-  showCard(current, false, rotationLocked ? "ROTAZIONE BLOCCATA" : "ROTAZIONE AUTOMATICA");
+  showCard(current, false, tr(rotationLocked ? lang::RotLocked : lang::RotAuto));
   bannerUntilMs = millis() + BANNER_MS;
 }
 
@@ -1008,11 +1045,11 @@ void drawReceive(const char* status, const char* detail, bool full) {
   c.textCentered(mid - 60, bleName, port ? 3 : 4);
   c.textCentered(mid + 20, status, port ? 3 : 4);
   if (detail) c.textCentered(mid + 80, detail, 2);
-  c.textCentered(mid + 130, "X O Y PER USCIRE", 2);
+  c.textCentered(mid + 130, tr(lang::ExitHint), 2);
   // In piccolo in fondo: versione del firmware e credits.
   const int h = c.height();
   c.textCentered(h - 100, "FIRMWARE " CAMTAG_FW_VERSION, 2);
-  c.textCentered(h - 76, "SVILUPPATO DA IACOPO BOCCALARI", 2);
+  c.textCentered(h - 76, tr(lang::Credits), 2);
   c.textCentered(h - 52, "TRUNK STUDIO - TRUNKSTUDIO.IT", 2);
   present(full);
   lastReceiveDrawMs = millis();
@@ -1021,17 +1058,19 @@ void drawReceive(const char* status, const char* detail, bool full) {
 }
 
 void showCurrentOrEmpty() {
-  if (!sdReady)
-    showMessage("NESSUNA MICROSD", nullptr);
+  if (choosingLang)
+    showLangChoice();
+  else if (!sdReady)
+    showMessage(tr(lang::NoSd), nullptr);
   else if (cards.empty())
-    showMessage("NESSUNA CARD", "TIENI X PER RICEVERLE");
+    showMessage(tr(lang::NoCards), tr(lang::HoldX));
   else
     showCard(current, true);
 }
 
 void enterReceive() {
   if (!sdReady) {
-    showMessage("NESSUNA MICROSD", nullptr);
+    showMessage(tr(lang::NoSd), nullptr);
     return;
   }
   const uint64_t mac = ESP.getEfuseMac();
@@ -1039,14 +1078,14 @@ void enterReceive() {
            static_cast<unsigned>((mac >> 40) & 0xFF));
   bannerUntilMs = 0;
   if (!bleupload::start(bleName)) {
-    showMessage("BLUETOOTH NON DISPONIBILE", nullptr);
+    showMessage(tr(lang::BleUnavailable), nullptr);
     return;
   }
   LOGF("[camtag] ricezione: %s\n", bleName);
   receiving = true;
   drawnFiles = 0;
   lastActivityMs = millis();
-  drawReceive("IN ATTESA", "APRI CAMTAG SUL TELEFONO", true);
+  drawReceive(tr(lang::Waiting), tr(lang::OpenPhone), true);
 }
 
 void exitReceive() {
@@ -1066,10 +1105,10 @@ void receiveDone() {
   loadFilters();
   current = 0;
   if (cards.empty()) {
-    showMessage("NESSUNA CARD", "TIENI X PER RICEVERLE");
+    showMessage(tr(lang::NoCards), tr(lang::HoldX));
     return;
   }
-  showCard(0, true, "CARD AGGIORNATE");
+  showCard(0, true, tr(lang::CardsUpdated));
   bannerUntilMs = millis() + BANNER_MS;
 }
 
@@ -1080,17 +1119,17 @@ void loopReceive() {
   switch (bleupload::poll()) {
     case bleupload::Event::Connected:
       lastActivityMs = millis();
-      drawReceive("CONNESSO", nullptr, false);
+      drawReceive(tr(lang::Connected), nullptr, false);
       break;
     case bleupload::Event::Disconnected:
       lastActivityMs = millis();
-      drawReceive("IN ATTESA", "COLLEGAMENTO CHIUSO", false);
+      drawReceive(tr(lang::Waiting), tr(lang::LinkClosed), false);
       break;
     case bleupload::Event::Progress:
       lastActivityMs = millis();
       if (bleupload::filesReceived() != drawnFiles && millis() - lastReceiveDrawMs > RECEIVE_REDRAW_MS) {
         drawnFiles = bleupload::filesReceived();
-        snprintf(line, sizeof(line), "RICEVUTI %u FILE", static_cast<unsigned>(drawnFiles));
+        snprintf(line, sizeof(line), tr(lang::ReceivedN), static_cast<unsigned>(drawnFiles));
         drawReceive(line, nullptr, false);
       }
       break;
@@ -1099,19 +1138,19 @@ void loopReceive() {
       return;
     case bleupload::Event::Failed:
       lastActivityMs = millis();
-      drawReceive("ERRORE", bleupload::lastError(), false);
+      drawReceive(tr(lang::Error), bleupload::lastError(), false);
       break;
     case bleupload::Event::Sending:
       lastActivityMs = millis();
-      drawReceive("INVIO DEL PROGETTO", nullptr, false);
+      drawReceive(tr(lang::SendingProject), nullptr, false);
       break;
     case bleupload::Event::Sent:
       lastActivityMs = millis();
-      drawReceive("PROGETTO INVIATO", "CARD INVARIATE", false);
+      drawReceive(tr(lang::ProjectSent), tr(lang::CardsUnchanged), false);
       break;
     case bleupload::Event::Aborted:
       lastActivityMs = millis();
-      drawReceive("ANNULLATO", "CARD INVARIATE", false);
+      drawReceive(tr(lang::Cancelled), tr(lang::CardsUnchanged), false);
       break;
     case bleupload::Event::None:
       break;
@@ -1204,7 +1243,7 @@ void drawOff(Off why) {
   const int fy = c.height() - in.bottom - (in.bottom ? kGap : 0) - kH;
   c.fillRect(0, fy, c.width(), kH, false);
   c.fillRect(0, fy, c.width(), 2, true);
-  c.textCentered(fy + 13, why == Off::Empty ? "BATTERIA SCARICA - METTI IN CARICA" : "SPENTO - TIENI POWER PER ACCENDERE",
+  c.textCentered(fy + 13, tr(why == Off::Empty ? lang::OffEmpty : lang::OffHold),
                  kScale);
   if (why != Off::Blank) {
     // Quanta batteria aveva quando si è spento: in alto a destra, o al centro in alto
@@ -1406,7 +1445,7 @@ void rest() {
 // Cavo attaccato o staccato, carica cominciata o finita: ridisegna la card quando
 // due letture di fila, a un secondo, sono d'accordo.
 void pollUsb() {
-  if (cards.empty() || fltSel >= 0 || bannerUntilMs || millis() - usbPollMs < USB_POLL_MS) return;
+  if (choosingLang || cards.empty() || fltSel >= 0 || bannerUntilMs || millis() - usbPollMs < USB_POLL_MS) return;
   usbPollMs = millis();
   const UsbState s = readUsb();
   if (s == usbShown) {
@@ -1446,7 +1485,7 @@ void pollOrientation() {
   rotation = seen;
   lastActivityMs = millis();
   LOGF("[camtag] verso %u\n", rotation);
-  if (cards.empty()) {
+  if (choosingLang || cards.empty()) {
     showCurrentOrEmpty();  // anche i messaggi seguono il verso
     return;
   }
@@ -1509,6 +1548,8 @@ void setup() {
        static_cast<int>(wake));
 
   prefs.begin("camtag", false);
+  const uint8_t savedLang = prefs.getUChar("lang", 255);
+  if (savedLang < lang::kCount) lang::current = static_cast<lang::Lang>(savedLang);
   // Era spento: lo riaccende solo il power tenuto premuto; un tocco breve lo rimanda a
   // dormire senza toccare lo schermo. Il timer invece lo sveglia per passare al bianco.
   // Dopo un caricamento del firmware o l'apertura della seriale (altri motivi di
@@ -1560,18 +1601,28 @@ void setup() {
   keysLocked = prefs.getBool("keylock", false);  // il lucchetto può essere ancora a schermo
   logBattery(battery::kBoot, static_cast<int>(reset) * 100 + static_cast<int>(wake));
 
-  if (!sdReady) {
-    showMessage("NESSUNA MICROSD", nullptr);
+  if (sdReady) {
+    loadCardList();  // con settings.ini, che può dare la lingua
+    loadFilters();
+  }
+  if (!cards.empty())
+    current = std::min(std::max(static_cast<int>(prefs.getInt("idx", 0)), 0), static_cast<int>(cards.size()) - 1);
+  if (prefs.getUChar("lang", 255) >= lang::kCount) {
+    choosingLang = true;
+    keysLocked = false;
+    prefs.putBool("keylock", false);
+    showLangChoice();
     return;
   }
-  loadCardList();
-  loadFilters();
+  if (!sdReady) {
+    showMessage(tr(lang::NoSd), nullptr);
+    return;
+  }
   if (cards.empty()) {
-    showMessage("NESSUNA CARD", "TIENI X PER RICEVERLE");
+    showMessage(tr(lang::NoCards), tr(lang::HoldX));
     return;
   }
 
-  current = std::min(std::max(static_cast<int>(prefs.getInt("idx", 0)), 0), static_cast<int>(cards.size()) - 1);
   // L'e-paper conserva l'immagine: se mostra già questa card, nello stesso
   // verso, non ridisegnare. Dopo lo spento "shown" è vuoto e si ridisegna sempre.
   const Canvas::Rotation want = rotationFor(cards[current], rotation);
@@ -1653,6 +1704,16 @@ void handleKeys() {
     }
     if (k != keyHeld) continue;
     keyHeld = 0;
+    if (choosingLang) {
+      holdFired = false;
+      if (k >= 'A' && k <= 'D') {
+        setLang(k <= 'B' ? lang::En : lang::It);
+        choosingLang = false;
+        LOGF("[camtag] lingua scelta: %d\n", lang::current);
+        showCurrentOrEmpty();
+      }
+      continue;
+    }
     if (holdFired) {
       holdFired = false;
     } else if (!receiving && ev.t - keyHeldAt >= LONG_PRESS_MS && hasLongPress(k)) {
@@ -1661,7 +1722,7 @@ void handleKeys() {
       shortPress(k);
     }
   }
-  if (keyHeld && !holdFired && !receiving && millis() - keyHeldAt >= LONG_PRESS_MS && hasLongPress(keyHeld)) {
+  if (keyHeld && !holdFired && !receiving && !choosingLang && millis() - keyHeldAt >= LONG_PRESS_MS && hasLongPress(keyHeld)) {
     holdFired = true;
     longPress(keyHeld);
   }
@@ -1676,7 +1737,7 @@ void readPower() {
 // Power breve: blocca o sblocca i tasti. Il lucchetto compare con un aggiornamento
 // veloce e sparisce con un mezzo refresh, che non lascia ombra.
 void toggleKeyLock() {
-  if (receiving || cards.empty()) return;
+  if (receiving || choosingLang || cards.empty()) return;
   keysLocked = !keysLocked;
   LOGF("[camtag] tasti %s\n", keysLocked ? "bloccati" : "liberi");
   prefs.putBool("keylock", keysLocked);

@@ -7,6 +7,7 @@
 #include <freertos/queue.h>
 #include <freertos/stream_buffer.h>
 
+#include "Lang.h"
 #include "UploadProto.h"
 #include "Version.h"
 
@@ -229,7 +230,7 @@ Event finishFile() {
   const uint32_t t = micros();
   file.close();
   sdUs += micros() - t;
-  if (fileCrc != expectedCrc) return fail("CRC", "DATI ROVINATI");
+  if (fileCrc != expectedCrc) return fail("CRC", lang::tr(lang::ErrCrc));
   files++;
   sessionBytes += received;
   BLOG("[ble] file %lu B in %lu ms\n", static_cast<unsigned long>(received),
@@ -254,7 +255,7 @@ Event handle(const char* line) {
 
     case upload::Cmd::Begin:
       cleanup();
-      if (!SdMan.mkdir(kTmpDir)) return fail("SD", "MICROSD NON SCRIVIBILE");
+      if (!SdMan.mkdir(kTmpDir)) return fail("SD", lang::tr(lang::ErrSdWrite));
       phase = Phase::Session;
       sessionStartMs = millis();
       sessionBytes = 0;
@@ -263,11 +264,11 @@ Event handle(const char* line) {
       return Event::Progress;
 
     case upload::Cmd::File: {
-      if (phase != Phase::Session) return fail("STATO", "ERRORE DI PROTOCOLLO");
+      if (phase != Phase::Session) return fail("STATO", lang::tr(lang::ErrProtocol));
       const uint32_t t = micros();
       file = openNew(c.path);
       sdUs += micros() - t;
-      if (!file) return fail("SD", "MICROSD NON SCRIVIBILE");
+      if (!file) return fail("SD", lang::tr(lang::ErrSdWrite));
       fileSize = c.size;
       expectedCrc = c.crc;
       fileCrc = 0;
@@ -282,11 +283,11 @@ Event handle(const char* line) {
     // Il file è già sull'X3, uguale: lo si copia dalle card attuali invece di
     // riceverlo. "NO" se manca o è diverso, e allora il client lo manda con FILE.
     case upload::Cmd::Keep: {
-      if (phase != Phase::Session) return fail("STATO", "ERRORE DI PROTOCOLLO");
+      if (phase != Phase::Session) return fail("STATO", lang::tr(lang::ErrProtocol));
       const uint32_t t = micros();
       const KeepResult r = keepFile(c);
       sdUs += micros() - t;
-      if (r == KeepResult::Failed) return fail("SD", "MICROSD NON SCRIVIBILE");
+      if (r == KeepResult::Failed) return fail("SD", lang::tr(lang::ErrSdWrite));
       if (r == KeepResult::Different) {
         reply("NO");
         return Event::None;
@@ -299,14 +300,14 @@ Event handle(const char* line) {
     }
 
     case upload::Cmd::Commit:
-      if (phase != Phase::Session || files == 0) return fail("STATO", "ERRORE DI PROTOCOLLO");
+      if (phase != Phase::Session || files == 0) return fail("STATO", lang::tr(lang::ErrProtocol));
       {
         const uint32_t ms = millis() - sessionStartMs;
         BLOG("[ble] totale: %u file (%u uguali, copiati sull'X3), %lu B in %lu ms = %.1f KB/s; microSD %lu ms\n",
              files, kept, static_cast<unsigned long>(sessionBytes), static_cast<unsigned long>(ms),
              ms ? sessionBytes / 1.024f / ms : 0.0f, static_cast<unsigned long>(sdUs / 1000));
       }
-      if (!swapIn()) return fail("SD", "MICROSD NON SCRIVIBILE");
+      if (!swapIn()) return fail("SD", lang::tr(lang::ErrSdWrite));
       phase = Phase::Idle;
       reply("OK");
       return Event::Done;
@@ -314,7 +315,7 @@ Event handle(const char* line) {
     // Manda al telefono un file di /camtag (es. project.json). Fuori da una
     // sessione di caricamento: le card non cambiano.
     case upload::Cmd::Get: {
-      if (phase != Phase::Idle) return fail("STATO", "ERRORE DI PROTOCOLLO");
+      if (phase != Phase::Idle) return fail("STATO", lang::tr(lang::ErrProtocol));
       const String path = String(kCardDir) + "/" + c.path;
       file = SdMan.open(path.c_str(), O_RDONLY);
       if (!file || file.isDirectory() || file.size() > upload::kMaxFileBytes) {
@@ -328,7 +329,7 @@ Event handle(const char* line) {
       uint8_t buf[512];
       int n;
       while ((n = file.read(buf, sizeof(buf))) > 0) fileCrc = upload::crc32(fileCrc, buf, n);
-      if (n < 0 || !file.seekSet(0)) return fail("SD", "MICROSD ILLEGGIBILE");
+      if (n < 0 || !file.seekSet(0)) return fail("SD", lang::tr(lang::ErrSdRead));
       char head[kCmdLen];
       snprintf(head, sizeof(head), "FILE %lu %lx %s", static_cast<unsigned long>(fileSize),
                static_cast<unsigned long>(fileCrc), c.path);
@@ -369,7 +370,7 @@ Event handle(const char* line) {
     case upload::Cmd::Unknown:
       break;
   }
-  return fail("COMANDO", "ERRORE DI PROTOCOLLO");
+  return fail("COMANDO", lang::tr(lang::ErrProtocol));
 }
 
 // GET: manda pacchetti finché la finestra lo permette. Se NimBLE non ha posto,
@@ -380,7 +381,7 @@ Event pumpSend() {
   for (int i = 0; i < kSendBurst && sent < fileSize && sent - acked < kSendWindow; i++) {
     if (!pendingLen) {
       const size_t want = std::min<size_t>(chunk, fileSize - sent);
-      if (file.read(pending, want) != static_cast<int>(want)) return fail("SD", "MICROSD ILLEGGIBILE");
+      if (file.read(pending, want) != static_cast<int>(want)) return fail("SD", lang::tr(lang::ErrSdRead));
       pendingLen = want;
     }
     if (!dataChr->notify(pending, pendingLen, connHandle)) {
@@ -398,9 +399,9 @@ Event drainData() {
   Event ev = Event::None;
   size_t n;
   while ((n = xStreamBufferReceive(dataBuf, buf, sizeof(buf), 0)) > 0) {
-    if (phase != Phase::Receiving || received + n > fileSize) return fail("DATI", "ERRORE DI PROTOCOLLO");
+    if (phase != Phase::Receiving || received + n > fileSize) return fail("DATI", lang::tr(lang::ErrProtocol));
     const uint32_t t = micros();
-    if (file.write(buf, n) != n) return fail("SD", "MICROSD PIENA O GUASTA");
+    if (file.write(buf, n) != n) return fail("SD", lang::tr(lang::ErrSdFull));
     sdUs += micros() - t;
     fileCrc = upload::crc32(fileCrc, buf, n);
     received += n;
@@ -502,7 +503,7 @@ Event poll() {
   if (paramsDueMs && isConnected && static_cast<int32_t>(millis() - paramsDueMs) >= 0) requestFastInterval(connHandle);
   if (overflow) {
     overflow = false;
-    return fail("OVERFLOW", "TRASFERIMENTO TROPPO VELOCE");
+    return fail("OVERFLOW", lang::tr(lang::ErrTooFast));
   }
   char line[kCmdLen];
   Event ev = Event::None;

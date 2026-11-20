@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#121212">
 <title>CamTag · Manuale</title>
 <!-- Le schermate in questa cartella vengono dal simulatore dello strumento web
-     (stesso disegno del firmware 0.2.4), con un progetto di prova. -->
+     (stesso disegno del firmware 0.3.0), con un progetto di prova. -->
 <style>
   @font-face { font-family: "Inter"; src: url("../fonts/InterVariable.woff2") format("woff2");
                font-weight: 100 900; font-style: normal; font-display: swap; }
@@ -175,7 +175,7 @@
   <main>
     <div class="hero">
       <div>
-        <div class="eyebrow">Manuale d'uso · firmware 0.2.4</div>
+        <div class="eyebrow">Manuale d'uso · firmware 0.3.0</div>
         <h1>CamTag <em>sulla camera</em></h1>
         <p class="lede">Il badge e-paper del reparto camera: lens chart, filtri, crew e note sempre in vista, anche da spento. Qui trovi i tasti, quando premerli e cosa vedrai sullo schermo.</p>
         <div class="meta">
@@ -269,6 +269,16 @@
               <li>dopo <strong>24 ore</strong> senza toccare un tasto;</li>
               <li>con la <strong>batteria scarica</strong>: la fascia dice <span class="msg">BATTERIA SCARICA - METTI IN CARICA</span>.</li>
             </ul></div>
+        </div>
+      </div>
+      <h3>La prima accensione: la lingua</h3>
+      <div class="row">
+        <figure class="fig" data-dev='{"screen":"lang","k":0.8,"labels":true}'>
+          <figcaption>La scelta della lingua: A o B per l'inglese, C o D per l'italiano.</figcaption>
+        </figure>
+        <div>
+          <p>La prima volta che si accende, l'X3 chiede in che lingua scrivere i suoi messaggi (il riquadro senza card, la schermata Bluetooth, la fascia da spento): <kbd>A</kbd> o <kbd>B</kbd> per l'<strong>inglese</strong>, <kbd>C</kbd> o <kbd>D</kbd> per l'<strong>italiano</strong>. Le etichette sullo schermo mostrano dove sono i tasti. Finché non scegli, la domanda torna a ogni accensione.</p>
+          <p>Le card hanno la loro lingua, scelta nello strumento web, e da lì si può cambiare anche quella dell'X3 (vedi <a href="#bluetooth">Card via Bluetooth</a>).</p>
         </div>
       </div>
       <h3>Acceso consuma poco anche senza spegnerlo</h3>
@@ -411,6 +421,8 @@
           <li><strong>iPhone e iPad</strong>: Safari non ha il Bluetooth per le pagine web. Serve un browser che lo aggiunga, come <a href="https://apps.apple.com/app/id6468414672" target="_blank" rel="noopener">BLE Link</a> o <a href="https://apps.apple.com/app/id1492822055" target="_blank" rel="noopener">Bluefy</a> (App Store).</li>
           <li>La pagina va aperta dall'indirizzo <strong>https://</strong> dello strumento.</li>
         </ul></div>
+      <h3>Lingue</h3>
+      <p>Nella barra dello strumento web il pulsante della lingua (<strong>EN</strong> o <strong>IT</strong>) sceglie tre cose separate: la lingua dello <strong>strumento</strong>, quella in cui si disegnano le <strong>card</strong> e quella delle <strong>scritte dell'X3</strong>. Quest'ultima arriva all'X3 con il prossimo invio delle card; con <em>Non cambiare</em> l'X3 tiene quella scelta alla prima accensione. Card e X3 in lingue diverse vanno bene: l'invio funziona comunque.</p>
       <h3>Con la microSD</h3>
       <p>In alternativa scarica lo zip dallo strumento web (<strong>Scarica .zip</strong>) e copia la sua cartella <code>camtag/</code> nella radice della microSD, al posto di quella che c'è.</p>
     </section>

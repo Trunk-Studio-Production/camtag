@@ -2,8 +2,9 @@
 
 Badge e-paper per il reparto camera: lens chart, filtri, crew, note e
 immagini, montato sulla camera. MVP su **Xteink X3** con firmware nostro sopra
-**FreeInk SDK**. Il proprietario parla italiano: rispondi in italiano, e anche
-i testi visibili all'utente (UI web, messaggi a schermo) sono in italiano.
+**FreeInk SDK**. Il proprietario parla italiano: rispondi in italiano. Il
+prodotto è in inglese (lingua di partenza) e italiano: nel codice i testi si
+scrivono in italiano e hanno sempre la loro traduzione inglese (vedi Lingue).
 
 Il repo potrà diventare pubblico e open source: nel codice, nella
 documentazione e nei commit non citare prodotti o produttori concorrenti.
@@ -20,6 +21,8 @@ costruttori di lenti e filtri nei dati vanno bene.
   schermata Bluetooth con i credits e mandata nella risposta a `HELLO`: lo
   strumento web la mostra accanto a `FW_VERSION`; si ferma solo se il protocollo è diverso. Si cambiano
   insieme, a ogni nuovo firmware.
+  `Lang.h` ha le scritte del firmware in inglese e italiano (`tr()`): una frase
+  nuova va lì con le due lingue, e se il simulatore la disegna anche in `DEV_TEXT`.
   `Filters.cpp` è la schermata filtri provabile sull'host (lettura di
   `screen.ini`, regole degli stadi portate dal simulatore con gli stessi nomi,
   composizione dei pezzi, indicazioni); tasti, tempi e refresh sono in `main.cpp`,
@@ -30,7 +33,11 @@ costruttori di lenti e filtri nei dati vanno bene.
   generati in automatico più schede manuali (crew, note, lente singola, patch);
   esporta uno zip di BMP 1 bit o manda gli stessi file all'X3 via Web Bluetooth
   (`bleSend`; `bleGet` riprende il progetto dall'X3). Dipendenze esterne: JSZip da cdnjs (i font
-  Inter sono nel repo). Legge
+  Inter sono nel repo). `i18n.js` ha il dizionario italiano→inglese (`I18N_EN`,
+  chiave = frase italiana del sorgente): `h()` traduce da sé testi e attributi che
+  sono una chiave esatta, le frasi con valori passano da `t('… {} …', x)`, le
+  scritte sulle card da `tc()`; `?i18n=check` segnala in console le chiavi
+  mancanti. Legge
   `../data/*.json`, quindi va servito dalla radice del repo. Ha un
   **simulatore** (`simPress`/`renderSim`, solo da computer: sotto 700 px è nascosto) con tasti, rotazione, blocco e power:
   è la specifica di comportamento per il firmware, e i due devono restare allineati.
@@ -43,11 +50,12 @@ costruttori di lenti e filtri nei dati vanno bene.
   una ⓘ (`info()`): in chiaro restano solo avvisi e stati vuoti. Le preferenze
   dell'interfaccia (sezioni aperte, orientamento, anteprima o simulatore) stanno
   nel localStorage `camtag.ui.v1`: sono del browser, non entrano in `project.json`.
-- `companion/manuale/` — manuale d'uso (pulsante "Manuale" nella barra dello
-  strumento): `index.html` disegna l'X3 in SVG attorno a PNG presi dal
-  simulatore. I PNG non si aggiornano da soli: se cambiano le schermate, il
-  disegno o i tasti, rigenerali con `schermate.js` (istruzioni in testa al
-  file) e correggi il testo del manuale.
+- `companion/manuale/` (italiano) e `companion/manual/` (inglese) — manuale
+  d'uso (pulsante "Manuale", nella lingua dell'interfaccia): `index.html` disegna
+  l'X3 in SVG attorno a PNG presi dal simulatore. I PNG non si aggiornano da
+  soli: se cambiano le schermate, il disegno o i tasti, rigenerali in tutte e due
+  le lingue con `manuale/schermate.js` (istruzioni in testa al file) e correggi
+  il testo di entrambi i manuali.
 - `data/lenses.json` — database lenti (schema in `data/README.md`), dati solo
   dalle schede dei costruttori, con la fonte per ogni lente. `mounts` = attacchi
   offerti (sigle in `MOUNTS`, uguali in `data/validate.py`). Mai modificarlo per
@@ -167,8 +175,10 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   una fascia in basso, la batteria e le etichette dei tasti (`drawOff`; nello
   strumento `drawOffOverlay`, con il font 5x7 del firmware copiato in `TINY`).
 - `/camtag/settings.ini`: `keys=0|1` etichette dei tasti, `off.logo=0|1` nome
-  CAMTAG da spento (al centro senza `off.bmp`, se no in un riquadro in alto).
-  Senza il file: etichette sì, nome solo senza `off.bmp` (`loadSettings`).
+  CAMTAG da spento (al centro senza `off.bmp`, se no in un riquadro in alto),
+  `lang=en|it` lingua delle scritte del firmware (solo se scelta nello strumento;
+  il firmware la salva in NVS). Senza il file: etichette sì, nome solo senza
+  `off.bmp`, lingua invariata (`loadSettings`).
 - Etichette dei tasti (`kKeyTabs`/`drawKeyLabels`, nello strumento `KEY_TABS`,
   stesse frazioni lungo i bordi): linguette bianche con bordo nero e nome dritto
   per chi legge (A|B e C|D, X, Y, PWR, RESET, che è un tasto vero e riavvia),
@@ -210,6 +220,15 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
 ## Decisioni di prodotto
 
 - Solo X3 per ora; l'X4 è un futuro lontano.
+- Lingue (inglese e italiano), tre scelte indipendenti e mai controllate tra
+  loro: **X3** (scritte del firmware, NVS `lang`): al primo avvio, finché non c'è,
+  chiede la lingua (`showLangChoice`: A/B inglese, C/D italiano), poi la cambia
+  solo `lang=` in settings.ini; **card** (`state.lang`, nel progetto; i progetti
+  di prima della v8 sono italiani); **interfaccia** dello strumento (`uiLang`,
+  in `camtag.ui.v1`; di partenza italiano se lo è il sistema, se no inglese).
+  Nello strumento stanno tutte nel pulsante EN/IT della barra; il simulatore
+  disegna le scritte del firmware nella lingua dell'X3, o in quella delle card
+  con "Non cambiare".
 - Decimali sulle schermate: sempre il punto (0.9), senza opzione.
 - Lens chart: focale, T, CF (close focus), Ø frontale (più piccolo, dato secondario, si può
   nascondere: `state.lensFront`). Attacco (`state.lensMount`, spento di

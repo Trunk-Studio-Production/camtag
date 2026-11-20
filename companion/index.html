@@ -7,6 +7,7 @@
 <meta name="theme-color" content="#121212">
 <title>CamTag Cards</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="i18n.js"></script>
 <!-- Inter (font delle schermate) è incluso nel repo: funziona offline e uguale su ogni computer.
      Licenza: fonts/Inter-LICENSE.txt (SIL OFL 1.1). -->
 <style>
@@ -61,6 +62,10 @@
   .pop.open { display: block; }
   .menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 8px 12px; }
   .menu button:hover { background: var(--sel); }
+  .menu .mh { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 10px 12px 2px; }
+  .menu .mh:first-child { padding-top: 6px; }
+  .menu button[aria-checked="true"] { color: var(--accent); font-weight: 600; }
+  .menu .mnote { margin: 6px 0 0; padding: 8px 12px 6px; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.4; color: var(--muted); white-space: normal; }
   .tip { padding: 10px 12px; font-size: 13px; line-height: 1.45; white-space: pre-line; }
   .info { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0;
           border: 0; border-radius: 50%; background: none; color: var(--muted); vertical-align: middle; }
@@ -248,6 +253,7 @@
   #bleDlg .acts { justify-content: flex-end; gap: 8px; margin-top: 14px; }
   #bleDlg .credits { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
   #bleDlg .credits a { color: inherit; }
+  #bleDetail a { color: var(--accent); }
 
   /* ---------- 700–1099 px: due colonne; a sinistra, fisse, striscia e anteprima ---------- */
   @media (max-width: 899px) { .dev-l { display: none; } .dev-s { display: inline; } }
@@ -327,6 +333,7 @@
   <h1>CAMTAG</h1>
   <span class="dev" id="dims"><span class="dev-l"></span><span class="dev-s"></span></span>
   <span class="sp"></span>
+  <button id="langBtn" title="Lingua dello strumento, delle card e delle scritte dell'X3" aria-label="Lingue"></button>
   <a id="helpBtn" class="btn" href="manuale/" target="_blank" rel="noopener" title="Manuale d'uso: tasti, schermate, invio delle card"><span class="l">Manuale</span><span class="s">?</span></a>
   <button id="projBtn"><span class="l">Progetto ▾</span><span class="s">Progetto</span></button>
   <button id="zipBtn" title="Scarica tutte le card (.zip)"><span class="l">Scarica .zip</span><span class="s">.zip</span></button>
@@ -337,6 +344,7 @@
   <button id="importBtn" role="menuitem">Importa progetto…</button>
   <button id="exportJson" role="menuitem">Salva progetto</button>
 </div>
+<div class="pop menu" id="langMenu" role="menu"></div>
 <div class="pop menu" id="addMenu" role="menu">
   <button data-add="crew" role="menuitem">Crew</button>
   <button data-add="notes" role="menuitem">Note</button>
@@ -442,16 +450,22 @@ const DIO_LABEL = { 0.25: '+1/4', 0.5: '+1/2', 1: '+1', 2: '+2', 3: '+3', 4: '+4
 const LENS_TYPES = { prime: 'Prime', macro: 'Macro', zoom: 'Zoom', anamorphic: 'Anamorfico', probe: 'Probe', specialty: 'Speciale' };
 
 const DEFAULTS = {
-  lens:  () => ({ formats: 'both', type: 'lens', brand: 'MARCA', series: 'Serie', focal: '35', tstop: '1.8', mod: '0.35 m', front: '95 mm', thread: '', notes: '' }),
-  crew:  () => ({ formats: 'both', type: 'crew', title: 'CAMERA DEPT', lines: 'DOP: Nome Cognome\n1st AC: Nome Cognome\n2nd AC: Nome Cognome\nDIT: Nome Cognome\nGaffer: Nome Cognome' }),
-  notes: () => ({ formats: 'both', type: 'notes', title: 'NOTE', body: 'CH 1 Camera\nCH 2 Elettrici\n\nScena 12 — Steadicam' }),
+  lens:  () => ({ formats: 'both', type: 'lens', brand: tc('MARCA'), series: tc('Serie'), focal: '35', tstop: '1.8', mod: '0.35 m', front: '95 mm', thread: '', notes: '' }),
+  crew:  () => ({ formats: 'both', type: 'crew', title: 'CAMERA DEPT', lines: tc('DOP: Nome Cognome\n1st AC: Nome Cognome\n2nd AC: Nome Cognome\nDIT: Nome Cognome\nGaffer: Nome Cognome') }),
+  notes: () => ({ formats: 'both', type: 'notes', title: tc('NOTE'), body: tc('CH 1 Camera\nCH 2 Elettrici\n\nScena 12 — Steadicam') }),
   patch: () => ({ formats: 'both', type: 'patch', img: null, fit: 'contain', dither: 'atkinson', threshold: 128, contrast: 0, pivot: 128, invert: false, caption: '' }),
 };
 const TYPE_LABEL = { lens: 'Lente', crew: 'Crew', notes: 'Note', patch: 'Patch' };
+// Lingua delle card (state.lang) e delle scritte dell'X3 (state.deviceLang: lang= in
+// settings.ini; vuota = "non cambiare"): vedi i18n.js. Il simulatore disegna le
+// scritte del firmware nella lingua dell'X3, o in quella delle card se non è scelta.
+function cardLang() { try { return state.lang || uiLang; } catch { return uiLang; } }  // anche mentre `state` nasce
+const tc = (s, ...args) => tl(cardLang(), s, ...args);
+const devText = k => DEV_TEXT[state.deviceLang || cardLang()][k];
 
 function freshState() {
   return {
-    version: 7, device: 'x3', production: '', lensByMount: false, lensSplit: false, lensSeries: 'mix', zoomsLast: true, lensFront: true, lensMount: false,
+    version: 8, device: 'x3', lang: uiLang, deviceLang: '', production: '', lensByMount: false, lensSplit: false, lensSeries: 'mix', zoomsLast: true, lensFront: true, lensMount: false,
     auto: { lenschart: true, filters: true, filterlist: false },
     lenses: [],
     filters: { ndFormat: 'density', ndType: 'ND', nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], ndCombos: [], dio: [], effects: [], stages: [null, null, null], previewNd: 0, previewDio: 0 },
@@ -489,7 +503,10 @@ function migrate(s) {
   normalizeStages(s.filters);  // i vetri vanno al loro posto dopo, con lo stato pronto (fitStart)
   // v6: font, soglia del testo e separatore decimale non sono più opzioni (Inter, 128, punto).
   delete s.typo; delete s.decimal;
-  s.device = 'x3'; s.version = 7;
+  // v8: lingue. I progetti di prima erano in italiano.
+  if (!(s.lang in LANGS)) s.lang = 'it';
+  if (!(s.deviceLang in LANGS)) s.deviceLang = '';
+  s.device = 'x3'; s.version = 8;
   return s;
 }
 
@@ -538,7 +555,7 @@ function canTwoSlots(e) {
 }
 function dioSlots(d) { return d ? (d.slots === 1 ? 1 : 2) : 0; }
 // Nella riga dello stadio la diottria porta il suo nome: "+1" da solo non si capirebbe.
-function dioStageLabel(d) { return `Diottria ${dioLabel(d)}`; }
+function dioStageLabel(d) { return tc('Diottria {}', dioLabel(d)); }
 // Svuota gli stadi che puntano a un vetro tolto dal kit o già usato in un altro stadio.
 function normalizeStages(f) {
   const keys = new Set(kitGlasses(f).map(g => g.key)), seen = new Set();
@@ -652,7 +669,7 @@ function tText(l) { return l.tstop == null ? '—' : (l.stopType === 'f' ? 'f' :
 function ndLabel(d) {
   if (!d) return '—';
   const stops = Math.round(d / 0.3 * 10) / 10;
-  if (state.filters.ndFormat === 'stops') return `${fmt(stops, 1)} stop`;
+  if (state.filters.ndFormat === 'stops') return stops === 1 ? '1 stop' : tc('{} stop', fmt(stops, 1));
   if (state.filters.ndFormat === 'factor') return `${state.filters.ndType}${Math.round(2 ** stops)}`;
   return Number.isInteger(d) ? `${d}.0` : fmt(d, 2);  // 3.0 e non "3"
 }
@@ -878,7 +895,7 @@ function drawLensChart(ctx, W, H, { rows, group, mount }, pageIdx, pageCount) {
 
   if (!rows.length) {
     ctx.textAlign = 'center'; ctx.font = `600 ${Math.round(H * 0.045)}px ${FONT}`;
-    ctx.fillText('Nessuna lente selezionata', W / 2, top + (H - top) / 2);
+    ctx.fillText(tc('Nessuna lente selezionata'), W / 2, top + (H - top) / 2);
     return;
   }
   // Sigla piccola solo sulle lenti fuori dal set principale (o su tutte se non c'è).
@@ -1136,11 +1153,11 @@ function drawFiltersBackground(ctx, W, H) {
   const L = filtersLayout(W, H), f = state.filters;
   ctx.fillStyle = '#000'; ctx.fillRect(L.bar.x, L.bar.y, L.bar.w, L.bar.h);
   ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-  fitFont(ctx, 'FILTRI', 800, L.area.w - L.pad * 2, L.barH * 0.5); ctx.fillText('FILTRI', L.area.x + L.pad, L.bar.h - L.barH / 2);
+  fitFont(ctx, tc('FILTRI'), 800, L.area.w - L.pad * 2, L.barH * 0.5); ctx.fillText(tc('FILTRI'), L.area.x + L.pad, L.bar.h - L.barH / 2);
   ctx.fillStyle = '#000'; ctx.textBaseline = 'alphabetic';
   ctx.font = `700 22px ${FONT}`;
   ctx.fillText(f.ndType, L.ndLabel.x, L.ndLabel.y + 20);
-  if (L.dio) ctx.fillText('DIOTTRIA', L.dioLabel.x, L.dioLabel.y + 20);
+  if (L.dio) ctx.fillText(tc('DIOTTRIA'), L.dioLabel.x, L.dioLabel.y + 20);
   if (L.divider) ctx.fillRect(L.divider.x, L.divider.y, 3, L.divider.h);
   else ctx.fillRect(L.list.x, L.list.y - 10, L.list.w, 3);
   // Gli stadi non sono nello sfondo: cambiano sul dispositivo, li compone il
@@ -1158,7 +1175,7 @@ function filterListRows(f = state.filters) {
   if (f.nd.length) rows.push({ name: f.ndType, values: [...f.nd].sort((a, b) => a - b).map(ndLabel) });
   for (const split of [false, true]) {
     const d = dioSteps().filter(x => x && x.split === split);
-    if (d.length) rows.push({ name: split ? 'Diottrie split' : 'Diottrie', values: d.map(x => DIO_LABEL[x.v] || '+' + fmt(x.v)) });
+    if (d.length) rows.push({ name: tc(split ? 'Diottrie split' : 'Diottrie'), values: d.map(x => DIO_LABEL[x.v] || '+' + fmt(x.v)) });
   }
   for (const e of f.effects) rows.push({ name: e.name, values: e.strengths.map(x => x.s).filter(Boolean) });
   return rows;
@@ -1191,13 +1208,13 @@ function drawFilterList(ctx, W, H) {
   const pad = Math.round(W * 0.035), barH = H > W ? 64 : 56;
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, barH);
   ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-  const title = state.production ? `${state.production.toUpperCase()} · KIT FILTRI` : 'KIT FILTRI';
+  const title = state.production ? tc('{} · KIT FILTRI', state.production.toUpperCase()) : tc('KIT FILTRI');
   fitFont(ctx, title, 800, W - pad * 2, barH * 0.5); ctx.fillText(title, pad, barH / 2);
   const rows = filterListRows();
   ctx.fillStyle = '#000';
   if (!rows.length) {
     ctx.textAlign = 'center'; ctx.font = `600 ${Math.round(H * 0.045)}px ${FONT}`;
-    ctx.fillText('Nessun filtro nel kit', W / 2, barH + (H - barH) / 2);
+    ctx.fillText(tc('Nessun filtro nel kit'), W / 2, barH + (H - barH) / 2);
     return;
   }
   const top = barH + Math.round(pad * 0.6), availH = H - top - pad * 0.6;
@@ -1299,7 +1316,7 @@ function drawLens(ctx, W, H, c) {
 
   ctx.fillStyle = '#000'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   const portrait = H > W;
-  const specs = [['T', c.tstop], ['CF', c.mod], ['Ø FRONTALE', c.front], ['FILETTO FILTRI', c.thread]].filter(s => s[1]);
+  const specs = [['T', c.tstop], ['CF', c.mod], [tc('Ø FRONTALE'), c.front], [tc('FILETTO FILTRI'), c.thread]].filter(s => s[1]);
   const notesH = c.notes ? Math.round(H * 0.11) : 0;
 
   if (!portrait) {
@@ -1393,7 +1410,7 @@ function drawPatch(ctx, W, H, c) {
   } else {
     ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = `600 ${Math.round(H * 0.06)}px ${FONT}`;
-    ctx.fillText('Carica un\'immagine', W / 2, (H - capH) / 2);
+    ctx.fillText(tc('Carica un\'immagine'), W / 2, (H - capH) / 2);
   }
   if (c.caption) {
     ctx.fillStyle = '#000'; ctx.fillRect(0, H - capH, W, capH);
@@ -1518,7 +1535,8 @@ function offComposed() { return !offCard() && !!(state.off.img || state.off.text
 function hasOffBmp() { return !!offCard() || offComposed(); }
 function offLayouts() { const c = offCard(); return c ? layoutsOf(c) : ['land', 'port']; }
 // Impostazioni per il firmware (loadSettings): etichette dei tasti e nome da spento.
-function settingsIni() { return `# camtag settings v1\nkeys=${state.off.keys ? 1 : 0}\noff.logo=${state.off.logo ? 1 : 0}\n`; }
+// lang= solo se scelta: senza, l'X3 tiene la lingua che ha (scelta al primo avvio).
+function settingsIni() { return `# camtag settings v1\nkeys=${state.off.keys ? 1 : 0}\noff.logo=${state.off.logo ? 1 : 0}\n${state.deviceLang ? `lang=${state.deviceLang}\n` : ''}`; }
 
 // Font 5x7 del firmware (TinyFont.h): le scritte che disegna il dispositivo, uguali qui.
 const TINY_CHARS = ' 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ./:-%!_+';
@@ -1613,7 +1631,7 @@ function fitScale(t, scale, w) { while (scale > 1 && tinyWidth(t, scale) > w) sc
 // la fascia in basso, la batteria (qui un valore d'esempio) e le etichette dei tasti.
 // drawn = sotto c'è off.bmp.
 const OFF_GAP = 10;  // tra la fascia e le etichette in basso
-const OFF_STRIP = 36, OFF_TEXT = 'SPENTO - TIENI POWER PER ACCENDERE', LOGO_Y = 0.25;
+const OFF_STRIP = 36, LOGO_Y = 0.25;
 function logoBox(W, H) { const sc = H > W ? 6 : 8, w = tinyWidth('CAMTAG', sc) + 48, h = 7 * sc + 36; return { x: Math.trunc((W - w) / 2), y: Math.trunc(H / 4) - Math.trunc(h / 2), w, h, sc }; }
 function drawOffOverlay(ctx, W, H, q, drawn) {
   ctx.save();
@@ -1629,7 +1647,7 @@ function drawOffOverlay(ctx, W, H, q, drawn) {
   const inn = keyInsets(W, H, q), fy = H - inn.bottom - (inn.bottom ? OFF_GAP : 0) - OFF_STRIP;
   ctx.fillStyle = '#fff'; ctx.fillRect(0, fy, W, OFF_STRIP);
   ctx.fillStyle = '#000'; ctx.fillRect(0, fy, W, 2);
-  tinyCentered(ctx, W, fy + 13, OFF_TEXT, 2);
+  tinyCentered(ctx, W, fy + 13, devText('off'), 2);
   const label = '80%', w = tinyWidth(label, 2), box = { x: W - 62 - w, y: 0, w: w + 56, h: 30 };
   if (state.off.keys) {
     box.x = Math.trunc((W - box.w) / 2);
@@ -1829,12 +1847,23 @@ function h(tag, attrs = {}, ...kids) {
     if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
     else if (k === 'class') e.className = v;
     else if (v === true) e.setAttribute(k, '');
-    else if (v !== false && v != null) e.setAttribute(k, v);
+    else if (v !== false && v != null) e.setAttribute(k, I18N_ATTRS.has(k) ? tExact(v) : v);
   }
-  for (const k of kids.flat()) if (k != null) e.append(k instanceof Node ? k : document.createTextNode(k));
+  // Testi e attributi che sono una frase del dizionario escono tradotti (i18n.js);
+  // il testo di una textarea è dell'utente.
+  for (const k of kids.flat()) if (k != null) e.append(k instanceof Node ? k : document.createTextNode(tag === 'textarea' ? k : tExact(k)));
   return e;
 }
-const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+const I18N_ATTRS = new Set(['title', 'aria-label', 'placeholder']);
+// La parte fissa della pagina (barra, dialoghi, simulatore), una volta sola all'avvio.
+function translateStatic(root) {
+  if (uiLang !== 'en') return;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => (/SCRIPT|STYLE/.test(n.parentNode.tagName) ? 2 : 1) });
+  for (let n; (n = w.nextNode());) n.nodeValue = tExact(n.nodeValue);
+  root.querySelectorAll('[title],[aria-label],[placeholder]').forEach(el => { for (const a of I18N_ATTRS) if (el.hasAttribute(a)) el.setAttribute(a, tExact(el.getAttribute(a))); });
+}
+translateStatic(document.body);
+const plural = (n, one, many) => `${n} ${t(n === 1 ? one : many)}`;
 
 // Preferenze dell'interfaccia (sezioni aperte, orientamento, anteprima o simulatore):
 // sono del browser, non del progetto, quindi non entrano in project.json.
@@ -1882,7 +1911,7 @@ function menuButton(btn, menu) {
 function info(text) {
   const b = h('button', { type: 'button', class: 'info', 'aria-label': 'Spiegazione', 'aria-expanded': 'false' });
   const isOpen = () => !!pop && pop.anchor === b;
-  const open = pinned => { const t = $('#tip'); t.textContent = text; showPop(t, b, pinned); };
+  const open = pinned => { const tip = $('#tip'); tip.textContent = tExact(text); showPop(tip, b, pinned); };
   b.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse' && !isOpen()) open(false); });
   b.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && isOpen() && !pop.pinned) hidePop(); });
   b.addEventListener('focus', () => { if (!isOpen() && b.matches(':focus-visible')) open(false); });
@@ -1960,10 +1989,10 @@ function drawPreview() {
                        h('button', { class: 'small', 'aria-label': 'Pagina successiva', disabled: s.page >= n - 1, onclick: () => turnPage(1) }, '›'));
   $('#fPrev').hidden = $('#fNext').hidden = n < 2;
   $('#fPrev').disabled = !s.page; $('#fNext').disabled = s.page >= n - 1;
-  $('#previewNote').textContent = s.kind === 'filters'
+  $('#previewNote').textContent = t(s.kind === 'filters'
     ? (layout === 'port' ? 'Anteprima: le indicazioni dei tasti in basso le disegna il dispositivo, sul bordo dei tasti.' : 'Le fasce libere ai lati ospitano le indicazioni dei tasti, disegnate dal dispositivo.')
     : isOff ? `Schermata di spento: ${state.off.logo ? 'il nome, ' : ''}la fascia in basso, la batteria${state.off.keys ? ' e le etichette dei tasti' : ''} li disegna il dispositivo.`
-    : 'Anteprima a 1 bit, identica a ciò che vedrai sull\'e-paper.';
+    : 'Anteprima a 1 bit, identica a ciò che vedrai sull\'e-paper.');
 }
 function turnPage(d) {
   const s = selectedScreen(); if (!s || s.kind !== 'lenschart') return;
@@ -1979,13 +2008,13 @@ function renderList() {
       h('button', { class: 'scr', 'aria-current': on ? 'true' : null, title: off ? 'Non inclusa nell\'esportazione' : null, onclick: () => selectScreen(to) },
         h('span', { class: 'n' }, num), h('span', { class: 't' }, title), h('span', { class: 'd' }, detail))));
   };
-  item('◆', 'Lens chart', `${plural(state.lenses.length, 'lente', 'lenti')}${pages > 1 ? ` · ${pages} pag.` : ''}`, { kind: 'lenschart' }, !state.auto.lenschart || !state.lenses.length);
+  item('◆', 'Lens chart', pages > 1 ? t('{} · {} pag.', plural(state.lenses.length, 'lente', 'lenti'), pages) : plural(state.lenses.length, 'lente', 'lenti'), { kind: 'lenschart' }, !state.auto.lenschart || !state.lenses.length);
   item('◆', 'Filtri', 'ND, diottrie, stadi', { kind: 'filters' }, !state.auto.filters);
   item('◆', 'Elenco filtri', 'tutti i vetri del kit', { kind: 'filterlist' }, !state.auto.filterlist);
   let n = 0;
-  state.cards.forEach((c, i) => item(c.off ? '⏻' : String(++n).padStart(2, '0'), cardTitle(c), c.off ? `${TYPE_LABEL[c.type]} · da spento` : TYPE_LABEL[c.type], { kind: 'card', i }));
+  state.cards.forEach((c, i) => item(c.off ? '⏻' : String(++n).padStart(2, '0'), cardTitle(c), c.off ? t('{} · da spento', t(TYPE_LABEL[c.type])) : TYPE_LABEL[c.type], { kind: 'card', i }));
   const oc = offCard();
-  item('⏻', 'Spento', oc ? `scheda «${cardTitle(oc)}»` : [state.off.img && 'immagine', state.off.text.trim() && 'scritta', state.off.keys && 'tasti'].filter(Boolean).join(', ') || 'solo il nome', { kind: 'off' });
+  item('⏻', 'Spento', oc ? t('scheda «{}»', tExact(cardTitle(oc))) : [state.off.img && 'immagine', state.off.text.trim() && 'scritta', state.off.keys && 'tasti'].filter(Boolean).map(x => t(x)).join(', ') || t('solo il nome'), { kind: 'off' });
 }
 // Sceglie una schermata; nella striscia (sotto i 1100 px) la porta in vista.
 function selectScreen(to) {
@@ -2006,7 +2035,7 @@ function lensEditor(ed) {
       h('input', { type: 'text', value: state.production, placeholder: 'LENS CHART', oninput: e => { state.production = e.target.value; changed(); } })),
     toggle('Attacchi su pagine separate', state.lensByMount, v => { state.lensByMount = v; changed(true); },
       { tip: 'Ogni attacco ha le sue pagine, dal più numeroso, con l\'attacco scritto nel titolo: utile con due macchine da presa. Dentro ogni attacco valgono le scelte qui sotto.' }),
-    ...(noMount ? [h('p', { class: 'warn' }, `${plural(noMount, 'lente', 'lenti')} senza attacco: ${noMount > 1 ? 'stanno' : 'sta'} su pagine a parte, in fondo. Scegli l'attacco con ✎.`)] : []),
+    ...(noMount ? [h('p', { class: 'warn' }, noMount > 1 ? t("{} lenti senza attacco: stanno su pagine a parte, in fondo. Scegli l'attacco con ✎.", noMount) : t("1 lente senza attacco: sta su pagine a parte, in fondo. Scegli l'attacco con ✎."))] : []),
     h('div', { class: 'srow' }, lab('Serie', 'Insieme: tutte le lenti su un\'unica lens chart. Una per serie: ogni serie ha le sue pagine, dalla più numerosa. Principale a parte: prima le pagine del set con più lenti, poi le altre serie insieme. Ogni gruppo ha la sua misura del testo e la sua legenda.'),
       seg([['mix', 'Insieme'], ['each', 'Una per serie'], ['main', 'Principale a parte']], state.lensSeries, v => { state.lensSeries = v; changed(true); }, 'Serie sulle pagine')),
     toggle('Prime e zoom su pagine separate', state.lensSplit, v => { state.lensSplit = v; changed(true); },
@@ -2039,9 +2068,9 @@ function lensEditor(ed) {
       if (editingUid === l.uid) rows.push(h('div', { class: 'ledit' }, lensDataEditor(l, e)));
     }
     rows.push(h('div', { class: 'acts' },
-      h('button', { class: 'small danger', onclick: () => { if (confirm('Togliere tutte le lenti?')) { state.lenses = []; changed(true); } } }, 'Togli tutte')));
+      h('button', { class: 'small danger', onclick: () => { if (confirm(t('Togliere tutte le lenti?'))) { state.lenses = []; changed(true); } } }, 'Togli tutte')));
   }
-  ed.append(section('lens.sel', 'Lenti selezionate', state.lenses.length ? `${state.lenses.length}${nPages > 1 ? ` · ${nPages} pagine` : ''}` : 'nessuna', rows, true,
+  ed.append(section('lens.sel', 'Lenti selezionate', state.lenses.length ? (nPages > 1 ? t('{} · {} pagine', state.lenses.length, nPages) : String(state.lenses.length)) : 'nessuna', rows, true,
     { tip: 'In negativo va la lente "fuori dal coro": serie diversa dal set principale o tipo diverso (es. l\'unica macro).' }));
 
   // Database
@@ -2067,7 +2096,7 @@ function lensEditor(ed) {
     const p = v.trim().replace(/,/g, '.').split(/\s*[-–—]\s*/).map(Number);
     return p.length > 2 || p.some(n => !(n > 0)) ? null : p;
   };
-  const rangeInp = (k, label, ph) => Object.assign(inp(k, label), { inputMode: 'decimal', placeholder: ph, title: `${label}: un valore o un'escursione` });
+  const rangeInp = (k, label, ph) => Object.assign(inp(k, label), { inputMode: 'decimal', placeholder: ph, title: t("{}: un valore o un'escursione", t(label)) });
   db.push(section('lens.manual', 'Aggiungi una lente a mano', null, [
     h('div', { class: 'two' }, inp('brand', 'Marca'), inp('series', 'Serie')),
     h('div', { class: 'three mt' }, inp('seriesCode', 'Sigla'), rangeInp('focal', 'Focale mm', 'Focale (24-70)'), rangeInp('tstop', 'T', 'T (2.8-4)')),
@@ -2075,32 +2104,32 @@ function lensEditor(ed) {
       h('select', { 'aria-label': 'Tipo', onchange: e => m.type = e.target.value }, ...Object.entries(LENS_TYPES).map(([k, v]) => h('option', { value: k }, v)))),
     h('div', { class: 'three mt' }, mountSelect('', v => m.mount = v)),
     h('div', { class: 'acts' }, h('button', { class: 'primary', onclick: () => {
-      if (!m.focal.trim()) { alert('Serve almeno la focale.'); return; }
-      const f = range(m.focal), t = m.tstop.trim() ? range(m.tstop) : [null];
-      if (!f) { alert('Focale non valida: scrivi un numero (35) o un\'escursione (24-70).'); return; }
-      if (!t) { alert('T non valido: scrivi un numero (2.8) o un\'escursione (2.8-4).'); return; }
+      if (!m.focal.trim()) { alert(t('Serve almeno la focale.')); return; }
+      const f = range(m.focal), ts = m.tstop.trim() ? range(m.tstop) : [null];
+      if (!f) { alert(t('Focale non valida: scrivi un numero (35) o un\'escursione (24-70).')); return; }
+      if (!ts) { alert(t('T non valido: scrivi un numero (2.8) o un\'escursione (2.8-4).')); return; }
       const zoom = f.length === 2, num = v => v === '' ? null : Number(v);
       state.lenses.push({ uid: 'm-' + Date.now(), dbId: null, brand: m.brand || 'Manuale', series: m.series || m.brand || 'Manuale',
         seriesCode: (m.seriesCode || slug(m.series).slice(0, 3)).toUpperCase(), type: zoom && m.type === 'prime' ? 'zoom' : m.type,
         focal: zoom ? null : f[0], focalMin: zoom ? Math.min(...f) : null, focalMax: zoom ? Math.max(...f) : null,
-        tstop: t[0], tstopLong: t[1] ?? null, mod_m: num(m.mod_m), front_mm: num(m.front_mm), filterThread: null, squeeze: null, mount: m.mount || null, highlight: 'auto' });
+        tstop: ts[0], tstopLong: ts[1] ?? null, mod_m: num(m.mod_m), front_mm: num(m.front_mm), filterThread: null, squeeze: null, mount: m.mount || null, highlight: 'auto' });
       changed(true);
     } }, 'Aggiungi'))], false, { sub: true }));
-  ed.append(section('lens.db', 'Database lenti', lensDb ? `${lensDb.length} lenti` : null, db, true,
+  ed.append(section('lens.db', 'Database lenti', lensDb ? plural(lensDb.length, 'lente', 'lenti') : null, db, true,
     { tip: 'Dati dalle schede tecniche dei costruttori; "—" = dato non pubblicato in modo affidabile.' }));
 
   // Modifiche locali: valgono per tutte le produzioni; si portano su un altro computer con un file.
   const nOvr = Object.keys(lensOverrides).length;
   const ovrFile = h('input', { type: 'file', accept: 'application/json', hidden: true, onchange: ev => {
     const file = ev.target.files[0]; if (!file) return;
-    file.text().then(t => {
-      const d = JSON.parse(t);
-      if (!d || typeof d.overrides !== 'object') { alert('File non valido: manca "overrides".'); return; }
+    file.text().then(txt => {
+      const d = JSON.parse(txt);
+      if (!d || typeof d.overrides !== 'object') { alert(t('File non valido: manca "overrides".')); return; }
       Object.assign(lensOverrides, d.overrides); saveOverrides(); changed(true);
-    }).catch(() => alert('File non valido.'));
+    }).catch(() => alert(t('File non valido.')));
   } });
   ed.append(section('lens.ovr', 'Lenti modificate', nOvr ? String(nOvr) : 'nessuna', h('div', { class: 'acts' },
-      h('button', { class: 'small', disabled: !nOvr, onclick: () => download(new Blob([JSON.stringify({ version: 1, overrides: lensOverrides }, null, 2)], { type: 'application/json' }), 'camtag-lenti-modificate.json') }, 'Esporta modifiche'),
+      h('button', { class: 'small', disabled: !nOvr, onclick: () => download(new Blob([JSON.stringify({ version: 1, overrides: lensOverrides }, null, 2)], { type: 'application/json' }), t('camtag-lenti-modificate.json')) }, 'Esporta modifiche'),
       h('button', { class: 'small', onclick: () => ovrFile.click() }, 'Importa modifiche'), ovrFile), false,
     { tip: 'Con ✎ cambi i dati di un esemplare (es. un anello frontale diverso dal noleggio). Il database resta quello del costruttore; i valori modificati sono segnati con * anche sulla lens chart.' }));
 }
@@ -2118,7 +2147,7 @@ function lensDataEditor(l, e) {
     const cur = e[k] ?? '';
     const differs = base && lensOverrides[l.dbId] && k in lensOverrides[l.dbId];
     grid.append(h('label', { class: 'fld' },
-      h('span', { class: 'lab' }, label, differs ? h('span', { class: 'out' }, `scheda: ${base[k] ?? '—'}`) : null),
+      h('span', { class: 'lab' }, label, differs ? h('span', { class: 'out' }, t('scheda: {}', base[k] ?? '—')) : null),
       h('input', { type, step: 'any', value: cur, onchange: ev => {
         if (base) setOverride(l.dbId, k, ev.target.value, type);
         else l[k] = ev.target.value === '' ? null : type === 'number' ? Number(ev.target.value) : ev.target.value;
@@ -2192,7 +2221,7 @@ function renderDbResults(box, query, brand, type, searching = false) {
   const hits = lensDb.filter(l => {
     if (brand && l.brand !== brand) return false;
     if (type && l.type !== type) return false;
-    const hay = searchFold(`${l.brand} ${l.series} ${l.name} ${l.seriesCode} ${LENS_TYPES[l.type] || ''} ${focalText(l)} ${focalText(l)}mm ${(l.mounts || []).join(' ')}`);
+    const hay = searchFold(`${l.brand} ${l.series} ${l.name} ${l.seriesCode} ${LENS_TYPES[l.type] || ''} ${t(LENS_TYPES[l.type] || '')} ${focalText(l)} ${focalText(l)}mm ${(l.mounts || []).join(' ')}`);
     return terms.every(t => hay.includes(t));
   });
   if (!hits.length) { box.append(h('div', { class: 'empty' }, 'Nessuna lente trovata')); return; }
@@ -2213,11 +2242,11 @@ function renderDbResults(box, query, brand, type, searching = false) {
     box.append(h('div', { class: 'grp' },
       h('button', { class: 'tog', 'aria-expanded': String(open), onclick: () => toggle(name) },
         h('span', {}, `${name} · ${ls[0].seriesCode}`)),
-      h('button', { class: 'small', disabled: !missing.length, onclick: () => { addDbLenses(name, missing); keepScroll(() => changed(true)); } }, missing.length ? `+ tutte (${missing.length})` : 'aggiunte')));
+      h('button', { class: 'small', disabled: !missing.length, onclick: () => { addDbLenses(name, missing); keepScroll(() => changed(true)); } }, missing.length ? t('+ tutte ({})', missing.length) : 'aggiunte')));
     if (mountAsk?.name === name) {
       const a = mountAsk, done = mount => { a.lenses.forEach(l => addDbLens(l, mount)); mountAsk = null; keepScroll(() => changed(true)); };
       box.append(h('div', { class: 'ask' },
-        h('span', {}, a.lenses.length > 1 ? `Con quale attacco? (${a.lenses.length} lenti)` : `Con quale attacco? (${focalText(a.lenses[0])} mm)`),
+        h('span', {}, a.lenses.length > 1 ? t('Con quale attacco? ({} lenti)', a.lenses.length) : t('Con quale attacco? ({} mm)', focalText(a.lenses[0]))),
         ...a.mounts.map(m => h('button', { class: 'small primary', onclick: () => done(m) }, m)),
         h('button', { class: 'small', title: 'Aggiungi senza attacco', onclick: () => done(null) }, 'Non so'),
         h('button', { class: 'small', onclick: () => { mountAsk = null; keepScroll(() => changed(true)); } }, 'Annulla')));
@@ -2225,7 +2254,7 @@ function renderDbResults(box, query, brand, type, searching = false) {
     if (!open) continue;
     for (const l of ls) {
       const v = effective({ dbId: l.id });
-      const meta = `${v.stopType === 'f' ? '' : 'T'}${tText(v)}${star(v, 'tstop', 'tstopLong')} · CF ${fmt(v.mod_m)}${star(v, 'mod_m')} m · Ø ${v.front_mm != null ? fmt(v.front_mm, 1) : '—'}${star(v, 'front_mm')}${l.type !== 'prime' ? ' · ' + LENS_TYPES[l.type] : ''}${v.squeeze && l.type !== 'anamorphic' ? ` ×${fmt(v.squeeze)}` : ''}${l.mounts?.length ? ' · ' + l.mounts.join('/') : ''}`;
+      const meta = `${v.stopType === 'f' ? '' : 'T'}${tText(v)}${star(v, 'tstop', 'tstopLong')} · CF ${fmt(v.mod_m)}${star(v, 'mod_m')} m · Ø ${v.front_mm != null ? fmt(v.front_mm, 1) : '—'}${star(v, 'front_mm')}${l.type !== 'prime' ? ' · ' + t(LENS_TYPES[l.type]) : ''}${v.squeeze && l.type !== 'anamorphic' ? ` ×${fmt(v.squeeze)}` : ''}${l.mounts?.length ? ' · ' + l.mounts.join('/') : ''}`;
       box.append(h('div', { class: 'it' }, h('span', {}, `${focalText(l)} mm`), h('span', { class: 'meta' }, meta),
         chosen.has(l.id) ? h('button', { class: 'small', disabled: true }, '✓') :
         h('button', { class: 'small', onclick: () => { addDbLenses(name, [l]); keepScroll(() => changed(true)); } }, '+')));
@@ -2247,7 +2276,7 @@ function renderFilterResults(box, searching = false) {
   const hits = filterDb.filter(x => {
     if (brand && (x.brand || 'Generico') !== brand) return false;
     if (cat && x.category !== cat) return false;
-    const hay = searchFold(`${x.brand} ${x.name} ${x.category} ${x.strengths.join(' ')}`);
+    const hay = searchFold(`${x.brand} ${x.name} ${x.category} ${t(x.category)} ${x.strengths.join(' ')}`);
     return terms.every(t => hay.includes(t));
   });
   if (!hits.length) { box.append(h('div', { class: 'empty' }, 'Nessun vetro trovato')); return; }
@@ -2268,7 +2297,7 @@ function renderFilterResults(box, searching = false) {
     box.append(h('div', { class: 'grp' },
       h('button', { class: 'tog', 'aria-expanded': String(open), onclick: () => toggle(x.id) },
         h('span', {}, title(x)), h('span', { class: 'n' }, x.category)),
-      h('button', { class: 'small', disabled: !missing.length, onclick: () => add(x, missing) }, missing.length ? (all.length > 1 ? `+ tutte (${missing.length})` : '+') : 'aggiunto')));
+      h('button', { class: 'small', disabled: !missing.length, onclick: () => add(x, missing) }, missing.length ? (all.length > 1 ? t('+ tutte ({})', missing.length) : '+') : 'aggiunto')));
     if (!open) continue;
     for (const st of all) box.append(h('div', { class: 'it' }, h('span', {}, st || 'senza gradazione'),
       have.has(st) ? h('button', { class: 'small', disabled: true }, '✓') : h('button', { class: 'small', onclick: () => add(x, [st]) }, '+')));
@@ -2285,7 +2314,7 @@ function filtersEditor(ed, list = false) {
     const { lo, hi } = stageRange(n), names = new Map(kitGlasses().map(g => [g.key, g.label]));
     const r = fitStages(f.stages, lo, hi, Math.max(0, was - ndUsed()));
     f.stages = Array.from({ length: n }, (_, i) => f.stages[i] ?? null);
-    stageNote = r.out.length ? `Non c'è posto per tutti: ${r.out.map(k => names.get(k)).join(', ')} ${r.out.length > 1 ? 'escono' : 'esce'} dagli stadi.` : '';
+    stageNote = r.out.length ? t(r.out.length > 1 ? "Non c'è posto per tutti: {} escono dagli stadi." : "Non c'è posto per tutti: {} esce dagli stadi.", r.out.map(k => names.get(k)).join(', ')) : '';
   };
   const clampPreview = (was = ndUsed()) => { f.previewNd = Math.min(f.previewNd, ndSteps().length - 1); f.previewDio = Math.min(f.previewDio, dioSteps().length - 1); refit(was); };
   // Cambia il kit ND o le coppie tenendo fermo il valore di partenza (non il suo indice).
@@ -2307,7 +2336,7 @@ function filtersEditor(ed, list = false) {
     lab('ND nel kit', 'I tasti C/D scorrono solo questi.'),
     h('div', { class: 'pills' }, ...ND_VALUES.map(v => pill(ndLabel(v), f.nd.includes(v), on => editNd(() => { f.nd = on ? [...f.nd, v] : f.nd.filter(x => x !== v); })))),
   ];
-  if (combos.length) nd.push(section('flt.combos', 'Combinazioni di due ND', nCombos ? `${nCombos} di ${combos.length}` : 'nessuna',
+  if (combos.length) nd.push(section('flt.combos', 'Combinazioni di due ND', nCombos ? t('{} di {}', nCombos, combos.length) : 'nessuna',
     h('div', { class: 'pills' }, ...combos.map(c => pill(`${ndLabel(c.total)} = ${ndLabel(c.parts[0])} + ${ndLabel(c.parts[1])}`, f.ndCombos.includes(c.total),
       on => editNd(() => { f.ndCombos = on ? [...f.ndCombos, c.total] : f.ndCombos.filter(t => t !== c.total); })))),
     nCombos > 0, { sub: true, tip: 'Spunta i totali che fai con due vetri: C/D li scorrono insieme agli altri, e sul dispositivo i due vetri occupano gli stadi 1 e 2.' }));
@@ -2323,7 +2352,7 @@ function filtersEditor(ed, list = false) {
   if (f.dio.length) dioBody.push(lab('Occupano un solo stadio', 'Una diottria occupa di solito due stadi, subito davanti all\'ultimo vetro: sta sempre davanti a tutti gli altri. Spunta quelle che ne occupano uno solo, per esempio una +1/2 a lastra.'),
     h('div', { class: 'pills' }, ...dioSteps().filter(Boolean).map(d => pill(dioLabel(d), d.slots === 1, on => { if (on) d.slots = 1; else delete d.slots; refit(); changed(true); }))));
   const oneSlot = f.dio.filter(d => d.slots === 1).length;
-  ed.append(section('flt.dio', 'Diottrie', f.dio.length ? [dioNames(false), dioNames(true) && `split ${dioNames(true)}`, oneSlot && `${oneSlot} da uno stadio`].filter(Boolean).join(' · ') : 'nessuna',
+  ed.append(section('flt.dio', 'Diottrie', f.dio.length ? [dioNames(false), dioNames(true) && t('split {}', dioNames(true)), oneSlot && t('{} da uno stadio', oneSlot)].filter(Boolean).join(' · ') : 'nessuna',
     dioBody, f.dio.length > 0,
     { tip: 'Con almeno una diottria nel kit, nella schermata filtri i tasti A/B sono diottria −/+ (le pagine si cambiano sempre con X e Y). La diottria sta negli stadi del mattebox subito davanti all\'ultimo vetro.' }));
 
@@ -2339,7 +2368,7 @@ function filtersEditor(ed, list = false) {
       const v = ev.target.value.trim(); if (v) { addToKit(f, e.id, e.name, [v]); changed(true); }
     } });
     const two = canTwoSlots(e) ? pill('2 stadi', e.slots === 2, on => { if (on) e.slots = 2; else delete e.slots; refit(); changed(true); }) : null;
-    if (two) two.title = 'Questo vetro occupa due stadi del mattebox';
+    if (two) two.title = t('Questo vetro occupa due stadi del mattebox');
     kitBody.push(h('div', { class: 'kit' },
       h('div', { class: 'kit-head' }, h('strong', {}, e.name), two,
         h('button', { class: 'small danger', title: 'Togli la famiglia dal kit', 'aria-label': 'Togli la famiglia dal kit', onclick: () => { f.effects = f.effects.filter(x => x !== e); normalizeStages(f); changed(true); } }, '✕')),
@@ -2359,7 +2388,7 @@ function filtersEditor(ed, list = false) {
     const cats = [...new Set(filterDb.map(x => x.category))].sort((a, b) => a.localeCompare(b, 'it'));
     const q = h('input', { type: 'search', 'aria-label': 'Cerca nel catalogo', value: fltSearch.q, placeholder: 'Cerca: marca, nome, tipo, gradazione (es. "mist 1/4")' });
     const fb = h('select', { 'aria-label': 'Marca' }, h('option', { value: '' }, 'Tutte le marche'), ...brands.map(b => h('option', { value: b, selected: fltSearch.brand === b }, b)));
-    const fc = h('select', { 'aria-label': 'Tipo' }, h('option', { value: '' }, 'Tutti i tipi'), ...cats.map(c => h('option', { value: c, selected: fltSearch.cat === c }, c[0].toUpperCase() + c.slice(1))));
+    const fc = h('select', { 'aria-label': 'Tipo' }, h('option', { value: '' }, 'Tutti i tipi'), ...cats.map(c => h('option', { value: c, selected: fltSearch.cat === c }, (n => n[0].toUpperCase() + n.slice(1))(t(c)))));
     const box = h('div', { class: 'db' });
     const run = searching => { fltSearch = { q: q.value, brand: fb.value, cat: fc.value }; renderFilterResults(box, searching === true); };
     q.addEventListener('input', () => run(true)); fb.addEventListener('change', () => run(true)); fc.addEventListener('change', () => run(true));
@@ -2372,7 +2401,7 @@ function filtersEditor(ed, list = false) {
   cat.push(section('flt.manual', 'Aggiungi un vetro a mano', null, [
     h('div', { class: 'two' }, cName, cStr),
     h('div', { class: 'acts' }, h('button', { class: 'primary', onclick: () => {
-      const n = cName.value.trim(); if (!n) { alert('Serve almeno il nome.'); return; }
+      const n = cName.value.trim(); if (!n) { alert(t('Serve almeno il nome.')); return; }
       addToKit(f, null, n, cStr.value.split(',').map(s => s.trim()).filter(Boolean)); changed(true);
     } }, 'Aggiungi'))], false, { sub: true }));
   ed.append(section('flt.db', 'Catalogo vetri', filterDb.length ? plural(filterDb.length, 'famiglia', 'famiglie') : null, cat, true,
@@ -2389,7 +2418,7 @@ function filtersEditor(ed, list = false) {
       lab('Stadi', 'L\'ND, quando c\'è, sta nei primi stadi (uno, o due per una coppia) e la diottria subito davanti all\'ultimo vetro (due stadi, o uno): senza ND e senza vetri sta negli stadi 1 e 2. Gli stadi davanti alla diottria restano vuoti. Un vetro segnato "2 stadi" nel kit ne occupa due di seguito. Per aggiungere un vetro davanti all\'ultimo sceglilo nella riga della diottria: lei avanza. I vetri lasciano sempre in fondo il posto per la diottria; quando ND o diottria hanno bisogno di posto si stringono: scalano verso il fronte per l\'ND, verso la lente per la diottria. Se non c\'è posto per tutti escono i vetri più avanti. Quando l\'ND libera uno stadio i vetri tornano indietro verso la lente. Con il + si va oltre il 3, fino a 6: per mattebox più grandi o un vetro montato fuori. Sul dispositivo le righe degli stadi si abbassano per farle entrare tutte.'),
       seg(stagesMore || f.stages.length > BOX_STAGES
         ? Array.from({ length: MAX_STAGES }, (_, i) => [i + 1, String(i + 1)])
-        : [...Array.from({ length: BOX_STAGES }, (_, i) => [i + 1, String(i + 1)]), ['more', '+', `Più di ${BOX_STAGES} stadi, fino a ${MAX_STAGES}`]],
+        : [...Array.from({ length: BOX_STAGES }, (_, i) => [i + 1, String(i + 1)]), ['more', '+', t('Più di {} stadi, fino a {}', BOX_STAGES, MAX_STAGES)]],
         f.stages.length, setStages, 'Numero di stadi')),
     h('div', { class: 'two' },
       h('div', {}, lab('ND di partenza', 'Il dispositivo parte da qui, poi ricorda l\'ultimo valore impostato con i tasti.'),
@@ -2400,27 +2429,27 @@ function filtersEditor(ed, list = false) {
           ...dioSteps().map((v, i) => h('option', { value: i, selected: f.previewDio === i }, dioLabel(v)))))),
     lab('Vetro in ogni stadio', kit.length ? 'Il dispositivo parte da qui. Per cambiare i vetri sul dispositivo: nella schermata filtri tieni A o B, scegli lo stadio con A/B e il vetro con C/D. Dopo 5 secondi senza tocchi la modifica è accettata; per uscire subito premi X o Y.' : null),
     ...cells.map((c, i) => {
-      const name = `${i + 1}${i === 0 ? ' · lato lente' : ''}`, head = c.kind === 'cont' ? cells[c.of] : c;
-      const fixed = t => h('div', { class: 'strow' }, name, h('select', { disabled: true, 'aria-label': `Stadio ${i + 1}` }, h('option', {}, t)));
-      if (head.kind === 'nd') return fixed(`${head.label} · l'ND di partenza`);
+      const name = i === 0 ? t('{} · lato lente', 1) : String(i + 1), head = c.kind === 'cont' ? cells[c.of] : c;
+      const fixed = txt => h('div', { class: 'strow' }, name, h('select', { disabled: true, 'aria-label': t('Stadio {}', i + 1) }, h('option', {}, txt)));
+      if (head.kind === 'nd') return fixed(t("{} · l'ND di partenza", head.label));
       if (c.kind === 'front') return fixed('— · davanti alla diottria');
-      if (head.kind === 'dio' && (c.kind === 'cont' || !c.insert)) return fixed(`${head.label} · la diottria di partenza`);
-      if (c.kind === 'cont') return fixed(`${head.label} · occupa due stadi`);
+      if (head.kind === 'dio' && (c.kind === 'cont' || !c.insert)) return fixed(t('{} · la diottria di partenza', head.label));
+      if (c.kind === 'cont') return fixed(t('{} · occupa due stadi', head.label));
       // Sulla riga della diottria, un vetro prende il suo posto e lei avanza.
       const opts = stageOptions(i, f.stages, range.hi);
       return h('div', { class: 'strow' }, name,
-        h('select', { 'aria-label': `Stadio ${i + 1}`, disabled: !kit.length, onchange: e => { f.stages[i] = e.target.value || null; stageNote = ''; changed(true); } },
-          h('option', { value: '', selected: !c.key }, c.kind === 'dio' ? `${c.label} · la diottria di partenza` : '— vuoto'),
-          ...kit.map(g => h('option', { value: g.key, selected: g.key === c.key, disabled: !opts.includes(g.key) }, g.slots > 1 ? `${g.label} · 2 stadi` : g.label))));
+        h('select', { 'aria-label': t('Stadio {}', i + 1), disabled: !kit.length, onchange: e => { f.stages[i] = e.target.value || null; stageNote = ''; changed(true); } },
+          h('option', { value: '', selected: !c.key }, c.kind === 'dio' ? t('{} · la diottria di partenza', c.label) : '— vuoto'),
+          ...kit.map(g => h('option', { value: g.key, selected: g.key === c.key, disabled: !opts.includes(g.key) }, g.slots > 1 ? t('{} · 2 stadi', g.label) : g.label))));
     }),
   ];
   if (!kit.length) mb.push(h('p', { class: 'hint' }, 'Aggiungi dei vetri al kit qui sopra per riempire gli stadi.'));
   // Avvisi: un vetro appena uscito, e ND + diottria che non entrano negli stadi.
   if (stageNote) mb.push(h('p', { class: 'warn' }, stageNote));
   const need = Math.max(...ndSteps().map(v => ndParts(v).length)) + Math.max(0, ...f.dio.map(dioSlots));
-  if (dioUsed() && range.hi === f.stages.length) mb.push(h('p', { class: 'warn' }, `La diottria di partenza non entra negli stadi: con l'ND ne servono ${ndUsed() + dioUsed()}. Resta solo nel riquadro grande.`));
-  else if (f.dio.length && need > f.stages.length) mb.push(h('p', { class: 'warn' }, `ND e diottria insieme possono occupare ${need} stadi: quando non ci stanno, la diottria resta solo nel riquadro grande.`));
-  const ndSum = ndV ? (f.ndFormat === 'factor' ? ndLabel(ndV) : `ND ${ndLabel(ndV)}`) : 'senza ND';
+  if (dioUsed() && range.hi === f.stages.length) mb.push(h('p', { class: 'warn' }, t("La diottria di partenza non entra negli stadi: con l'ND ne servono {}. Resta solo nel riquadro grande.", ndUsed() + dioUsed())));
+  else if (f.dio.length && need > f.stages.length) mb.push(h('p', { class: 'warn' }, t('ND e diottria insieme possono occupare {} stadi: quando non ci stanno, la diottria resta solo nel riquadro grande.', need)));
+  const ndSum = ndV ? (f.ndFormat === 'factor' ? ndLabel(ndV) : `ND ${ndLabel(ndV)}`) : t('senza ND');
   ed.append(section('flt.mb', 'Mattebox e valori di partenza', `${plural(f.stages.length, 'stadio', 'stadi')} · ${ndSum} · ${plural(f.stages.filter(Boolean).length, 'vetro', 'vetri')}`, mb));
 }
 
@@ -2447,7 +2476,7 @@ function dupCard() {
   state.cards.splice(sel.i + 1, 0, structuredClone(state.cards[sel.i])); sel = { kind: 'card', i: sel.i + 1 }; save(); refresh();
 }
 function delCard() {
-  if (sel.kind !== 'card' || !confirm(`Eliminare «${cardTitle(state.cards[sel.i])}»?`)) return;
+  if (sel.kind !== 'card' || !confirm(t('Eliminare «{}»?', tExact(cardTitle(state.cards[sel.i]))))) return;
   state.cards.splice(sel.i, 1); sel = state.cards.length ? { kind: 'card', i: Math.max(0, sel.i - 1) } : { kind: 'lenschart' }; save(); refresh();
 }
 
@@ -2485,7 +2514,7 @@ function imageControls(ed, c) {
     const useImage = blob => readDataUrl(blob).then(downscale).then(url => { c.img = url; return ensureImg(url); }).then(() => changed());
     const inp = h('input', { type: 'file', accept: 'image/*', onchange: () => {
       const file = inp.files[0]; if (!file) return;
-      say(''); useImage(file).catch(() => say('Il file non è un\'immagine leggibile.'));
+      say(''); useImage(file).catch(() => say(t('Il file non è un\'immagine leggibile.')));
     } });
     ed.append(h('label', { class: 'fld' }, h('span', { class: 'lab' }, c === state.off ? 'Immagine di sfondo (facoltativa)' : 'Immagine'), inp));
     // Da un indirizzo web: serve che il sito permetta di leggere l'immagine da un'altra pagina (CORS).
@@ -2544,7 +2573,7 @@ function offEditor(ed) {
   ed.append(toggle('Nome CAMTAG', o.logo, v => { o.logo = v; changed(); },
     { tip: 'Senza immagine e senza scritta sta al centro; con un\'immagine o una scritta va in alto, in un riquadro.' }));
   if (oc) {
-    ed.append(h('p', { class: 'warn' }, `Da spento l'X3 mostra la scheda «${cardTitle(oc)}»: immagine e scritta di questa pagina non contano.`),
+    ed.append(h('p', { class: 'warn' }, t("Da spento l'X3 mostra la scheda «{}»: immagine e scritta di questa pagina non contano.", tExact(cardTitle(oc)))),
       h('div', { class: 'srow' },
         h('button', { onclick: () => selectScreen({ kind: 'card', i: state.cards.indexOf(oc) }) }, 'Vai alla scheda'),
         h('button', { onclick: () => { delete oc.off; changed(true); } }, 'Usa questa pagina')));
@@ -2571,14 +2600,14 @@ function renderEditor() {
 function downscale(url, max = 1000) {
   return new Promise((res, rej) => {
     const im = new Image(); im.onload = () => {
-      if (!im.width || !im.height) return rej(new Error('Immagine vuota.'));
+      if (!im.width || !im.height) return rej(new Error(t('Immagine vuota.')));
       const s = Math.min(1, max / Math.max(im.width, im.height));
       const [cv] = newCanvas(Math.round(im.width * s), Math.round(im.height * s));
       const g = cv.getContext('2d');
       g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); // le trasparenze diventano bianco, non nero
       g.drawImage(im, 0, 0, cv.width, cv.height);
       res(cv.toDataURL('image/jpeg', 0.85));
-    }; im.onerror = () => rej(new Error('Immagine non leggibile.')); im.src = url;
+    }; im.onerror = () => rej(new Error(t('Immagine non leggibile.'))); im.src = url;
   });
 }
 function readDataUrl(blob) {
@@ -2588,18 +2617,18 @@ const URL_IMG_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'im
 const URL_IMG_MAX = 25 * 1024 * 1024;
 async function imageFromUrl(raw) {
   let u;
-  if (/\s/.test(raw)) throw new Error('Indirizzo non valido.');
-  try { u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : 'https://' + raw); } catch { throw new Error('Indirizzo non valido.'); }
-  if (!['http:', 'https:', 'data:'].includes(u.protocol)) throw new Error('Servono indirizzi http o https.');
+  if (/\s/.test(raw)) throw new Error(t('Indirizzo non valido.'));
+  try { u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : 'https://' + raw); } catch { throw new Error(t('Indirizzo non valido.')); }
+  if (!['http:', 'https:', 'data:'].includes(u.protocol)) throw new Error(t('Servono indirizzi http o https.'));
   let r;
   try { r = await fetch(u.href, { mode: 'cors', credentials: 'omit', referrerPolicy: 'no-referrer' }); }
-  catch { throw new Error('Il sito non permette di leggere l\'immagine da qui (o non risponde). Scaricala e caricala come file.'); }
-  if (!r.ok) throw new Error(`Il sito ha risposto con un errore (${r.status}): immagine non disponibile.`);
+  catch { throw new Error(t('Il sito non permette di leggere l\'immagine da qui (o non risponde). Scaricala e caricala come file.')); }
+  if (!r.ok) throw new Error(t('Il sito ha risposto con un errore ({}): immagine non disponibile.', r.status));
   const blob = await r.blob();
   const type = (blob.type || '').split(';')[0].trim().toLowerCase();
-  if (type.startsWith('text/html')) throw new Error('Questo è l\'indirizzo di una pagina, non di un\'immagine: apri l\'immagine e copia il suo indirizzo.');
-  if (type && type !== 'application/octet-stream' && !URL_IMG_TYPES.includes(type)) throw new Error(`Formato non supportato (${type}). Vanno bene JPEG, PNG, GIF, WebP, AVIF, SVG e BMP.`);
-  if (blob.size > URL_IMG_MAX) throw new Error('Immagine troppo grande (oltre 25 MB).');
+  if (type.startsWith('text/html')) throw new Error(t('Questo è l\'indirizzo di una pagina, non di un\'immagine: apri l\'immagine e copia il suo indirizzo.'));
+  if (type && type !== 'application/octet-stream' && !URL_IMG_TYPES.includes(type)) throw new Error(t('Formato non supportato ({}). Vanno bene JPEG, PNG, GIF, WebP, AVIF, SVG e BMP.', type));
+  if (blob.size > URL_IMG_MAX) throw new Error(t('Immagine troppo grande (oltre 25 MB).'));
   return blob;
 }
 function ensureImg(url) {
@@ -2621,6 +2650,24 @@ function download(blob, name) {
 }
 
 menuButton($('#projBtn'), $('#projMenu'));
+// Lingue: l'interfaccia è del browser (si ricarica la pagina), le card e le
+// scritte dell'X3 sono del progetto. Il manuale si apre nella lingua dell'interfaccia.
+$('#helpBtn').href = uiLang === 'it' ? 'manuale/' : 'manual/';
+$('#langBtn').textContent = uiLang.toUpperCase();
+function renderLangMenu() {
+  const m = $('#langMenu'); m.innerHTML = '';
+  const group = (title, cur, opts, set) => {
+    m.append(h('div', { class: 'mh' }, title));
+    for (const [v, label] of opts) m.append(h('button', { role: 'menuitemradio', 'aria-checked': String(cur === v), onclick: () => { if (v !== cur) set(v); } }, `${cur === v ? '✓ ' : ''}${label}`));
+  };
+  const langs = Object.entries(LANGS);
+  group('Interfaccia', uiLang, langs, v => { ui.lang = v; saveUi(); location.reload(); });
+  group('Card', state.lang, langs, v => { state.lang = v; changed(true); renderLangMenu(); });
+  group("Scritte dell'X3", state.deviceLang, [['', t('Non cambiare')], ...langs], v => { state.deviceLang = v; changed(); renderLangMenu(); });
+  m.append(h('p', { class: 'mnote' }, "Le card si disegnano nella lingua scelta qui sopra. Le scritte dell'X3 (messaggi, Bluetooth, spento) cambiano con il prossimo invio delle card; con \"Non cambiare\" l'X3 tiene quella scelta alla prima accensione."));
+}
+renderLangMenu();
+menuButton($('#langBtn'), $('#langMenu'));
 menuButton($('#addBtn'), $('#addMenu'));
 document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
   state.cards.push(DEFAULTS[b.dataset.add]()); save(); selectScreen({ kind: 'card', i: state.cards.length - 1 });
@@ -2680,7 +2727,7 @@ new ResizeObserver(fitStage).observe($('.pbar'));  // i comandi vanno a capo: ca
 const PROJECT_FILE = 'project.json';  // in /camtag, accanto alle card
 // Firmware che questo strumento si aspetta sull'X3: lo stesso di CAMTAG_FW_VERSION
 // in device/src/Version.h. L'X3 lo dice nella risposta a HELLO (docs/bluetooth.md).
-const FW_VERSION = '0.2.4';
+const FW_VERSION = '0.3.0';
 const BLE = {
   service: 'c4a70001-1b2e-4f3a-9d6e-3a7c5e0b2f10',
   ctrl: 'c4a70002-1b2e-4f3a-9d6e-3a7c5e0b2f10',
@@ -2694,13 +2741,13 @@ const BLE = {
   timeoutMs: 15000,
 };
 const BLE_ERRORS = {
-  CRC: 'I dati sono arrivati rovinati. Riprova.',
-  SD: 'Il dispositivo non riesce a scrivere sulla microSD (piena, protetta o assente?).',
-  OVERFLOW: 'I dati sono arrivati troppo in fretta. Riprova.',
-  STATO: 'Errore di protocollo. Riprova.',
-  DATI: 'Errore di protocollo. Riprova.',
-  COMANDO: 'Il dispositivo non capisce il comando: aggiorna il firmware.',
-  ASSENTE: 'Sull\'X3 non c\'è un progetto. Ci arriva la prossima volta che gli invii le card da questo strumento.',
+  CRC: t('I dati sono arrivati rovinati. Riprova.'),
+  SD: t('Il dispositivo non riesce a scrivere sulla microSD (piena, protetta o assente?).'),
+  OVERFLOW: t('I dati sono arrivati troppo in fretta. Riprova.'),
+  STATO: t('Errore di protocollo. Riprova.'),
+  DATI: t('Errore di protocollo. Riprova.'),
+  COMANDO: t('Il dispositivo non capisce il comando: aggiorna il firmware.'),
+  ASSENTE: t('Sull\'X3 non c\'è un progetto. Ci arriva la prossima volta che gli invii le card da questo strumento.'),
 };
 
 function crc32(bytes, crc = 0) {
@@ -2711,12 +2758,14 @@ function crc32(bytes, crc = 0) {
 }
 
 // Supporto di Web Bluetooth: messaggio per chi non ce l'ha.
+const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+// Browser per iPhone e iPad con Web Bluetooth (anche nel manuale e nel README).
+const IOS_BLE_APPS = [['BLE Link', 'https://apps.apple.com/app/id6468414672'], ['Bluefy', 'https://apps.apple.com/app/id1492822055']];
 function bleSupportNote() {
-  if (!window.isSecureContext) return 'Serve una pagina in HTTPS (o localhost): il Bluetooth dal browser non funziona su http.';
+  if (!window.isSecureContext) return t('Serve una pagina in HTTPS (o localhost): il Bluetooth dal browser non funziona su http.');
   if (!navigator.bluetooth) {
-    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    return ios ? 'Safari e gli altri browser di iPhone non hanno il Bluetooth per le pagine web. Apri questa pagina in un browser con Web Bluetooth, per esempio BLE Link o Bluefy.'
-      : 'Questo browser non ha il Bluetooth per le pagine web. Usa Chrome, Edge o Brave (su Android, Mac, Windows o Linux; in Brave va acceso in brave://flags, "Web Bluetooth API").';
+    return t(IOS ? 'Safari e gli altri browser di iPhone non hanno il Bluetooth per le pagine web. Apri questa pagina in un browser con Web Bluetooth, per esempio BLE Link o Bluefy.'
+      : 'Questo browser non ha il Bluetooth per le pagine web. Usa Chrome, Edge o Brave (su Android, Mac, Windows o Linux; in Brave va acceso in brave://flags, "Web Bluetooth API").');
   }
   return '';
 }
@@ -2740,9 +2789,9 @@ function bleShowFw(fw) {
   const el = $('#bleFw');
   el.hidden = false;
   const cmp = fw ? fwCompare(fw, FW_VERSION) : -1;
-  el.textContent = cmp === 0 ? `Firmware dell'X3: ${fw}.`
-    : cmp < 0 ? `Firmware dell'X3: ${fw || 'precedente alla 0.1.0'}, compatibile. La più recente è la ${FW_VERSION}.`
-    : `Firmware dell'X3: ${fw}, compatibile.`;
+  el.textContent = cmp === 0 ? t("Firmware dell'X3: {}.", fw)
+    : cmp < 0 ? t("Firmware dell'X3: {}, compatibile. La più recente è la {}.", fw || t('precedente alla 0.1.0'), FW_VERSION)
+    : t("Firmware dell'X3: {}, compatibile.", fw);
 }
 
 function bleUi(msg, { detail = '', progress = null, error = false, busy = false } = {}) {
@@ -2752,7 +2801,7 @@ function bleUi(msg, { detail = '', progress = null, error = false, busy = false 
   $('#bleBar').hidden = progress === null;
   if (progress !== null) $('#bleBar').value = progress;
   $('#bleStart').hidden = $('#bleGet').hidden = busy;
-  $('#bleClose').textContent = busy ? 'Annulla' : 'Chiudi';
+  $('#bleClose').textContent = t(busy ? 'Annulla' : 'Chiudi');
 }
 
 // Collegamento con l'X3: requestDevice va chiamato subito, dentro il clic (il
@@ -2762,24 +2811,24 @@ async function bleSession(work, onFail) {
   const devicePromise = navigator.bluetooth.requestDevice({ filters: [{ services: [BLE.service] }, { namePrefix: 'CAMTAG' }], optionalServices: [BLE.service] });
   let device;
   $('#bleFw').hidden = true;
-  try { device = await devicePromise; } catch (e) { bleUi('Nessun dispositivo scelto.', { detail: 'Sull\'X3 tieni premuto X finché compare BLUETOOTH, poi riprova.' }); return; }
+  try { device = await devicePromise; } catch (e) { bleUi(t('Nessun dispositivo scelto.'), { detail: t('Sull\'X3 tieni premuto X finché compare BLUETOOTH, poi riprova.') }); return; }
   let cancelled = false, disconnected = false, waiter = null;
   const link = { acked: 0, inbox: [], rx: [], rxBytes: 0, device };
   const wake = () => { if (waiter) { const w = waiter; waiter = null; w(); } };
   link.waitFor = async cond => {
     const t0 = Date.now();
     while (!cond()) {
-      if (cancelled) throw new Error('Annullato.');
-      if (disconnected) throw new Error('Collegamento interrotto. Avvicina il telefono all\'X3 e riprova.');
+      if (cancelled) throw new Error(t('Annullato.'));
+      if (disconnected) throw new Error(t('Collegamento interrotto. Avvicina il telefono all\'X3 e riprova.'));
       const left = BLE.timeoutMs - (Date.now() - t0);
-      if (left <= 0) throw new Error('Il dispositivo non risponde. Riprova.');
+      if (left <= 0) throw new Error(t('Il dispositivo non risponde. Riprova.'));
       await new Promise(res => { waiter = res; setTimeout(res, Math.min(left, 500)); });
     }
   };
   link.next = async () => {
     await link.waitFor(() => link.inbox.length);
     const m = link.inbox.shift();
-    if (m.startsWith('ERR')) { const e = new Error(BLE_ERRORS[m.slice(4)] || `Errore del dispositivo: ${m}`); e.code = m.slice(4); throw e; }
+    if (m.startsWith('ERR')) { const e = new Error(BLE_ERRORS[m.slice(4)] || t('Errore del dispositivo: {}', m)); e.code = m.slice(4); throw e; }
     return m;
   };
   const enc = new TextEncoder(), dec = new TextDecoder();
@@ -2787,9 +2836,9 @@ async function bleSession(work, onFail) {
   link.cmd = c => (ctrl.writeValueWithResponse ? ctrl.writeValueWithResponse(enc.encode(c)) : ctrl.writeValue(enc.encode(c)));
   // Una scrittura che non si chiude (il Mac a volte la lascia appesa) diventa un errore, non un'attesa infinita.
   const timed = (p, ms) => {
-    let t;
-    const late = new Promise((_, rej) => { t = setTimeout(() => rej(new Error('Il dispositivo non risponde. Riprova.')), ms); });
-    return Promise.race([p, late]).finally(() => clearTimeout(t));
+    let tm;
+    const late = new Promise((_, rej) => { tm = setTimeout(() => rej(new Error(t('Il dispositivo non risponde. Riprova.'))), ms); });
+    return Promise.race([p, late]).finally(() => clearTimeout(tm));
   };
   // ACK di un GET: senza risposta se l'X3 lo permette (firmware recente): con la
   // risposta, mentre l'X3 invia, Chrome sul Mac può fallire (docs/bluetooth.md).
@@ -2803,7 +2852,7 @@ async function bleSession(work, onFail) {
 
   try {
     link.open = async () => {
-      bleUi(`Mi collego a ${device.name || 'CamTag'}…`, { busy: true, progress: 0 });
+      bleUi(t('Mi collego a {}…', device.name || 'CamTag'), { busy: true, progress: 0 });
       const server = await device.gatt.connect();
       const svc = await server.getPrimaryService(BLE.service);
       const c = await svc.getCharacteristic(BLE.ctrl);
@@ -2829,10 +2878,10 @@ async function bleSession(work, onFail) {
         if (i) await new Promise(r => setTimeout(r, 600));
         await link.cmd('HELLO');
         const h = (await link.next()).split(' ');
-        if (h[1] !== 'CAMTAG') throw new Error('Il dispositivo non è un CamTag.');
+        if (h[1] !== 'CAMTAG') throw new Error(t('Il dispositivo non è un CamTag.'));
         const fw = h[5] === 'FW' ? h[6] : null;
         link.version = +h[2];
-        if (link.version !== BLE.version && !BLE.oldVersions.includes(link.version)) throw new Error(`Il firmware dell'X3 (${fw || 'precedente alla 0.1.0'}) non parla con questo strumento, fatto per la ${FW_VERSION}: aggiornali insieme.`);
+        if (link.version !== BLE.version && !BLE.oldVersions.includes(link.version)) throw new Error(t("Il firmware dell'X3 ({}) non parla con questo strumento, fatto per la {}: aggiornali insieme.", fw || t('precedente alla 0.1.0'), FW_VERSION));
         bleShowFw(fw);
         mtu = +h[4] || 23;
       }
@@ -2851,13 +2900,13 @@ async function bleSession(work, onFail) {
 // Invio: le stesse cartelle dello zip, project.json compreso.
 async function bleSend() {
   await bleSession(async link => {
-    bleUi('Preparo le card…', { busy: true, progress: 0 });
+    bleUi(t('Preparo le card…'), { busy: true, progress: 0 });
     const zip = await buildZip(), files = [];
     for (const [name, entry] of Object.entries(zip.files)) {
       if (entry.dir || !name.startsWith('camtag/')) continue;
       files.push({ path: name.slice(7), bytes: await entry.async('uint8array') });
     }
-    if (!files.some(f => f.path.endsWith('.bmp'))) throw new Error('Non ci sono card da inviare.');
+    if (!files.some(f => f.path.endsWith('.bmp'))) throw new Error(t('Non ci sono card da inviare.'));
     const total = files.reduce((s, f) => s + f.bytes.length, 0);
     await link.open();
 
@@ -2866,15 +2915,15 @@ async function bleSend() {
     const t0 = Date.now();
     for (const [i, f] of files.entries()) {
       const spec = `${f.bytes.length} ${crc32(f.bytes).toString(16)} ${f.path}`;
-      const same = kept ? ` · ${kept} già uguali sull'X3` : '';
+      const same = kept ? t(" · {} già uguali sull'X3", kept) : '';
       // Un file uguale a quello che l'X3 ha già lo copia lui dalle card attuali
       // (KEEP): viaggiano solo le pagine cambiate. project.json cambia sempre (savedAt).
       if (link.version >= 3 && f.bytes.length && f.path !== PROJECT_FILE) {
-        bleUi(`Confronto ${i + 1} di ${files.length}…`, { busy: true, progress: sent / total, detail: `${f.path}${same}` });
+        bleUi(t('Confronto {} di {}…', i + 1, files.length), { busy: true, progress: sent / total, detail: `${f.path}${same}` });
         await link.cmd(`KEEP ${spec}`);
         if ((await link.next()).startsWith('DONE')) { kept++; keptBytes += f.bytes.length; sent += f.bytes.length; continue; }
       }
-      bleUi(`Invio ${i + 1} di ${files.length}…`, { busy: true, progress: sent / total, detail: `${f.path} · ${Math.round(sent / 1024)} di ${Math.round(total / 1024)} KB${same}` });
+      bleUi(t('Invio {} di {}…', i + 1, files.length), { busy: true, progress: sent / total, detail: t('{} · {} di {} KB{}', f.path, Math.round(sent / 1024), Math.round(total / 1024), same) });
       console.info('[ble] invio', f.path, link.version >= 3 ? '(diverso o assente sull\'X3)' : '(protocollo 2: niente confronto)');
       await link.cmd(`FILE ${spec}`);
       const r = await link.next();
@@ -2887,20 +2936,20 @@ async function bleSend() {
         $('#bleBar').value = (sent + off) / total;
       }
       const done = await link.next();
-      if (!done.startsWith('DONE')) throw new Error(`Risposta inattesa: ${done}`);
+      if (!done.startsWith('DONE')) throw new Error(t('Risposta inattesa: {}', done));
       sent += f.bytes.length;
     }
-    bleUi('Salvo sul dispositivo…', { busy: true, progress: 1 });
+    bleUi(t('Salvo sul dispositivo…'), { busy: true, progress: 1 });
     await link.cmd('COMMIT'); await link.next();
     const secs = Math.max(1, Math.round((Date.now() - t0) / 1000));
     const kb = n => Math.round(n / 1024);
-    bleUi('Fatto: le card e il progetto sono sull\'X3.', { progress: 1, detail: kept
-      ? `Inviati ${files.length - kept} file su ${files.length} (${kb(total - keptBytes)} KB in ${secs} s): gli altri ${kept} erano già uguali sull'X3.`
-      : `${files.length} file, ${kb(total)} KB in ${secs} s.${link.version < 3 ? ' L\'X3 ha un firmware che non confronta le pagine: le riceve tutte.' : ' Nessuno era uguale a quelli sull\'X3.'}` });
+    bleUi(t('Fatto: le card e il progetto sono sull\'X3.'), { progress: 1, detail: kept
+      ? t("Inviati {} file su {} ({} KB in {} s): gli altri {} erano già uguali sull'X3.", files.length - kept, files.length, kb(total - keptBytes), secs, kept)
+      : `${t('{} file, {} KB in {} s.', files.length, kb(total), secs)} ${t(link.version < 3 ? 'L\'X3 ha un firmware che non confronta le pagine: le riceve tutte.' : 'Nessuno era uguale a quelli sull\'X3.')}` });
   }, async (e, link) => {
     if (link.connected()) { try { await link.cmd('ABORT'); } catch {} }
     const c = link.cancelled();
-    bleUi(c ? 'Invio annullato: sul dispositivo restano le card di prima.' : e.message || String(e), { error: !c, detail: c ? '' : 'Sul dispositivo restano le card di prima.' });
+    bleUi(c ? t('Invio annullato: sul dispositivo restano le card di prima.') : e.message || String(e), { error: !c, detail: c ? '' : t('Sul dispositivo restano le card di prima.') });
   });
 }
 
@@ -2913,49 +2962,53 @@ async function bleGet() {
     await link.dataNotify();
     await link.cmd(`GET ${PROJECT_FILE}`);
     const head = (await link.next()).split(' ');
-    if (head[0] !== 'FILE') throw new Error(`Risposta inattesa: ${head.join(' ')}`);
+    if (head[0] !== 'FILE') throw new Error(t('Risposta inattesa: {}', head.join(' ')));
     const size = +head[1], crc = parseInt(head[2], 16);
     let acked = 0;
     while (acked < size) {
       await link.waitFor(() => link.rxBytes - acked >= BLE.ackEvery || link.rxBytes >= size);
-      if (link.rxBytes > size) throw new Error('Il dispositivo ha mandato più dati del previsto. Riprova.');
+      if (link.rxBytes > size) throw new Error(t('Il dispositivo ha mandato più dati del previsto. Riprova.'));
       acked = link.rxBytes;
       // L'ACK dice il totale ricevuto, quindi si può ripetere se la scrittura fallisce.
       for (let i = 0; ; i++) {
         try { await link.ack(`ACK ${acked}`); break; }
         catch (e) { if (i >= 3 || !link.connected()) throw e; await new Promise(r => setTimeout(r, 150)); }
       }
-      bleUi('Ricevo il progetto…', { busy: true, progress: acked / size, detail: `${Math.round(acked / 1024)} di ${Math.round(size / 1024)} KB` });
+      bleUi(t('Ricevo il progetto…'), { busy: true, progress: acked / size, detail: t('{} di {} KB', Math.round(acked / 1024), Math.round(size / 1024)) });
     }
     const bytes = new Uint8Array(size);
     let off = 0;
     for (const r of link.rx) { bytes.set(r, off); off += r.length; }
-    if (crc32(bytes) !== crc) throw new Error('I dati sono arrivati rovinati. Riprova.');
-    try { project = JSON.parse(new TextDecoder().decode(bytes)); } catch { throw new Error('Il progetto sull\'X3 non è leggibile.'); }
-    if (!project || !Array.isArray(project.cards)) throw new Error('Il progetto sull\'X3 non è leggibile.');
+    if (crc32(bytes) !== crc) throw new Error(t('I dati sono arrivati rovinati. Riprova.'));
+    try { project = JSON.parse(new TextDecoder().decode(bytes)); } catch { throw new Error(t('Il progetto sull\'X3 non è leggibile.')); }
+    if (!project || !Array.isArray(project.cards)) throw new Error(t('Il progetto sull\'X3 non è leggibile.'));
   }, (e, link) => {
     project = null;
     const c = link.cancelled();
     if (!c) console.error('Importa dall\'X3:', e, `ricevuti ${link.rxBytes} B`);
-    const got = link.rxBytes ? ` Ricevuti ${Math.round(link.rxBytes / 1024)} KB prima dell'errore.` : '';
-    bleUi(c ? 'Importazione annullata.' : e.message || String(e), { error: !c, detail: c ? '' : `Il progetto in questo browser non è cambiato.${got}` });
+    const got = link.rxBytes ? ' ' + t("Ricevuti {} KB prima dell'errore.", Math.round(link.rxBytes / 1024)) : '';
+    bleUi(c ? t('Importazione annullata.') : e.message || String(e), { error: !c, detail: c ? '' : t('Il progetto in questo browser non è cambiato.') + got });
   });
   if (!project) return;
-  const when = project.savedAt ? new Date(project.savedAt).toLocaleString('it-IT', { dateStyle: 'medium', timeStyle: 'short' }) : 'in data sconosciuta';
-  const name = project.production ? `«${project.production}», ` : '';
-  if (!confirm(`Sull'X3 c'è il progetto ${name}inviato ${when}.\n\nSostituisce quello di questo browser: se ti serve il lavoro attuale, prima usa "Salva progetto".`)) {
-    bleUi('Importazione annullata: il progetto in questo browser non è cambiato.');
+  const when = project.savedAt ? new Date(project.savedAt).toLocaleString(uiLang === 'it' ? 'it-IT' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : t('in data sconosciuta');
+  const name = project.production ? (uiLang === 'it' ? `«${project.production}», ` : `“${project.production}”, `) : '';
+  if (!confirm(t('Sull\'X3 c\'è il progetto {}inviato {}.\n\nSostituisce quello di questo browser: se ti serve il lavoro attuale, prima usa "Salva progetto".', name, when))) {
+    bleUi(t('Importazione annullata: il progetto in questo browser non è cambiato.'));
     return;
   }
   await applyProject(project);
-  bleUi('Fatto: il progetto dell\'X3 è nello strumento.', { detail: `${project.cards.length} schede manuali, ${project.lenses?.length || 0} lenti.` });
+  bleUi(t('Fatto: il progetto dell\'X3 è nello strumento.'), { detail: t('{} schede manuali, {} lenti.', project.cards.length, project.lenses?.length || 0) });
 }
 
 $('#fwWanted').textContent = FW_VERSION;
 $('#bleBtn').onclick = () => {
   $('#bleFw').hidden = true;
   const note = bleSupportNote();
-  if (note) bleUi(note, { error: true }); else bleUi('Sull\'X3 tieni premuto X finché compare BLUETOOTH, poi scegli cosa fare.', { detail: 'Con le card arriva sull\'X3 anche il progetto, che puoi riprendere da qui con "Importa dall\'X3".' });
+  if (note) {
+    bleUi(note, { error: true });
+    if (IOS && window.isSecureContext && !navigator.bluetooth)
+      $('#bleDetail').replaceChildren(t('Su App Store: '), ...IOS_BLE_APPS.flatMap(([n, u], i) => [i ? ' · ' : '', h('a', { href: u, target: '_blank', rel: 'noopener' }, n)]));
+  } else bleUi(t('Sull\'X3 tieni premuto X finché compare BLUETOOTH, poi scegli cosa fare.'), { detail: t('Con le card arriva sull\'X3 anche il progetto, che puoi riprendere da qui con "Importa dall\'X3".') });
   $('#bleStart').hidden = $('#bleGet').hidden = !!note;
   $('#bleDlg').showModal();
 };
@@ -2972,11 +3025,11 @@ async function applyProject(d) {
   d = { ...d };
   if (d.lensOverrides) { Object.assign(lensOverrides, d.lensOverrides); saveOverrides(); }
   delete d.lensOverrides; delete d.savedAt;
-  state = migrate(d); fitStart(); sel = { kind: 'lenschart' };
+  state = migrate(d); fitStart(); sel = { kind: 'lenschart' }; renderLangMenu();
   await Promise.all([...state.cards, state.off].map(c => ensureImg(c.img)));
   save(); refresh();
 }
-$('#exportJson').onclick = () => download(new Blob([JSON.stringify(projectData(), null, 2)], { type: 'application/json' }), 'camtag-progetto.json');
+$('#exportJson').onclick = () => download(new Blob([JSON.stringify(projectData(), null, 2)], { type: 'application/json' }), t('camtag-progetto.json'));
 $('#importBtn').onclick = () => $('#importFile').click();
 $('#importFile').onchange = e => {
   const f = e.target.files[0]; if (!f) return;
@@ -3045,7 +3098,7 @@ function editHint(k, rot) {
 
 function simEditPress(k, long) {
   const ed = sim.edit, st = sim.stages;
-  if (k === 'X' || k === 'Y' || (long && (k === 'A' || k === 'B'))) { sim.edit = null; sim.msg = 'Stadi salvati.'; return; }
+  if (k === 'X' || k === 'Y' || (long && (k === 'A' || k === 'B'))) { sim.edit = null; sim.msg = t('Stadi salvati.'); return; }
   if (k === 'A' || k === 'B') {
     const ok = editableStages(st, sim.ndShown, sim.dioShown);
     ed.i = ok[Math.max(0, Math.min(ok.length - 1, ok.indexOf(ed.i) + editNavStep(k, simContentRot())))];
@@ -3057,7 +3110,7 @@ function simEditPress(k, long) {
 }
 function simEditArm() {
   clearTimeout(simEditTimer);
-  if (sim.edit) simEditTimer = setTimeout(() => { sim.edit = null; sim.msg = `Stadi salvati: ${EDIT_TIMEOUT_S} secondi senza tocchi.`; renderSim(); }, EDIT_TIMEOUT_S * 1000);
+  if (sim.edit) simEditTimer = setTimeout(() => { sim.edit = null; sim.msg = t('Stadi salvati: {} secondi senza tocchi.', EDIT_TIMEOUT_S); renderSim(); }, EDIT_TIMEOUT_S * 1000);
 }
 
 // ND e diottria cambiano subito nei riquadri grandi; gli stadi si riordinano (ND
@@ -3074,10 +3127,10 @@ function simSettle() {
   if (!stageCount()) return;
   const { lo, hi } = stageRange(sim.stages.length, sim.nd, sim.dio), names = new Map(kitGlasses().map(g => [g.key, g.label]));
   const r = fitStages(sim.stages, lo, hi, Math.max(0, was - now));
-  const noDio = dioUsed(sim.dio) && hi === sim.stages.length ? 'La diottria non entra negli stadi: resta solo nel riquadro grande.' : '';
-  if (r.out.length) sim.msg = `Non c'è posto per tutti: ${r.out.map(k => names.get(k)).join(', ')} ${r.out.length > 1 ? 'escono' : 'esce'} dagli stadi.`;
-  else if (r.moved) sim.msg = now < was ? (now ? 'Un ND in meno: i vetri tornano accanto all\'ND.' : 'ND tolto: i vetri tornano verso la lente.')
-    : now > was ? 'L\'ND prende il suo posto: i vetri scalano verso il fronte.' : 'La diottria non ha posto davanti ai vetri: scalano verso la lente.';
+  const noDio = dioUsed(sim.dio) && hi === sim.stages.length ? t('La diottria non entra negli stadi: resta solo nel riquadro grande.') : '';
+  if (r.out.length) sim.msg = t(r.out.length > 1 ? "Non c'è posto per tutti: {} escono dagli stadi." : "Non c'è posto per tutti: {} esce dagli stadi.", r.out.map(k => names.get(k)).join(', '));
+  else if (r.moved) sim.msg = t(now < was ? (now ? 'Un ND in meno: i vetri tornano accanto all\'ND.' : 'ND tolto: i vetri tornano verso la lente.')
+    : now > was ? 'L\'ND prende il suo posto: i vetri scalano verso il fronte.' : 'La diottria non ha posto davanti ai vetri: scalano verso la lente.');
   else if (dioNew && noDio) sim.msg = noDio;
 }
 
@@ -3089,20 +3142,20 @@ function simPress(k, long) {
   // con la pagina che resta e il lucchetto accanto al power. Acceso, l'X3 sente i tasti
   // in ogni momento (tra una pressione e l'altra riposa, ma da fuori non si vede).
   if (k === 'P') {
-    if (long) { sim.off = !sim.off; sim.keyLock = false; sim.edit = null; sim.msg = sim.off ? 'Resta la schermata di spento: tieni premuto il power per riaccendere.' : 'Acceso.'; }
-    else if (sim.off) sim.msg = 'È spento: per accenderlo il power va tenuto premuto.';
-    else if (plan.length) { sim.keyLock = !sim.keyLock; sim.edit = null; sim.msg = sim.keyLock ? 'Tasti bloccati: la pagina resta, il power sblocca.' : 'Tasti liberi.'; }
+    if (long) { sim.off = !sim.off; sim.keyLock = false; sim.edit = null; sim.msg = t(sim.off ? 'Resta la schermata di spento: tieni premuto il power per riaccendere.' : 'Acceso.'); }
+    else if (sim.off) sim.msg = t('È spento: per accenderlo il power va tenuto premuto.');
+    else if (plan.length) { sim.keyLock = !sim.keyLock; sim.edit = null; sim.msg = t(sim.keyLock ? 'Tasti bloccati: la pagina resta, il power sblocca.' : 'Tasti liberi.'); }
     return renderSim();
   }
-  if (sim.off) { sim.msg = 'È spento: lo riaccende solo il power tenuto premuto.'; return renderSim(); }
-  if (sim.keyLock) { sim.msg = 'Tasti bloccati: premi il power per sbloccare.'; return renderSim(); }
+  if (sim.off) { sim.msg = t('È spento: lo riaccende solo il power tenuto premuto.'); return renderSim(); }
+  if (sim.keyLock) { sim.msg = t('Tasti bloccati: premi il power per sbloccare.'); return renderSim(); }
   if (!plan.length) return;
   if (sim.edit) { sim.msg = ''; simEditPress(k, long); simEditArm(); return renderSim(); }
   if (isFilters && long && (k === 'A' || k === 'B')) {
-    if (!stageCount()) { sim.msg = 'Nessun vetro nel kit: aggiungili nello strumento web.'; return renderSim(); }
+    if (!stageCount()) { sim.msg = t('Nessun vetro nel kit: aggiungili nello strumento web.'); return renderSim(); }
     const ok = editableStages(sim.stages, sim.ndShown, sim.dioShown);
-    if (!ok.length) { sim.msg = 'Tutti gli stadi sono occupati da ND e diottria.'; return renderSim(); }
-    sim.edit = { i: ok[0] }; sim.msg = `Modifica stadi: A/B stadio, C/D vetro. Si chiude da sola dopo ${EDIT_TIMEOUT_S} s, o subito con X o Y.`; simEditArm();
+    if (!ok.length) { sim.msg = t('Tutti gli stadi sono occupati da ND e diottria.'); return renderSim(); }
+    sim.edit = { i: ok[0] }; sim.msg = t('Modifica stadi: A/B stadio, C/D vetro. Si chiude da sola dopo {} s, o subito con X o Y.', EDIT_TIMEOUT_S); simEditArm();
     return renderSim();
   }
   const act = rockerAction(k, isFilters, simContentRot());
@@ -3110,9 +3163,9 @@ function simPress(k, long) {
   sim.msg = '';
   if (k === 'Y' && long) {
     sim.locked = !sim.locked; sim.lockRot = sim.rot;
-    sim.msg = sim.locked ? 'ROTAZIONE BLOCCATA' : 'ROTAZIONE AUTOMATICA';
+    sim.msg = t(sim.locked ? 'ROTAZIONE BLOCCATA' : 'ROTAZIONE AUTOMATICA');
   } else if (k === 'X' && long) {
-    sim.msg = 'BLUETOOTH: in attesa dello strumento ("Bluetooth"). X o Y per uscire.';
+    sim.msg = t('BLUETOOTH: in attesa dello strumento ("Bluetooth"). X o Y per uscire.');
   } else if (act.role === 'dio' || act.role === 'nd') {
     if (act.role === 'dio') sim.dio = Math.max(0, Math.min(dioSteps().length - 1, sim.dio + act.dir));
     else sim.nd = Math.max(0, Math.min(ndSteps().length - 1, sim.nd + act.dir));
@@ -3120,11 +3173,11 @@ function simPress(k, long) {
     simSettleTimer = setTimeout(() => { sim.msg = ''; simSettle(); renderSim(); }, SETTLE_S * 1000);
   } else if (cur.kind === 'lenschart' && 'ABCD'.includes(k)) {
     const lens = plan.map((p, i) => (p.kind === 'lenschart' ? i : -1)).filter(i => i >= 0);
-    if (lens.length < 2) sim.msg = 'La lens chart ha una sola pagina: A–D non fanno nulla. Le schermate si cambiano con X e Y.';
+    if (lens.length < 2) sim.msg = t('La lens chart ha una sola pagina: A–D non fanno nulla. Le schermate si cambiano con X e Y.');
     else sim.i = lens[(lens.indexOf(sim.i) + lensPageDir(k, simContentRot()) + lens.length) % lens.length];
   } else if (k === 'Y') step(1);       // Y (lato destro) = pagina successiva, in ciclo
   else if (k === 'X') step(-1);        // X (lato sinistro) = pagina precedente
-  else sim.msg = 'Nessuna funzione per questo tasto qui: le pagine si cambiano con X e Y.';
+  else sim.msg = t('Nessuna funzione per questo tasto qui: le pagine si cambiano con X e Y.');
   renderSim();
 }
 
@@ -3161,7 +3214,7 @@ function renderSim() {
   } else if (!item) {
     // Come showMessage nel firmware.
     const angle = simContentRot(), [W, H] = dims(angle % 180 === 90 ? 'land' : 'port'), [tmp, tctx] = newCanvas(W, H);
-    drawMessageScreen(tctx, W, H, angle / 90, 'NESSUNA CARD', 'TIENI X PER RICEVERLE');
+    drawMessageScreen(tctx, W, H, angle / 90, devText('noCards'), devText('holdX'));
     ctx.save(); ctx.translate(cv.width / 2, cv.height / 2); ctx.rotate(-angle * Math.PI / 180);
     ctx.drawImage(tmp, -W / 2, -H / 2); ctx.restore();
   } else {
@@ -3191,8 +3244,8 @@ function renderSim() {
     }
     if (sim.keyLock) drawLockIcon(ctx, POWER_POS * cv.width, LOCK_BOX / 2 + 4, angle);  // dritto come il contenuto
   }
-  const name = sim.edit ? 'Filtri · modifica stadi' : item ? (item.kind === 'lenschart' ? `Lens chart${plan.filter(p => p.kind === 'lenschart').length > 1 ? ` ${item.page + 1}` : ''}` : item.kind === 'filters' ? 'Filtri' : item.kind === 'filterlist' ? 'Elenco filtri' : cardTitle(item.card)) : '—';
-  $('#simStatus').textContent = [sim.off ? 'Spento' : `${sim.i + 1}/${plan.length} · ${name}`, sim.locked ? 'rotazione bloccata' : '', sim.keyLock && !sim.off ? 'tasti bloccati' : '', sim.msg].filter(Boolean).join(' · ');
+  const name = sim.edit ? t('Filtri · modifica stadi') : item ? (item.kind === 'lenschart' ? `Lens chart${plan.filter(p => p.kind === 'lenschart').length > 1 ? ` ${item.page + 1}` : ''}` : item.kind === 'filters' ? t('Filtri') : item.kind === 'filterlist' ? t('Elenco filtri') : tExact(cardTitle(item.card))) : '—';
+  $('#simStatus').textContent = [sim.off ? t('Spento') : `${sim.i + 1}/${plan.length} · ${name}`, sim.locked ? t('rotazione bloccata') : '', sim.keyLock && !sim.off ? t('tasti bloccati') : '', sim.msg].filter(Boolean).join(' · ');
 }
 
 // remember = scelta dell'utente, da ricordare in camtag.ui.v1 (non quando è la finestra stretta a decidere).
@@ -3251,7 +3304,7 @@ document.addEventListener('keyup', e => { const k = simKeyOf(e); if (k) simUp(k,
 // Database: servito dalla radice del repo (python3 -m http.server), quindi ../data/.
 Promise.all([
   fetch('../data/lenses.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-    .then(d => { lensDb = d.lenses; lensById = new Map(lensDb.map(l => [l.id, l])); }).catch(() => { lensDbError = 'Database lenti non trovato. Avvia il server dalla radice del progetto: python3 -m http.server 8765, poi apri /companion/.'; }),
+    .then(d => { lensDb = d.lenses; lensById = new Map(lensDb.map(l => [l.id, l])); }).catch(() => { lensDbError = t('Database lenti non trovato. Avvia il server dalla radice del progetto: python3 -m http.server 8765, poi apri /companion/.'); }),
   fetch('../data/filters.json').then(r => r.json()).then(d => { filterDb = d.filters; }).catch(() => {}),
   ...[...state.cards, state.off].map(c => ensureImg(c.img)),
   // Il canvas non aspetta i web font: vanno caricati prima di disegnare, altrimenti
