@@ -221,8 +221,9 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   diverso, es. l'unica macro); con un pareggio tra serie non si evidenzia per
   serie. Si può forzare per ogni lente (auto / sempre / mai). Scala del testo
   in base al numero di lenti: con poche lenti ogni lente va su due righe grandi
-  (focale sopra; sotto i valori, ognuno con l'etichetta accanto a 0,45 della
-  sua misura, `LABEL`), con tante torna la tabella; la misura è unica per tutte le pagine. La focale
+  (focale sopra, sotto i valori: in orizzontale l'etichetta sta accanto al
+  valore a 0,45 della sua misura, `LABEL`; in verticale, piccola, sopra), con
+  tante torna la tabella; la misura è unica per tutte le pagine. La focale
   di un prime è sempre il testo più grande: T e CF stanno a 0,8 della sua misura
   (`VAL`), e in tabella le colonne prendono la larghezza del contenuto.
   Eccezione per gli zoom: la loro escursione può scendere fino a 0,6 della

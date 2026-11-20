@@ -916,20 +916,29 @@ function drawLensChart(ctx, W, H, { rows, group, mount }, pageIdx, pageCount) {
   fitFont(ctx, legText, 700, inner, footH * 0.46, 11); ctx.fillText(legText, pad, H - footH / 2 + 1);
 
   if (tall) {
-    // Sopra: focale grande (e sigla piccola). Sotto: T, CF, Ø, ognuno con l'etichetta
-    // a sinistra del valore, sulla stessa linea di base.
+    // Sopra: focale grande (e sigla piccola). Sotto: T, CF, Ø. In orizzontale
+    // ognuno ha l'etichetta a sinistra del valore, sulla stessa linea di base;
+    // in verticale, dove le colonne sono strette, l'etichetta piccola sta sopra.
     // Gli zoom non rimpiccioliscono le focali dei prime: hanno la loro misura, mai più grande.
     const focalSize = set => set.length ? sizeFor(set.map(focalText), 900, inner * 0.7 - 20, rowH * 0.42) : null;
     const zsFit = focalSize(rows.filter(isZoom)), fs = focalSize(rows.filter(l => !isZoom(l))) ?? zsFit;
     const zs = Math.min(fs, zsFit ?? fs);
     const groupW = inner / NS;
-    // Etichetta + spazio + valore devono stare nella colonna: tutto scala con il valore.
-    const em = (t, w) => { ctx.font = `${w} 100px ${FONT}`; return ctx.measureText(t).width / 100; };
-    const perVs = Math.max(...rows.flatMap(l => specs(l).map(([k, v]) => LABEL * em(k, 700) + LABEL_GAP + em(v, 800))));
-    const vs = Math.floor(Math.min((groupW - 30) / perVs, rowH * 0.34, fs * VAL));
+    const beside = W > H;
+    let vs, ls;
+    if (beside) {
+      // Etichetta + spazio + valore devono stare nella colonna: tutto scala con il valore.
+      const em = (t, w) => { ctx.font = `${w} 100px ${FONT}`; return ctx.measureText(t).width / 100; };
+      const perVs = Math.max(...rows.flatMap(l => specs(l).map(([k, v]) => LABEL * em(k, 700) + LABEL_GAP + em(v, 800))));
+      vs = Math.floor(Math.min((groupW - 30) / perVs, rowH * 0.34, fs * VAL));
+    } else {
+      ls = Math.max(14, Math.round(rowH * 0.075));
+      vs = Math.min(sizeFor(rows.flatMap(l => specs(l).map(s => s[1])), 800, groupW - 34, rowH * 0.26), Math.round(fs * VAL));
+    }
     rows.forEach((l, i) => {
       const y = top + i * rowH, line1 = y + rowH * 0.27;
-      const valueY = y + rowH * 0.72 + vs * 0.36;  // linea di base: il centro delle cifre a 0.72 della riga
+      const valueY = beside ? y + rowH * 0.72 + vs * 0.36   // linea di base: il centro delle cifre a 0.72 della riga
+                            : y + rowH * 0.55 + ls * 0.6 + vs * 0.62;
       if (i > 0) rule(y);
       const s = isZoom(l) ? zs : fs;
       ctx.font = `900 ${s}px ${FONT}`;
@@ -938,6 +947,14 @@ function drawLensChart(ctx, W, H, { rows, group, mount }, pageIdx, pageCount) {
       ctx.textAlign = 'left'; ctx.fillText(focalText(l), pad + 10, line1);
       ctx.fillStyle = '#000';
       if (tag(l)) { ctx.font = `800 ${Math.round(s * 0.36)}px ${FONT}`; ctx.fillText(tag(l), pad + fw + 32, line1 + s * 0.12); }
+      if (!beside) {
+        specs(l).forEach(([k, v], j) => {
+          const x = pad + 10 + j * groupW;
+          ctx.font = `600 ${ls}px ${FONT}`; ctx.fillText(k, x, y + rowH * 0.55); // unità minuscole: "CF m", "Ø mm"
+          ctx.font = `800 ${j === 2 ? smallSize(vs) : vs}px ${FONT}`; ctx.fillText(v, x, valueY);
+        });
+        return;
+      }
       ctx.textBaseline = 'alphabetic';
       specs(l).forEach(([k, v], j) => {
         const sz = j === 2 ? smallSize(vs) : vs, ls = Math.max(14, Math.round(sz * LABEL));
