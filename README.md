@@ -16,7 +16,7 @@ even when off.
 | Folder | Contents |
 |---|---|
 | `device/` | PlatformIO firmware for Xteink X3 (and X4), on top of FreeInk SDK |
-| `companion/` | Web tool to create the cards and export them as 1-bit BMP |
+| `companion/` | Web configurator to create the cards and export them as 1-bit BMP |
 | `third_party/freeink-sdk/` | FreeInk SDK (display driver, buttons, battery, SD), submodule at `77ae8c7` |
 | `reference/crosspoint/` | CrossPoint, for reference only: not compiled and not in the repo |
 | `.venv/` | Recent PlatformIO, isolated from the rest of the system |
@@ -34,10 +34,10 @@ git clone --depth 1 https://github.com/crosspoint-reader/crosspoint-reader refer
 
 ## How it works (v0.3)
 
-1. Create the cards in the web tool.
+1. Create the cards in the web configurator.
 2. Send them to the X3 in one of two ways:
    - **Bluetooth**: on the X3 hold **X** until BLUETOOTH appears, then in the
-     web tool tap **Bluetooth** and then **Send cards** (see below);
+     web configurator tap **Bluetooth** and then **Send cards** (see below);
    - **microSD**: download the zip and copy its `camtag/` folder to the root
      of the microSD.
 3. On the device:
@@ -58,19 +58,19 @@ git clone --depth 1 https://github.com/crosspoint-reader/crosspoint-reader refer
    - when on, it hears the buttons at any moment: between presses it rests,
      but from the outside you can't tell. If left on, it turns itself off
      after 24 hours without button presses
-   - when off it shows the **off screen** (a card chosen in the web tool, or
+   - when off it shows the **off screen** (a card chosen in the web configurator, or
      just the name) with a strip saying it is off; after three days the screen
      goes white. Details and power consumption in
      [`docs/batteria.md`](docs/batteria.md)
 
 ### Sending via Bluetooth
 
-The web tool can send the cards to the X3 without removing the microSD, using
+The web configurator can send the cards to the X3 without removing the microSD, using
 the browser's Bluetooth LE (Web Bluetooth).
 
 1. On the X3 hold **X** for 0.8 s: **BLUETOOTH** appears with the device
    name (e.g. `CAMTAG-1A2B`).
-2. In the web tool tap **Bluetooth**, then **Send cards** and choose the
+2. In the web configurator tap **Bluetooth**, then **Send cards** and choose the
    device.
 3. When the transfer is done the X3 shows the first card with **CARDS
    UPDATED**.
@@ -82,7 +82,7 @@ mode; after 3 minutes without transfers it exits by itself. Bluetooth is on
 only while receiving.
 
 Along with the cards, the **project** (`project.json`) also reaches the X3:
-the same file as "Save project". Your work in the web tool lives only in the
+the same file as "Save project". Your work in the web configurator lives only in the
 browser, which may delete it (Safari does so after a week without visits). To
 get it back, put the X3 in receive mode and tap **Bluetooth** → **Import from
 X3**: the cards don't change. Alternatively, open `camtag/project.json` from
@@ -129,11 +129,11 @@ rotation stays fixed.
 The X3 firmware's own messages (no-card notice, Bluetooth screen, off strip,
 errors) come in English or Italian. On first boot the X3 asks for the
 language (**A** or **B** = English, **C** or **D** = Italian) and keeps asking
-at every boot until one is chosen. It can also be set from the web tool, which
+at every boot until one is chosen. It can also be set from the web configurator, which
 writes `lang=en|it` in `/camtag/settings.ini` with the next card upload
 ("Don't change" writes nothing).
 
-The web tool has three independent language choices, in the EN/IT button of
+The web configurator has three independent language choices, in the EN/IT button of
 its top bar:
 - **interface**: per browser; defaults to Italian if the system language is
   Italian, otherwise English;
@@ -144,7 +144,7 @@ Cards and X3 in different languages is fine: nothing checks it. The user
 manual exists in English (`companion/manual/`) and Italian
 (`companion/manuale/`).
 
-## Web tool
+## Web configurator
 
 Online: **https://trunk-studio-production.github.io/camtag/** (GitHub Pages,
 updated on every push to `main`). It is also the address to open on your phone
@@ -193,10 +193,10 @@ cd device && ../.venv/bin/pio run -e x3
 Host tests, without an X3:
 
 ```bash
-device/test/filters_test.sh      # filters screen: identical to the web tool preview
+device/test/filters_test.sh      # filters screen: identical to the web configurator preview
 ```
 
-`filters_test.sh` composes the pieces exported by the web tool the way the
+`filters_test.sh` composes the pieces exported by the web configurator the way the
 firmware does and compares them pixel by pixel with the previews, along with
 the stage rules. The data is in `device/test/filters_fixture.zip`: if the
 filters export changes, regenerate it with `device/test/filters_fixture.js`
@@ -338,7 +338,7 @@ orientation and the card on screen, and waits for the X3 if it turns off:
 - [ ] Battery reading (BQ27220 fuel gauge): the icon appears below 20%
 - [ ] Bluetooth receive from Android (Chrome) and iPhone (BLE Link),
       consumption with Bluetooth on
-- [x] Filters screen (`taratura.py filtri`): reads the tool's cards as they
+- [x] Filters screen (`taratura.py filtri`): reads the web configurator's cards as they
       are; ND and diopter with the rockers and button hints in all 4
       orientations, stage reordering after 2 s, stage editing (entering,
       choosing stage and glass, exiting by itself after 5 s and with Y); the
@@ -368,7 +368,7 @@ orientation and the card on screen, and waits for the X3 if it turns off:
 
 ## License
 
-CamTag (firmware and web tool) is free software, distributed under the
+CamTag (firmware and web configurator) is free software, distributed under the
 **GNU GPL v3.0** license: full text in [`LICENSE`](LICENSE). You may use,
 study, modify and redistribute it; anyone who distributes a modified version
 must make its source code available under the same license.

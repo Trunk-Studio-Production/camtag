@@ -1,9 +1,9 @@
 // Test host della schermata filtri (niente hardware): device/test/filters_test.sh
 //
-// Con i pezzi e le anteprime di filters_fixture.zip (generato dallo strumento web
+// Con i pezzi e le anteprime di filters_fixture.zip (generato dal configuratore web
 // con filters_fixture.js) controlla che:
 // - screen.ini v3 si legga con i tasti del simulatore per ogni verso;
-// - le regole degli stadi diano gli stessi risultati dello strumento;
+// - le regole degli stadi diano gli stessi risultati del configuratore web;
 // - comporre sfondo e pezzi dia l'anteprima pixel per pixel, in tutte e quattro
 //   le rotazioni, anche aggiornando solo le parti che cambiano;
 // - le indicazioni dei tasti stiano dentro lo schermo.
@@ -286,6 +286,6 @@ int main(int argc, char** argv) {
     printf("%d controlli falliti\n", failures);
     return 1;
   }
-  printf("tutto come lo strumento web\n");
+  printf("tutto come il configuratore web\n");
   return 0;
 }

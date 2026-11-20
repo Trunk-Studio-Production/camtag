@@ -1,10 +1,10 @@
 // Genera device/test/filters_fixture.zip per filters_test.cpp: i pezzi della
-// schermata filtri come li esporta lo strumento web, le anteprime di riferimento
-// (le stesse del simulatore) e le regole degli stadi calcolate dallo strumento.
+// schermata filtri come li esporta il configuratore web, le anteprime di riferimento
+// (le stesse del simulatore) e le regole degli stadi calcolate dal configuratore web.
 //
 // Uso: servi la radice del repo (python3 -m http.server 8766), apri
 // http://localhost:8766/companion/, incolla questo file nella console e salva lo
-// zip scaricato in device/test/. Lo stato dello strumento non viene toccato.
+// zip scaricato in device/test/. Lo stato del configuratore web non viene toccato.
 // makeFiltersFixture(false) restituisce lo zip invece di scaricarlo.
 async function makeFiltersFixture(save = true) {
   const keep = state;

@@ -19,7 +19,7 @@ costruttori di lenti e filtri nei dati vanno bene.
   e rimanda al telefono `project.json` (`GET`); `UploadProto.h` ha le parti provabili sull'host (`device/test/`).
   `Version.h` ha la versione del firmware (`CAMTAG_FW_VERSION`), scritta sulla
   schermata Bluetooth con i credits e mandata nella risposta a `HELLO`: lo
-  strumento web la mostra accanto a `FW_VERSION`; si ferma solo se il protocollo è diverso. Si cambiano
+  configuratore web la mostra accanto a `FW_VERSION`; si ferma solo se il protocollo è diverso. Si cambiano
   insieme, a ogni nuovo firmware.
   `Lang.h` ha le scritte del firmware in inglese e italiano (`tr()`): una frase
   nuova va lì con le due lingue, e se il simulatore la disegna anche in `DEV_TEXT`.
@@ -29,7 +29,7 @@ costruttori di lenti e filtri nei dati vanno bene.
   con riposo e spento (`rest`, `powerOff`). `Battery.cpp` legge il fuel gauge e
   scrive il registro dei consumi (`/camtag-batteria.csv`, specifica in `docs/batteria.md`).
   Problemi aperti dello schermo: `docs/schermo.md`.
-- `companion/index.html` — strumento web a file singolo: lens chart e filtri
+- `companion/index.html` — configuratore web a file singolo: lens chart e filtri
   generati in automatico più schede manuali (crew, note, lente singola, patch);
   esporta uno zip di BMP 1 bit o manda gli stessi file all'X3 via Web Bluetooth
   (`bleSend`; `bleGet` riprende il progetto dall'X3). Dipendenze esterne: JSZip da cdnjs (i font
@@ -50,6 +50,8 @@ costruttori di lenti e filtri nei dati vanno bene.
   una ⓘ (`info()`): in chiaro restano solo avvisi e stati vuoti. Le preferenze
   dell'interfaccia (sezioni aperte, orientamento, anteprima o simulatore) stanno
   nel localStorage `camtag.ui.v1`: sono del browser, non entrano in `project.json`.
+  Nei testi per l'utente si chiama sempre **configuratore web** (in inglese
+  *web configurator*), mai "strumento" o "app".
 - `companion/manuale/` (italiano) e `companion/manual/` (inglese) — manuale
   d'uso (pulsante "Manuale", nella lingua dell'interfaccia): `index.html` disegna
   l'X3 in SVG attorno a PNG presi dal simulatore. I PNG non si aggiornano da
@@ -60,9 +62,9 @@ costruttori di lenti e filtri nei dati vanno bene.
   dalle schede dei costruttori, con la fonte per ogni lente. `mounts` = attacchi
   offerti (sigle in `MOUNTS`, uguali in `data/validate.py`). Mai modificarlo per
   un esemplare: le differenze (es. Ø frontale del noleggio) sono modifiche
-  locali per `id` nello strumento web (localStorage `camtag.lensOverrides.v1`,
+  locali per `id` nel configuratore web (localStorage `camtag.lensOverrides.v1`,
   esportabili), applicate sopra il database quando si disegna. Un valore
-  modificato porta un `*` accanto, sulla lens chart e nello strumento.
+  modificato porta un `*` accanto, sulla lens chart e nel configuratore web.
 - `data/filters.json` — catalogo dei vetri (famiglie e gradazioni) **provvisorio, non verificato**.
 - `third_party/freeink-sdk/` — sottomodulo git bloccato su `77ae8c7`. **Non
   modificarlo**: se serve un cambiamento, aggira nel nostro codice o chiedi.
@@ -74,7 +76,7 @@ costruttori di lenti e filtri nei dati vanno bene.
 
 Repo pubblico `Trunk-Studio-Production/camtag`, licenza GPL-3.0, branch `main`. Commit e push
 solo quando l'utente lo chiede. Ogni push su `main` che tocca `companion/` o
-`data/` pubblica lo strumento web su GitHub Pages
+`data/` pubblica il configuratore web su GitHub Pages
 (`.github/workflows/pages.yml`): https://trunk-studio-production.github.io/camtag/
 
 ```bash
@@ -119,10 +121,10 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
 - Vetro 528×792 in verticale (area attiva 51,84 × 77,76 mm, ~259 ppi); il
   framebuffer dell'SDK è 792×528 (orizzontale), MSB-first, **1 = bianco**.
   Controller UC8253 o UC8279 secondo il lotto, rilevato all'avvio.
-- Nello strumento web i canvas si creano con `newCanvas` (software,
+- Nel configuratore web i canvas si creano con `newCanvas` (software,
   `willReadFrequently`): la stessa card deve uscire uguale byte per byte, se no
   l'invio Bluetooth la rimanda.
-- Nello strumento web le immagini rimpicciolite vanno ammorbidite, non
+- Nel configuratore web le immagini rimpicciolite vanno ammorbidite, non
   `pixelated` (che butta via righe); i pixel veri si vedono con "Pixel 1:1".
 - Disegnando per l'e-paper, righe sottili su pixel interi e spesse almeno 2 px:
   una riga da 1 px a mezzo pixel diventa grigia e la soglia a 1 bit la cancella.
@@ -165,27 +167,27 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   Nome e gradazioni affiancati se ogni riga sta su una linea, se no nome sopra
   e gradazioni a 0,7 della sua misura (`VAL_STACK`);
   a capo solo se il testo cresce di oltre il 25%, in parti uguali (3 + 2).
-  Nello strumento ha lo stesso editor dei filtri (`filtersEditor(ed, true)`).
+  Nel configuratore web ha lo stesso editor dei filtri (`filtersEditor(ed, true)`).
   Per il firmware è una card qualsiasi.
 - `/camtag/off.bmp`, `off.p.bmp` (facoltativa): schermata di spento, fuori dal
-  giro delle pagine. Nello strumento la compone la pagina "Spento" (`state.off`:
+  giro delle pagine. Nel configuratore web la compone la pagina "Spento" (`state.off`:
   immagine di sfondo e scritta, `renderOff`), o è una scheda manuale con
   "Schermata di spento" accesa (`c.off`, una sola; `offCard`), che la sostituisce;
   senza nessuna delle due non si esporta. Il firmware ci disegna sopra il nome,
   una fascia in basso, la batteria e le etichette dei tasti (`drawOff`; nello
-  strumento `drawOffOverlay`, con il font 5x7 del firmware copiato in `TINY`).
+  configuratore web `drawOffOverlay`, con il font 5x7 del firmware copiato in `TINY`).
 - `/camtag/settings.ini`: `keys=0|1` etichette dei tasti, `off.logo=0|1` nome
   CAMTAG da spento (al centro senza `off.bmp`, se no in un riquadro in alto),
-  `lang=en|it` lingua delle scritte del firmware (solo se scelta nello strumento;
+  `lang=en|it` lingua delle scritte del firmware (solo se scelta nel configuratore web;
   il firmware la salva in NVS). Senza il file: etichette sì, nome solo senza
   `off.bmp`, lingua invariata (`loadSettings`).
-- Etichette dei tasti (`kKeyTabs`/`drawKeyLabels`, nello strumento `KEY_TABS`,
+- Etichette dei tasti (`kKeyTabs`/`drawKeyLabels`, nel configuratore web `KEY_TABS`,
   stesse frazioni lungo i bordi): linguette bianche con bordo nero e nome dritto
   per chi legge (A|B e C|D, X, Y, PWR, RESET, che è un tasto vero e riavvia),
   sulla schermata senza card e da spento (non sul bianco). La schermata senza
   card (`showMessage`, nel simulatore `drawMessageScreen`) ha il messaggio in un
   riquadro ben in vista al centro.
-- `/camtag/project.json`: il progetto dello strumento web, inviato con le card
+- `/camtag/project.json`: il progetto del configuratore web, inviato con le card
   (anche nello zip) e riletto con "Importa dall'X3". Il firmware lo ignora. Il
   lavoro nel browser sta solo nel localStorage: questo file è la copia che resta.
 - Schermata filtri (specifica completa in `docs/filtri.md`): lo sfondo ha vuoti
@@ -224,9 +226,9 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   loro: **X3** (scritte del firmware, NVS `lang`): al primo avvio, finché non c'è,
   chiede la lingua (`showLangChoice`: A/B inglese, C/D italiano), poi la cambia
   solo `lang=` in settings.ini; **card** (`state.lang`, nel progetto; i progetti
-  di prima della v8 sono italiani); **interfaccia** dello strumento (`uiLang`,
+  di prima della v8 sono italiani); **interfaccia** del configuratore web (`uiLang`,
   in `camtag.ui.v1`; di partenza italiano se lo è il sistema, se no inglese).
-  Nello strumento stanno tutte nel pulsante EN/IT della barra; il simulatore
+  Nel configuratore web stanno tutte nel pulsante EN/IT della barra; il simulatore
   disegna le scritte del firmware nella lingua dell'X3, o in quella delle card
   con "Non cambiare".
 - Decimali sulle schermate: sempre il punto (0.9), senza opzione.
@@ -271,15 +273,15 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   (`state.zoomsLast`, in `sortedLenses`) li mette dopo i prime sulla stessa
   lens chart (accesa di partenza), ed è nascosta quando le pagine sono separate.
 - ND e diottrie: +/− sul dispositivo, scorrendo solo i valori del kit scelto
-  nello strumento web. Nella scala dell'ND entrano anche i totali fatti con
-  **due vetri** spuntati nello strumento (`ndCombos`, `ndComboList`: mai un
+  nel configuratore web. Nella scala dell'ND entrano anche i totali fatti con
+  **due vetri** spuntati nel configuratore web (`ndCombos`, `ndComboList`: mai un
   totale che il kit ha già, coppia con il vetro più denso, che va nello stadio
   1); gli stadi si riordinano solo con ND e diottria fermi da 2 s (`simSettle`). Si
   mostra solo il formato ND scelto (0,9 / 3 stop / ND8). Tipo ND: ND, IRND o
   FSND (full spectrum).
 - Gli altri vetri (diffusione, polarizzatori, colore…) seguono il mattebox
   (`docs/filtri.md`): un **kit** di vetri, uno per tipo, e da 1 a 6 **stadi**
-  (`MAX_STAGES`; nello strumento il selettore mostra 1–3 e un `+`,
+  (`MAX_STAGES`; nel configuratore web il selettore mostra 1–3 e un `+`,
   `BOX_STAGES`, che apre anche 4, 5 e 6)
   numerati da 1 = lato lente; ogni stadio ha un vetro o è vuoto (`—`), e un
   vetro sta in un posto solo. Non esiste "montato": la schermata mostra sempre
@@ -361,10 +363,10 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   `Canvas` disegna in coordinate logiche; la rotazione la gestisce lui.
 - Dopo una modifica al firmware: compila. Se tocchi `Canvas`, `Filters` o
   l'esportazione dei filtri: `device/test/filters_test.sh` (stub di `SdFat.h`,
-  confronto pixel per pixel con le anteprime dello strumento; se cambia
+  confronto pixel per pixel con le anteprime del configuratore web; se cambia
   l'esportazione rigenera `filters_fixture.zip` con `filters_fixture.js`).
   Per il protocollo Bluetooth: `device/test/upload_proto_test.cpp` (comando in `docs/bluetooth.md`).
-- Dopo una modifica allo strumento web: aprilo nel browser integrato e
+- Dopo una modifica al configuratore web: aprilo nel browser integrato e
   controlla l'anteprima; verifica che i BMP esportati abbiano le dimensioni giuste.
 - **Mai caricare firmware su un X3 nuovo senza i tre controlli del README**
   ("Rischi e controlli prima di caricare": compare sulla USB,

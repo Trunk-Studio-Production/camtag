@@ -1,4 +1,4 @@
-// Rigenera le schermate del manuale dal simulatore dello strumento web, con un
+// Rigenera le schermate del manuale dal simulatore del configuratore web, con un
 // progetto di prova: dopo ogni cambio di layout basta rifarle. Due lingue, card e
 // scritte dell'X3 nella stessa: 'it' per companion/manuale/, 'en' per companion/manual/.
 //
@@ -6,7 +6,7 @@
 // http://localhost:8766/companion/, incolla questo file nella console ed esegui
 // makeManualShots('it') e makeManualShots('en'): ognuna scarica
 // manuale-schermate-<lingua>.zip, da scompattare nella cartella del suo manuale
-// sopra i PNG che ci sono. Lo stato dello strumento non viene toccato (né
+// sopra i PNG che ci sono. Lo stato del configuratore web non viene toccato (né
 // salvato). makeManualShots(lingua, url) invece manda ogni PNG con un PUT a
 // url + nome.png, per chi ha un piccolo server che li scrive su disco.
 async function makeManualShots(lang = 'it', putUrl = null) {

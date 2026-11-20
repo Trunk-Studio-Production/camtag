@@ -1,4 +1,4 @@
-// Lingue dello strumento. Il sorgente è scritto in italiano: le frasi italiane
+// Lingue del configuratore web. Il sorgente è scritto in italiano: le frasi italiane
 // sono le chiavi e qui accanto c'è l'inglese. Tre lingue indipendenti:
 // - interfaccia (`uiLang`): preferenza del browser, in camtag.ui.v1 (`lang`);
 //   all'inizio quella del sistema se è l'italiano, altrimenti l'inglese;
@@ -40,7 +40,7 @@ const I18N_EN = {
   'Card': 'Cards',
   'Scritte dell\'X3': 'X3 messages',
   'Non cambiare': "Don't change",
-  "Lingua dello strumento, delle card e delle scritte dell'X3": 'Language of the tool, of the cards and of the X3 messages',
+  "Lingua del configuratore web, delle card e delle scritte dell'X3": 'Language of the web configurator, of the cards and of the X3 messages',
   "Le card si disegnano nella lingua scelta qui sopra. Le scritte dell'X3 (messaggi, Bluetooth, spento) cambiano con il prossimo invio delle card; con \"Non cambiare\" l'X3 tiene quella scelta alla prima accensione.": 'Cards are drawn in the language chosen above. The X3 messages (notices, Bluetooth, off screen) change with the next card upload; with "Don\'t change" the X3 keeps the one chosen at first boot.',
   'CamTag via Bluetooth': 'CamTag via Bluetooth',
   "Riprende il progetto salvato sull'X3 insieme alle card": 'Gets back the project saved on the X3 together with the cards',
@@ -360,12 +360,12 @@ const I18N_EN = {
   'Tasti liberi.': 'Buttons unlocked.',
   'È spento: lo riaccende solo il power tenuto premuto.': 'It is off: only holding power turns it back on.',
   'Tasti bloccati: premi il power per sbloccare.': 'Buttons locked: press power to unlock.',
-  'Nessun vetro nel kit: aggiungili nello strumento web.': 'No glasses in the kit: add them in the web tool.',
+  'Nessun vetro nel kit: aggiungili nel configuratore web.': 'No glasses in the kit: add them in the web configurator.',
   'Tutti gli stadi sono occupati da ND e diottria.': 'All stages are taken by ND and diopter.',
   'Modifica stadi: A/B stadio, C/D vetro. Si chiude da sola dopo {} s, o subito con X o Y.': 'Stage editing: A/B stage, C/D glass. It closes by itself after {} s, or right away with X or Y.',
   'ROTAZIONE BLOCCATA': 'ROTATION LOCKED',
   'ROTAZIONE AUTOMATICA': 'AUTO ROTATION',
-  'BLUETOOTH: in attesa dello strumento ("Bluetooth"). X o Y per uscire.': 'BLUETOOTH: waiting for the tool ("Bluetooth"). X or Y to exit.',
+  'BLUETOOTH: in attesa del configuratore web ("Bluetooth"). X o Y per uscire.': 'BLUETOOTH: waiting for the web configurator ("Bluetooth"). X or Y to exit.',
   'La lens chart ha una sola pagina: A–D non fanno nulla. Le schermate si cambiano con X e Y.': 'The lens chart has a single page: A–D do nothing. Screens are changed with X and Y.',
   'Nessuna funzione per questo tasto qui: le pagine si cambiano con X e Y.': 'This button does nothing here: pages are changed with X and Y.',
   'Filtri · modifica stadi': 'Filters · stage editing',
@@ -379,7 +379,7 @@ const I18N_EN = {
   'I dati sono arrivati troppo in fretta. Riprova.': 'The data arrived too fast. Try again.',
   'Errore di protocollo. Riprova.': 'Protocol error. Try again.',
   'Il dispositivo non capisce il comando: aggiorna il firmware.': 'The device does not understand the command: update the firmware.',
-  "Sull'X3 non c'è un progetto. Ci arriva la prossima volta che gli invii le card da questo strumento.": 'There is no project on the X3. It gets there the next time you send it the cards from this tool.',
+  "Sull'X3 non c'è un progetto. Ci arriva la prossima volta che gli invii le card da questo configuratore web.": 'There is no project on the X3. It gets there the next time you send it the cards from this web configurator.',
   'Serve una pagina in HTTPS (o localhost): il Bluetooth dal browser non funziona su http.': 'An HTTPS page (or localhost) is needed: browser Bluetooth does not work over http.',
   'Safari e gli altri browser di iPhone non hanno il Bluetooth per le pagine web. Apri questa pagina in un browser con Web Bluetooth, per esempio BLE Link o Bluefy.': 'Safari and the other iPhone browsers have no Bluetooth for web pages. Open this page in a browser with Web Bluetooth, for example BLE Link or Bluefy.',
   'Questo browser non ha il Bluetooth per le pagine web. Usa Chrome, Edge o Brave (su Android, Mac, Windows o Linux; in Brave va acceso in brave://flags, "Web Bluetooth API").': 'This browser has no Bluetooth for web pages. Use Chrome, Edge or Brave (on Android, Mac, Windows or Linux; in Brave turn it on in brave://flags, "Web Bluetooth API").',
@@ -395,7 +395,7 @@ const I18N_EN = {
   'Errore del dispositivo: {}': 'Device error: {}',
   'Mi collego a {}…': 'Connecting to {}…',
   'Il dispositivo non è un CamTag.': 'The device is not a CamTag.',
-  "Il firmware dell'X3 ({}) non parla con questo strumento, fatto per la {}: aggiornali insieme.": 'The X3 firmware ({}) cannot talk to this tool, made for {}: update them together.',
+  "Il firmware dell'X3 ({}) non parla con questo configuratore web, fatto per la {}: aggiornali insieme.": 'The X3 firmware ({}) cannot talk to this web configurator, made for {}: update them together.',
   'Preparo le card…': 'Preparing the cards…',
   'Non ci sono card da inviare.': 'There are no cards to send.',
   " · {} già uguali sull'X3": ' · {} already the same on the X3',
@@ -421,7 +421,7 @@ const I18N_EN = {
   'in data sconosciuta': 'on an unknown date',
   "Sull'X3 c'è il progetto {}inviato {}.\n\nSostituisce quello di questo browser: se ti serve il lavoro attuale, prima usa \"Salva progetto\".": 'The X3 has the project {}sent {}.\n\nIt replaces the one in this browser: if you need the current work, first use "Save project".',
   'Importazione annullata: il progetto in questo browser non è cambiato.': 'Import cancelled: the project in this browser has not changed.',
-  "Fatto: il progetto dell'X3 è nello strumento.": "Done: the X3's project is in the tool.",
+  "Fatto: il progetto dell'X3 è nel configuratore web.": "Done: the X3's project is in the web configurator.",
   '{} schede manuali, {} lenti.': '{} manual cards, {} lenses.',
   "Sull'X3 tieni premuto X finché compare BLUETOOTH, poi scegli cosa fare.": 'On the X3 hold X until BLUETOOTH appears, then choose what to do.',
   "Con le card arriva sull'X3 anche il progetto, che puoi riprendere da qui con \"Importa dall'X3\".": 'The project travels to the X3 with the cards, and you can get it back from here with "Import from X3".',

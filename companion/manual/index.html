@@ -6,12 +6,12 @@
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#121212">
 <title>CamTag · Manual</title>
-<!-- The screenshots in this folder come from the web tool simulator
+<!-- The screenshots in this folder come from the web configurator simulator
      (same drawing as firmware 0.3.0), with a test project. -->
 <style>
   @font-face { font-family: "Inter"; src: url("../fonts/InterVariable.woff2") format("woff2");
                font-weight: 100 900; font-style: normal; font-display: swap; }
-  /* Same theme as the web tool: dark, acid lime accent. */
+  /* Same theme as the web configurator: dark, acid lime accent. */
   :root {
     color-scheme: dark;
     --bg: #121212; --panel: #1c1c1b; --panel-2: #232322; --ink: #ecebe6; --muted: #9a9993; --line: #33332f;
@@ -169,7 +169,7 @@
   <nav class="toc" aria-label="Contents">
     <div class="brand"><b>CAMTAG</b><span>Manual</span></div>
     <ol id="toc"></ol>
-    <a class="back" href="../">← Back to the web tool</a>
+    <a class="back" href="../">← Back to the web configurator</a>
   </nav>
 
   <main>
@@ -263,7 +263,7 @@
         </figure>
         <div>
           <p><strong>Hold power (1 second)</strong> to turn it off. To turn it back on, hold it again: it starts from the last card. When it's off, the other buttons do nothing.</p>
-          <p>You choose the off screen in the web tool, on the <em>Off</em> page (an image and a caption, like "CAMERA A"), or with any card. Without one, the X3 shows just the CAMTAG name.</p>
+          <p>You choose the off screen in the web configurator, on the <em>Off</em> page (an image and a caption, like "CAMERA A"), or with any card. Without one, the X3 shows just the CAMTAG name.</p>
           <div class="note"><b class="t">It turns off by itself</b>
             <ul>
               <li>after <strong>24 hours</strong> without a button press;</li>
@@ -278,7 +278,7 @@
         </figure>
         <div>
           <p>The first time it's turned on, the X3 asks which language to write its messages in (the no-cards box, the Bluetooth screen, the strip when it's off): <kbd>A</kbd> or <kbd>B</kbd> for <strong>English</strong>, <kbd>C</kbd> or <kbd>D</kbd> for <strong>Italian</strong>. The labels on the screen show where the buttons are. Until you choose, the question comes back every time it's turned on.</p>
-          <p>The cards have their own language, chosen in the web tool, and the X3's language can be changed from there too (see <a href="#bluetooth">Cards via Bluetooth</a>).</p>
+          <p>The cards have their own language, chosen in the web configurator, and the X3's language can be changed from there too (see <a href="#bluetooth">Cards via Bluetooth</a>).</p>
         </div>
       </div>
       <h3>When on, it uses little power even if you don't turn it off</h3>
@@ -289,7 +289,7 @@
     <!-- 4 -->
     <section class="s" id="browsing" data-title="Browsing the screens">
       <header><div class="num">04</div><h2>Browsing the screens</h2>
-        <p class="intro">The screens follow the order in the web tool: the lens chart, the filters, then the cards (crew, notes, lenses, images).</p></header>
+        <p class="intro">The screens follow the order in the web configurator: the lens chart, the filters, then the cards (crew, notes, lenses, images).</p></header>
       <div class="row">
         <figure class="fig" data-dev='{"screen":"crew-port","k":0.85,"hi":[{"keys":"X","text":"previous"},{"keys":"Y","text":"next"}]}'></figure>
         <div>
@@ -356,7 +356,7 @@
         <div>
           <p>In portrait, <kbd>A</kbd>|<kbd>B</kbd> change the <strong>diopter</strong> and <kbd>C</kbd>|<kbd>D</kbd> the <strong>ND</strong>. The "+" is always on the right or top end as you look at it.</p>
           <p>Each rocker controls the value next to it: when you rotate the X3 the two swap, and the hints on the screen follow.</p>
-          <p>The ND scale also includes totals made with <strong>two glasses</strong>, if you selected them in the web tool: the pair takes stages 1 and 2.</p>
+          <p>The ND scale also includes totals made with <strong>two glasses</strong>, if you selected them in the web configurator: the pair takes stages 1 and 2.</p>
         </div>
       </div>
       <div class="row flip top wide">
@@ -401,30 +401,30 @@
     <!-- 9 -->
     <section class="s" id="bluetooth" data-title="Cards via Bluetooth">
       <header><div class="num">09</div><h2>Sending cards via Bluetooth</h2>
-        <p class="intro">You prepare the cards in the web tool and they reach the X3 from your phone or computer, without removing the microSD.</p></header>
+        <p class="intro">You prepare the cards in the web configurator and they reach the X3 from your phone or computer, without removing the microSD.</p></header>
       <div class="row top">
         <figure class="fig" data-dev='{"screen":"bluetooth","k":0.85,"hi":[{"keys":"X","text":"hold: receive"}]}'>
           <figcaption>While receiving, the X3 shows its name: that's the one to choose.</figcaption>
         </figure>
         <ol class="steps">
           <li>On the X3, <strong>hold <kbd>X</kbd></strong>: <span class="msg">BLUETOOTH</span> appears with the device name (for example CAMTAG-1A2B).</li>
-          <li>In the web tool tap <strong>Bluetooth</strong>, then <strong>Send cards</strong>, and choose that name.</li>
+          <li>In the web configurator tap <strong>Bluetooth</strong>, then <strong>Send cards</strong>, and choose that name.</li>
           <li>When the transfer is done, the X3 shows the first card with <span class="msg">CARDS UPDATED</span>.</li>
         </ol>
       </div>
       <p>The new cards replace the old ones only once the transfer is complete: if the connection drops, the previous cards stay on the X3. Cards identical to those already on the X3 aren't sent again, so a small tweak arrives in a few seconds. <kbd>X</kbd> or <kbd>Y</kbd> exit receiving; after 3 minutes without a transfer it exits by itself.</p>
       <h3>Getting the project back from the X3</h3>
-      <p>The web tool project travels along with the cards. On another phone, or if the browser has lost your work, put the X3 in receive mode and tap <strong>Bluetooth → Import from X3</strong>: the tool gets the project back and the cards on the X3 don't change.</p>
+      <p>The web configurator project travels along with the cards. On another phone, or if the browser has lost your work, put the X3 in receive mode and tap <strong>Bluetooth → Import from X3</strong>: the tool gets the project back and the cards on the X3 don't change.</p>
       <div class="note warn"><b class="t">Which browser</b>
         <ul>
           <li><strong>Android, Mac, Windows, Linux</strong>: Chrome or Edge. In Brave, Bluetooth has to be enabled in <code>brave://flags</code>.</li>
           <li><strong>iPhone and iPad</strong>: Safari doesn't offer Bluetooth to web pages. You need a browser that adds it, such as <a href="https://apps.apple.com/app/id6468414672" target="_blank" rel="noopener">BLE Link</a> or <a href="https://apps.apple.com/app/id1492822055" target="_blank" rel="noopener">Bluefy</a> (App Store).</li>
-          <li>The page has to be opened from the tool's <strong>https://</strong> address.</li>
+          <li>The page has to be opened from the web configurator's <strong>https://</strong> address.</li>
         </ul></div>
       <h3>Languages</h3>
-      <p>In the web tool's toolbar, the language button (<strong>EN</strong> or <strong>IT</strong>) sets three separate things: the language of the <strong>tool</strong>, the one the <strong>cards</strong> are drawn in, and the one for the <strong>X3 messages</strong>. The last one reaches the X3 with the next card upload; with <em>Don't change</em> the X3 keeps the one chosen at first start. Cards and X3 in different languages are fine: sending works anyway.</p>
+      <p>In the web configurator's toolbar, the language button (<strong>EN</strong> or <strong>IT</strong>) sets three separate things: the language of the <strong>tool</strong>, the one the <strong>cards</strong> are drawn in, and the one for the <strong>X3 messages</strong>. The last one reaches the X3 with the next card upload; with <em>Don't change</em> the X3 keeps the one chosen at first start. Cards and X3 in different languages are fine: sending works anyway.</p>
       <h3>With the microSD</h3>
-      <p>Alternatively, download the zip from the web tool (<strong>Download .zip</strong>) and copy its <code>camtag/</code> folder to the root of the microSD, replacing the one that's there.</p>
+      <p>Alternatively, download the zip from the web configurator (<strong>Download .zip</strong>) and copy its <code>camtag/</code> folder to the root of the microSD, replacing the one that's there.</p>
     </section>
 
     <!-- 10 -->
@@ -440,11 +440,12 @@
           <tbody>
             <tr><td><span class="msg">NO CARDS</span></td><td>Hold X and send them via Bluetooth.</td></tr>
             <tr><td><span class="msg">NO MICROSD</span></td><td>Insert the microSD and press Reset.</td></tr>
-            <tr><td><span class="msg">INVALID BMP</span></td><td>A card is damaged: send them again from the web tool.</td></tr>
+            <tr><td><span class="msg">INVALID BMP</span></td><td>A card is damaged: send them again from the web configurator.</td></tr>
             <tr><td><span class="msg">CARDS UPDATED</span></td><td>Transfer succeeded, nothing to do.</td></tr>
             <tr><td><span class="msg">BATTERY EMPTY</span></td><td>It turned off because of the battery: put it on charge.</td></tr>
           </tbody>
-        </table></div>
+        </table>
+        <p class="hint" style="margin:10px 0 0;font-size:13px;color:var(--muted)">With the X3 set to Italian the same messages are in Italian: NESSUNA CARD, NESSUNA MICROSD, BMP NON VALIDO, CARD AGGIORNATE, BATTERIA SCARICA.</p></div>
       </div>
       <h3>Battery and cable</h3>
       <p>At the top right, over the card, the X3 shows its status only when needed:</p>
@@ -466,6 +467,8 @@
           <tr><td>The screen doesn't rotate</td><td>Rotation is locked: unlock it by holding Y.</td></tr>
           <tr><td>A–D do nothing</td><td>That's normal outside the lens chart and the filters, and on a single-page lens chart.</td></tr>
           <tr><td>The phone can't find the X3</td><td>Put the X3 in receive mode (hold X) before tapping "Send cards", and use a browser with Bluetooth.</td></tr>
+          <tr><td>It asks for the language when turned on</td><td>It does until you choose one: <kbd>A</kbd> or <kbd>B</kbd> for English, <kbd>C</kbd> or <kbd>D</kbd> for Italian.</td></tr>
+          <tr><td>The X3 shows the wrong language</td><td>In the web configurator: EN/IT button → <em>X3 messages</em>, choose the language and send the cards again.</td></tr>
           <tr><td>It doesn't respond at all</td><td>Press Reset, at the top left. The cards are kept.</td></tr>
         </tbody>
       </table></div>
@@ -480,7 +483,7 @@
 </div>
 
 <script>
-// ---------- The X3 drawn in SVG, with the measurements of the web tool simulator ----------
+// ---------- The X3 drawn in SVG, with the measurements of the web configurator simulator ----------
 // Body coordinates in portrait (340 × 521), screen 277 × 415. a = anchor point
 // of the label on the button edge, n = direction the label moves away in.
 const BODY = { w: 340, h: 521 }, SCREEN = { x: 32, y: 34, w: 277, h: 415 };

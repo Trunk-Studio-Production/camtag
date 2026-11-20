@@ -1,5 +1,5 @@
 #pragma once
-// Ricezione delle card via Bluetooth LE dallo strumento web (Web Bluetooth), e
+// Ricezione delle card via Bluetooth LE dal configuratore web (Web Bluetooth), e
 // invio al telefono del file di progetto salvato con le card (GET).
 // Il Bluetooth è acceso solo in modalità ricezione. I callback di NimBLE girano
 // nel suo task e si limitano a mettere comandi e dati in coda; la microSD si

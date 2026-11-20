@@ -6,12 +6,12 @@
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#121212">
 <title>CamTag · Manuale</title>
-<!-- Le schermate in questa cartella vengono dal simulatore dello strumento web
+<!-- Le schermate in questa cartella vengono dal simulatore del configuratore web
      (stesso disegno del firmware 0.3.0), con un progetto di prova. -->
 <style>
   @font-face { font-family: "Inter"; src: url("../fonts/InterVariable.woff2") format("woff2");
                font-weight: 100 900; font-style: normal; font-display: swap; }
-  /* Stesso tema dello strumento web: scuro, accento acid lime. */
+  /* Stesso tema del configuratore web: scuro, accento acid lime. */
   :root {
     color-scheme: dark;
     --bg: #121212; --panel: #1c1c1b; --panel-2: #232322; --ink: #ecebe6; --muted: #9a9993; --line: #33332f;
@@ -169,7 +169,7 @@
   <nav class="toc" aria-label="Indice">
     <div class="brand"><b>CAMTAG</b><span>Manuale</span></div>
     <ol id="toc"></ol>
-    <a class="back" href="../">← Torna allo strumento web</a>
+    <a class="back" href="../">← Torna al configuratore web</a>
   </nav>
 
   <main>
@@ -183,6 +183,7 @@
           <span class="chip">8 tasti, niente touch</span>
           <span class="chip">Lo schermo resta anche da spento</span>
         </div>
+        <div class="note"><b class="t">Novità della 0.3.0</b><p>L'X3 parla inglese o italiano: la lingua si sceglie alla prima accensione (<a href="#accendere">Accendere e spegnere</a>) e si cambia dal configuratore web, che ora ha anche le card e l'interfaccia in tutte e due le lingue (<a href="#bluetooth">Card via Bluetooth</a>).</p></div>
       </div>
       <figure class="fig" data-dev='{"screen":"lens-port","k":0.95}'></figure>
     </div>
@@ -263,7 +264,7 @@
         </figure>
         <div>
           <p><strong>Pressione lunga sul power (1 secondo)</strong> per spegnere. Per riaccendere, di nuovo una pressione lunga: riparte dall'ultima card. Da spento gli altri tasti non fanno nulla.</p>
-          <p>La schermata di spento la scegli nello strumento web, nella pagina <em>Spento</em> (un'immagine e una scritta, come "CAMERA A"), o con una scheda qualsiasi. Senza, l'X3 mostra solo il nome CAMTAG.</p>
+          <p>La schermata di spento la scegli nel configuratore web, nella pagina <em>Spento</em> (un'immagine e una scritta, come "CAMERA A"), o con una scheda qualsiasi. Senza, l'X3 mostra solo il nome CAMTAG.</p>
           <div class="note"><b class="t">Si spegne da solo</b>
             <ul>
               <li>dopo <strong>24 ore</strong> senza toccare un tasto;</li>
@@ -278,7 +279,7 @@
         </figure>
         <div>
           <p>La prima volta che si accende, l'X3 chiede in che lingua scrivere i suoi messaggi (il riquadro senza card, la schermata Bluetooth, la fascia da spento): <kbd>A</kbd> o <kbd>B</kbd> per l'<strong>inglese</strong>, <kbd>C</kbd> o <kbd>D</kbd> per l'<strong>italiano</strong>. Le etichette sullo schermo mostrano dove sono i tasti. Finché non scegli, la domanda torna a ogni accensione.</p>
-          <p>Le card hanno la loro lingua, scelta nello strumento web, e da lì si può cambiare anche quella dell'X3 (vedi <a href="#bluetooth">Card via Bluetooth</a>).</p>
+          <p>Le card hanno la loro lingua, scelta nel configuratore web, e da lì si può cambiare anche quella dell'X3 (vedi <a href="#bluetooth">Card via Bluetooth</a>).</p>
         </div>
       </div>
       <h3>Acceso consuma poco anche senza spegnerlo</h3>
@@ -289,7 +290,7 @@
     <!-- 4 -->
     <section class="s" id="sfogliare" data-title="Sfogliare le schermate">
       <header><div class="num">04</div><h2>Sfogliare le schermate</h2>
-        <p class="intro">Le schermate sono nell'ordine dello strumento web: la lens chart, i filtri, poi le schede (crew, note, lenti, immagini).</p></header>
+        <p class="intro">Le schermate sono nell'ordine del configuratore web: la lens chart, i filtri, poi le schede (crew, note, lenti, immagini).</p></header>
       <div class="row">
         <figure class="fig" data-dev='{"screen":"crew-port","k":0.85,"hi":[{"keys":"X","text":"precedente"},{"keys":"Y","text":"successiva"}]}'></figure>
         <div>
@@ -356,7 +357,7 @@
         <div>
           <p>In verticale <kbd>A</kbd>|<kbd>B</kbd> cambiano la <strong>diottria</strong> e <kbd>C</kbd>|<kbd>D</kbd> l'<strong>ND</strong>. Il "+" sta sempre sul capo a destra o in alto per chi guarda.</p>
           <p>Ogni bilanciere comanda il valore che gli sta accanto: quando ruoti l'X3 i due si scambiano, e le indicazioni sullo schermo seguono.</p>
-          <p>Nella scala dell'ND ci sono anche i totali fatti con <strong>due vetri</strong>, se li hai scelti nello strumento web: la coppia occupa gli stadi 1 e 2.</p>
+          <p>Nella scala dell'ND ci sono anche i totali fatti con <strong>due vetri</strong>, se li hai scelti nel configuratore web: la coppia occupa gli stadi 1 e 2.</p>
         </div>
       </div>
       <div class="row flip top wide">
@@ -401,30 +402,30 @@
     <!-- 9 -->
     <section class="s" id="bluetooth" data-title="Card via Bluetooth">
       <header><div class="num">09</div><h2>Mandare le card via Bluetooth</h2>
-        <p class="intro">Le card si preparano nello strumento web e arrivano all'X3 dal telefono o dal computer, senza togliere la microSD.</p></header>
+        <p class="intro">Le card si preparano nel <strong>configuratore web</strong> di CamTag (si apre dal browser, anche sul telefono), e arrivano all'X3 dal telefono o dal computer, senza togliere la microSD.</p></header>
       <div class="row top">
         <figure class="fig" data-dev='{"screen":"bluetooth","k":0.85,"hi":[{"keys":"X","text":"lungo: ricevi"}]}'>
           <figcaption>In ricezione l'X3 mostra il suo nome: è quello da scegliere.</figcaption>
         </figure>
         <ol class="steps">
           <li>Sull'X3 fai una <strong>pressione lunga su <kbd>X</kbd></strong>: compare <span class="msg">BLUETOOTH</span> con il nome del dispositivo (per esempio CAMTAG-1A2B).</li>
-          <li>Nello strumento web tocca <strong>Bluetooth</strong>, poi <strong>Invia le card</strong>, e scegli quel nome.</li>
+          <li>Nel configuratore web tocca <strong>Bluetooth</strong>, poi <strong>Invia le card</strong>, e scegli quel nome.</li>
           <li>A fine invio l'X3 mostra la prima card con <span class="msg">CARD AGGIORNATE</span>.</li>
         </ol>
       </div>
       <p>Le card nuove sostituiscono le vecchie solo a invio completo: se il collegamento cade, sull'X3 restano quelle di prima. Le card uguali a quelle già sull'X3 non viaggiano, così un ritocco arriva in pochi secondi. <kbd>X</kbd> o <kbd>Y</kbd> escono dalla ricezione; dopo 3 minuti senza invii esce da sola.</p>
       <h3>Riprendere il progetto dall'X3</h3>
-      <p>Con le card viaggia anche il progetto dello strumento web. Su un altro telefono, o se il browser ha perso il lavoro, metti l'X3 in ricezione e tocca <strong>Bluetooth → Importa dall'X3</strong>: lo strumento riprende il progetto e le card sull'X3 non cambiano.</p>
+      <p>Con le card viaggia anche il progetto del configuratore web. Su un altro telefono, o se il browser ha perso il lavoro, metti l'X3 in ricezione e tocca <strong>Bluetooth → Importa dall'X3</strong>: il configuratore web riprende il progetto e le card sull'X3 non cambiano.</p>
       <div class="note warn"><b class="t">Quale browser</b>
         <ul>
           <li><strong>Android, Mac, Windows, Linux</strong>: Chrome o Edge. In Brave il Bluetooth va acceso in <code>brave://flags</code>.</li>
           <li><strong>iPhone e iPad</strong>: Safari non ha il Bluetooth per le pagine web. Serve un browser che lo aggiunga, come <a href="https://apps.apple.com/app/id6468414672" target="_blank" rel="noopener">BLE Link</a> o <a href="https://apps.apple.com/app/id1492822055" target="_blank" rel="noopener">Bluefy</a> (App Store).</li>
-          <li>La pagina va aperta dall'indirizzo <strong>https://</strong> dello strumento.</li>
+          <li>La pagina va aperta dall'indirizzo <strong>https://</strong> del configuratore web.</li>
         </ul></div>
       <h3>Lingue</h3>
-      <p>Nella barra dello strumento web il pulsante della lingua (<strong>EN</strong> o <strong>IT</strong>) sceglie tre cose separate: la lingua dello <strong>strumento</strong>, quella in cui si disegnano le <strong>card</strong> e quella delle <strong>scritte dell'X3</strong>. Quest'ultima arriva all'X3 con il prossimo invio delle card; con <em>Non cambiare</em> l'X3 tiene quella scelta alla prima accensione. Card e X3 in lingue diverse vanno bene: l'invio funziona comunque.</p>
+      <p>Nella barra del configuratore web il pulsante della lingua (<strong>EN</strong> o <strong>IT</strong>) sceglie tre cose separate: la lingua del <strong>configuratore web</strong>, quella in cui si disegnano le <strong>card</strong> e quella delle <strong>scritte dell'X3</strong>. Quest'ultima arriva all'X3 con il prossimo invio delle card; con <em>Non cambiare</em> l'X3 tiene quella scelta alla prima accensione. Card e X3 in lingue diverse vanno bene: l'invio funziona comunque.</p>
       <h3>Con la microSD</h3>
-      <p>In alternativa scarica lo zip dallo strumento web (<strong>Scarica .zip</strong>) e copia la sua cartella <code>camtag/</code> nella radice della microSD, al posto di quella che c'è.</p>
+      <p>In alternativa scarica lo zip dal configuratore web (<strong>Scarica .zip</strong>) e copia la sua cartella <code>camtag/</code> nella radice della microSD, al posto di quella che c'è.</p>
     </section>
 
     <!-- 10 -->
@@ -440,11 +441,12 @@
           <tbody>
             <tr><td><span class="msg">NESSUNA CARD</span></td><td>Fai una pressione lunga su X e mandale via Bluetooth.</td></tr>
             <tr><td><span class="msg">NESSUNA MICROSD</span></td><td>Inserisci la microSD e premi Reset.</td></tr>
-            <tr><td><span class="msg">BMP NON VALIDO</span></td><td>Una card è rovinata: rimandale dallo strumento web.</td></tr>
+            <tr><td><span class="msg">BMP NON VALIDO</span></td><td>Una card è rovinata: rimandale dal configuratore web.</td></tr>
             <tr><td><span class="msg">CARD AGGIORNATE</span></td><td>Invio riuscito, nulla da fare.</td></tr>
             <tr><td><span class="msg">BATTERIA SCARICA</span></td><td>Si è spento per la batteria: mettilo in carica.</td></tr>
           </tbody>
-        </table></div>
+        </table>
+        <p class="hint" style="margin:10px 0 0;font-size:13px;color:var(--muted)">Con l'X3 in inglese gli stessi messaggi sono in inglese: NO CARDS, NO MICROSD, INVALID BMP, CARDS UPDATED, BATTERY EMPTY.</p></div>
       </div>
       <h3>Batteria e cavo</h3>
       <p>In alto a destra, sopra la card, l'X3 mostra lo stato solo quando serve:</p>
@@ -466,6 +468,8 @@
           <tr><td>La schermata non ruota</td><td>La rotazione è bloccata: sbloccala con una pressione lunga su Y.</td></tr>
           <tr><td>A–D non fanno nulla</td><td>È normale fuori dalla lens chart e dai filtri, e su una lens chart di una sola pagina.</td></tr>
           <tr><td>Il telefono non trova l'X3</td><td>Metti l'X3 in ricezione (pressione lunga su X) prima di toccare "Invia le card", e usa un browser con il Bluetooth.</td></tr>
+          <tr><td>All'accensione chiede la lingua</td><td>Succede finché non ne scegli una: <kbd>A</kbd> o <kbd>B</kbd> per l'inglese, <kbd>C</kbd> o <kbd>D</kbd> per l'italiano.</td></tr>
+          <tr><td>L'X3 scrive nella lingua sbagliata</td><td>Nel configuratore web: pulsante EN/IT → <em>Scritte dell'X3</em>, scegli la lingua e invia di nuovo le card.</td></tr>
           <tr><td>Non risponde per niente</td><td>Premi Reset, in alto a sinistra. Le card restano.</td></tr>
         </tbody>
       </table></div>
@@ -480,7 +484,7 @@
 </div>
 
 <script>
-// ---------- L'X3 disegnato in SVG, con le misure del simulatore dello strumento web ----------
+// ---------- L'X3 disegnato in SVG, con le misure del simulatore del configuratore web ----------
 // Coordinate del corpo in verticale (340 × 521), schermo 277 × 415. a = punto d'aggancio
 // dell'etichetta sul bordo del tasto, n = verso in cui l'etichetta si allontana.
 const BODY = { w: 340, h: 521 }, SCREEN = { x: 32, y: 34, w: 277, h: 415 };

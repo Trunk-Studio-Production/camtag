@@ -1,9 +1,9 @@
 #pragma once
 // Lingua delle scritte del firmware (messaggi, schermata Bluetooth, spento, errori).
 // Si sceglie al primo avvio sull'X3 o con lang= in settings.ini; resta in NVS
-// ("lang"). Le card hanno la lingua scelta nello strumento web: i due possono
+// ("lang"). Le card hanno la lingua scelta nel configuratore web: i due possono
 // essere diversi. Solo i caratteri di TinyFont (maiuscole, cifre, ./:-%!_+).
-// Le stesse frasi sono nel simulatore dello strumento web (`DEV_TEXT`).
+// Le stesse frasi sono nel simulatore del configuratore web (`DEV_TEXT`).
 #include <cstdint>
 
 namespace lang {

@@ -334,7 +334,7 @@ def press_rocker(x3, key, expected, where):
 
 
 # Posizioni come POSITIONS: verso atteso dal firmware e dove stanno i bilancieri per chi guarda.
-# Specifica: lensPageDir nello strumento web (avanza il bilanciere a destra o in basso).
+# Specifica: lensPageDir nel configuratore web (avanza il bilanciere a destra o in basso).
 CARD_STEPS = [
     (3, 'A|B a sinistra, C|D a destra', -1, 1),
     (2, 'A|B in alto, C|D in basso', -1, 1),
@@ -418,7 +418,7 @@ def lock_test(x3):
 
 # --- Schermata filtri -----------------------------------------------------------------
 # Per posizione (come POSITIONS): verso del firmware, tasti come keys.<gradi> in
-# screen.ini (rockerAction nello strumento web) e indicazioni in ordine per chi guarda.
+# screen.ini (rockerAction nel configuratore web) e indicazioni in ordine per chi guarda.
 FILTER_STEPS = [
     (3, {'A': 'dio-', 'B': 'dio+', 'C': 'nd-', 'D': 'nd+'}, 'in basso, da sinistra: -DIO +DIO -ND +ND'),
     (2, {'A': 'nd+', 'B': 'nd-', 'C': 'dio+', 'D': 'dio-'}, 'a sinistra, dall\'alto: +ND -ND +DIO -DIO'),
@@ -601,7 +601,7 @@ def test_filters(x3, start=1, only=None):
                lambda: f'{DIM}aspetto che l\'X3 legga screen.ini…{X}', restart=False)
     cfg = x3.flt_cfg
     if not cfg:
-        print(f'{BAD}Sulle card non c\'è una schermata filtri v3{X}: mandale dallo strumento web (Bluetooth) e riprova.')
+        print(f'{BAD}Sulle card non c\'è una schermata filtri v3{X}: mandale dal configuratore web (Bluetooth) e riprova.')
         return
     print(f'   screen.ini: {cfg["nd"]} passi di ND, {cfg["dio"]} di diottria, {cfg["vetri"]} vetri, {cfg["stadi"]} stadi\n')
     bad = []

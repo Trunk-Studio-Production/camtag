@@ -1,4 +1,4 @@
-# Pubblica lo strumento web su GitHub Pages a ogni push su main.
+# Pubblica il configuratore web su GitHub Pages a ogni push su main.
 # Solo companion/ e data/ (la pagina legge ../data/*.json); in radice un
 # rimando a companion/.
 name: Pages

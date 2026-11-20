@@ -4,7 +4,7 @@
 //                                NOME.p.bmp (verticale,   528x792)
 // L'accelerometro (solo X3) sceglie orientamento e variante.
 //
-// Tasti (come nel simulatore dello strumento web):
+// Tasti (come nel simulatore del configuratore web):
 //         X (lato sinistro)         = card precedente, in ciclo
 //         Y (lato destro)           = card successiva, in ciclo
 //         X tenuto premuto          = ricezione delle card via Bluetooth
@@ -193,7 +193,7 @@ uint32_t pendingSinceMs = 0;
 uint32_t bannerUntilMs = 0;
 bool sdReady = false;
 
-// Impostazioni dello strumento web (/camtag/settings.ini, docs in CLAUDE.md "Formato card").
+// Impostazioni del configuratore web (/camtag/settings.ini, docs in CLAUDE.md "Formato card").
 // Senza il file: etichette dei tasti accese, nome CAMTAG solo senza scheda di spento.
 constexpr const char* kSettingsFile = "/camtag/settings.ini";
 bool keyLabels = true;  // keys=1: etichette dei tasti sulla schermata senza card e da spento
@@ -556,7 +556,7 @@ void loadFilters() {
 // per chi legge il contenuto: sulla schermata senza card e da spento, per chi non
 // conosce ancora i tasti (keys=0 in settings.ini le toglie). Posizioni lungo il bordo
 // nella posizione naturale (verticale, power in alto a destra), in frazioni: le stesse
-// di KEY_TABS nello strumento web.
+// di KEY_TABS nel configuratore web.
 struct KeyTab {
   uint8_t edge;          // bordo naturale: 0 alto, 1 destra, 2 basso, 3 sinistra
   float from, to;        // estensione lungo il bordo
@@ -880,7 +880,7 @@ bool isLensChart(const Card& c) {
 // Su una lens chart di più pagine A–D sfogliano solo quelle, in ciclo. I due tasti di
 // un bilanciere fanno la stessa cosa: avanza il bilanciere che chi guarda vede a destra
 // o in basso, arretra quello a sinistra o in alto (A|B: sinistra a 0°, in alto a 90°,
-// a destra a 180°, in basso a 270°). Specifica: lensPageDir nello strumento web.
+// a destra a 180°, in basso a 270°). Specifica: lensPageDir nel configuratore web.
 void stepLensChart(bool rockerAB, Canvas::Rotation rot) {
   std::vector<int> pages;
   for (int i = 0; i < static_cast<int>(cards.size()); i++)

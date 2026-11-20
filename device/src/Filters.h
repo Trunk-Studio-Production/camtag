@@ -1,6 +1,6 @@
 #pragma once
 // Schermata filtri: ND e diottria su A|B e C|D, stadi del mattebox, modifica.
-// Specifica: docs/filtri.md. Il simulatore dello strumento web è il riferimento
+// Specifica: docs/filtri.md. Il simulatore del configuratore web è il riferimento
 // del comportamento: i nomi fra parentesi sono le sue funzioni.
 //
 // Qui c'è solo ciò che si prova sull'host (device/test/filters_test.cpp):
@@ -16,7 +16,7 @@ namespace filters {
 
 constexpr int kMaxSteps = 40;   // passi di ND o diottria
 constexpr int kMaxKit = 64;     // vetri del kit
-constexpr int kMaxStages = 6;   // MAX_STAGES nello strumento
+constexpr int kMaxStages = 6;   // MAX_STAGES nel configuratore web
 constexpr int kHintLen = 8;     // testo di un'indicazione, terminatore compreso
 
 enum Role : uint8_t { kNone = 0, kNd = 1, kDio = 2 };

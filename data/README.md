@@ -1,8 +1,8 @@
 # Database lenti di CamTag
 
-`lenses.json` è l'elenco delle lenti che lo strumento web (`companion/`) usa per
+`lenses.json` è l'elenco delle lenti che il configuratore web (`companion/`) usa per
 cercare, filtrare e generare la lens chart. Le lenti mancanti si inseriscono a
-mano nello strumento; qui stanno solo quelle con dati verificati.
+mano nel configuratore web; qui stanno solo quelle con dati verificati.
 
 ```bash
 python3 data/validate.py        # controlla schema, unità, id e sigle
@@ -40,7 +40,7 @@ Ogni lente ha **tutti** i campi qui sotto (quelli non pertinenti valgono `null`)
 
 | Campo | Tipo | Significato |
 |---|---|---|
-| `id` | stringa | Stabile, minuscolo, `marca-serie-focale` (zoom: `...-30-105`). Può contenere un punto nelle focali decimali (`canon-flex-zoom-31.5-95`). Non cambiarlo mai: lo strumento lo salva nelle produzioni. |
+| `id` | stringa | Stabile, minuscolo, `marca-serie-focale` (zoom: `...-30-105`). Può contenere un punto nelle focali decimali (`canon-flex-zoom-31.5-95`). Non cambiarlo mai: il configuratore web lo salva nelle produzioni. |
 | `brand` | stringa | Come la scrive il costruttore: `ARRI`, `Cooke`, `ZEISS`, `Leitz`, `Sigma`, `Canon`, `DZOFilm`, `Atlas`, `Angénieux`, `Fujinon`, `Tokina`, `Laowa`, `Sirui`, `Blazar`, `Xeen`. |
 | `series` | stringa | Nome della serie. |
 | `seriesCode` | stringa | Sigla di 2–4 caratteri maiuscoli (inizia con una lettera), uguale per tutta la serie e unica tra le serie. Va sulla chart. |
@@ -57,13 +57,13 @@ Ogni lente ha **tutti** i campi qui sotto (quelli non pertinenti valgono `null`)
 | `coverage` | stringa | Classe: `MFT`, `S35`, `S35+`, `FF`, `LF`, `65` (vedi convenzioni). |
 | `imageCircle_mm` | numero, mm | Cerchio immagine se pubblicato in mm. |
 | `squeeze` | numero | Anamorfiche fisse e zoom anamorfici (es. `2`); `null` sugli altri. Sulla lens chart va accanto al nome della serie (`×2`). |
-| `mounts` | lista di sigle | Attacchi offerti dal costruttore, il nativo per primo: `PL`, `LPL`, `EF`, `EF-S`, `EF-M`, `RF`, `E` (Sony), `L`, `Z`, `X`, `G` (Fujifilm), `MFT`, `F` (Nikon), `M` (Leica), `SA`, `A` (Sony), `K` (Pentax), `DL` (DJI), `PV`, `SP70`, `PV65` (Panavision System 65), `B4`. `null` se non dichiarati. Con più attacchi lo strumento web chiede quale quando la lente entra nel kit. |
+| `mounts` | lista di sigle | Attacchi offerti dal costruttore, il nativo per primo: `PL`, `LPL`, `EF`, `EF-S`, `EF-M`, `RF`, `E` (Sony), `L`, `Z`, `X`, `G` (Fujifilm), `MFT`, `F` (Nikon), `M` (Leica), `SA`, `A` (Sony), `K` (Pentax), `DL` (DJI), `PV`, `SP70`, `PV65` (Panavision System 65), `B4`. `null` se non dichiarati. Con più attacchi il configuratore web chiede quale quando la lente entra nel kit. |
 | `sources` | lista di URL | Le pagine o i PDF del costruttore da cui sono stati letti i valori. |
 | `checked` | data ISO | Giorno della verifica. |
 | `notes` | stringa | Motivo dei `null`, conflitti tra fonti, varianti, stato di produzione. |
 
 Rispetto allo schema iniziale ho aggiunto `name`, `imageCircle_mm` e `notes`, e
-ho reso tutti i campi sempre presenti, così lo strumento web non deve gestire
+ho reso tutti i campi sempre presenti, così il configuratore web non deve gestire
 chiavi mancanti.
 
 ## Convenzioni
@@ -124,7 +124,7 @@ chiavi mancanti.
   gli attacchi in `notes`. L'id aggiunge l'apertura (`sony-fe-50-f1.4-gm`)
   perché nella stessa serie ci sono più ottiche con la stessa focale.
 - **Ordine** nel file: raggruppato per marca e serie. L'ordine di
-  visualizzazione lo decide lo strumento web.
+  visualizzazione lo decide il configuratore web.
 
 ## Serie e sigle
 
@@ -418,7 +418,7 @@ Gli URL esatti sono in `sources` per ogni lente.
 `lenses.json` contiene solo le specifiche del costruttore e non va modificato
 per adattare un esemplare (es. il Sigma 18-35 di Trunk portato a Ø frontale
 114 mm). Queste differenze appartengono all'utente, non al database: lo
-strumento web le tiene da parte come modifiche locali, legate all'`id` della
+configuratore web le tiene da parte come modifiche locali, legate all'`id` della
 lente, nel formato
 
 ```json
@@ -429,10 +429,10 @@ lente, nel formato
 ```
 
 - Campi modificabili: `tstop`, `tstopLong`, `mod_m`, `front_mm`,
-  `filterThread`, `squeeze`, più `note`. Nello strumento web stanno in
+  `filterThread`, `squeeze`, più `note`. Nel configuratore web stanno in
   localStorage (`camtag.lensOverrides.v1`), si esportano e importano, e il file
   di progetto include le modifiche delle sue lenti.
-- Lo strumento mostra il valore modificato e segnala che differisce dalla
+- Il configuratore web mostra il valore modificato e segnala che differisce dalla
   scheda del costruttore. Così un aggiornamento del database non cancella le
   modifiche, e si può sempre tornare al valore originale.
 

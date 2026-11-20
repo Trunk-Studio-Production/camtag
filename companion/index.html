@@ -333,7 +333,7 @@
   <h1>CAMTAG</h1>
   <span class="dev" id="dims"><span class="dev-l"></span><span class="dev-s"></span></span>
   <span class="sp"></span>
-  <button id="langBtn" title="Lingua dello strumento, delle card e delle scritte dell'X3" aria-label="Lingue"></button>
+  <button id="langBtn" title="Lingua del configuratore web, delle card e delle scritte dell'X3" aria-label="Lingue"></button>
   <a id="helpBtn" class="btn" href="manuale/" target="_blank" rel="noopener" title="Manuale d'uso: tasti, schermate, invio delle card"><span class="l">Manuale</span><span class="s">?</span></a>
   <button id="projBtn"><span class="l">Progetto ▾</span><span class="s">Progetto</span></button>
   <button id="zipBtn" title="Scarica tutte le card (.zip)"><span class="l">Scarica .zip</span><span class="s">.zip</span></button>
@@ -473,7 +473,7 @@ function freshState() {
     off: freshOff(),
   };
 }
-// Schermata di spento composta dallo strumento (e le impostazioni di settings.ini).
+// Schermata di spento composta dal configuratore web (e le impostazioni di settings.ini).
 function freshOff() { return { keys: true, logo: true, text: '', img: null, fit: 'cover', dither: 'atkinson', threshold: 128, contrast: 0, pivot: 128 }; }
 
 function migrate(s) {
@@ -1527,7 +1527,7 @@ function layoutsOf(c) { return c.formats === 'land' ? ['land'] : c.formats === '
 // ============================================================================
 // Schermata di spento (off.bmp, off.p.bmp): fuori dal giro delle pagine, il firmware la
 // riconosce dal nome. È una scheda manuale con "Schermata di spento" accesa, oppure la
-// compone lo strumento da state.off (immagine di sfondo e scritta). Senza nessuna delle
+// compone il configuratore web da state.off (immagine di sfondo e scritta). Senza nessuna delle
 // due non si esporta: da spento l'X3 mostra il nome CAMTAG al centro.
 const OFF_BASE = 'off', SETTINGS_FILE = 'settings.ini';
 function offCard() { return state.cards.find(c => c.off) || null; }
@@ -1831,7 +1831,7 @@ async function buildZip() {
   }
   if (hasOffBmp()) for (const l of offLayouts()) { const r = renderOff(l); dir.file(`${OFF_BASE}${l === 'port' ? '.p' : ''}.bmp`, encodeBmp(r.bits, r.w, r.h)); }
   dir.file(SETTINGS_FILE, settingsIni());
-  // Il progetto viaggia con le card: il firmware lo ignora, lo strumento lo riprende (Importa dall'X3).
+  // Il progetto viaggia con le card: il firmware lo ignora, il configuratore web lo riprende (Importa dall'X3).
   dir.file(PROJECT_FILE, JSON.stringify(projectData()));
   return zip;
 }
@@ -2725,7 +2725,7 @@ new ResizeObserver(fitStage).observe($('.pbar'));  // i comandi vanno a capo: ca
 // Sull'X3: tieni premuto X per la ricezione. Manda gli stessi file dello zip.
 // ============================================================================
 const PROJECT_FILE = 'project.json';  // in /camtag, accanto alle card
-// Firmware che questo strumento si aspetta sull'X3: lo stesso di CAMTAG_FW_VERSION
+// Firmware che questo configuratore web si aspetta sull'X3: lo stesso di CAMTAG_FW_VERSION
 // in device/src/Version.h. L'X3 lo dice nella risposta a HELLO (docs/bluetooth.md).
 const FW_VERSION = '0.3.0';
 const BLE = {
@@ -2747,7 +2747,7 @@ const BLE_ERRORS = {
   STATO: t('Errore di protocollo. Riprova.'),
   DATI: t('Errore di protocollo. Riprova.'),
   COMANDO: t('Il dispositivo non capisce il comando: aggiorna il firmware.'),
-  ASSENTE: t('Sull\'X3 non c\'è un progetto. Ci arriva la prossima volta che gli invii le card da questo strumento.'),
+  ASSENTE: t('Sull\'X3 non c\'è un progetto. Ci arriva la prossima volta che gli invii le card da questo configuratore web.'),
 };
 
 function crc32(bytes, crc = 0) {
@@ -2881,7 +2881,7 @@ async function bleSession(work, onFail) {
         if (h[1] !== 'CAMTAG') throw new Error(t('Il dispositivo non è un CamTag.'));
         const fw = h[5] === 'FW' ? h[6] : null;
         link.version = +h[2];
-        if (link.version !== BLE.version && !BLE.oldVersions.includes(link.version)) throw new Error(t("Il firmware dell'X3 ({}) non parla con questo strumento, fatto per la {}: aggiornali insieme.", fw || t('precedente alla 0.1.0'), FW_VERSION));
+        if (link.version !== BLE.version && !BLE.oldVersions.includes(link.version)) throw new Error(t("Il firmware dell'X3 ({}) non parla con questo configuratore web, fatto per la {}: aggiornali insieme.", fw || t('precedente alla 0.1.0'), FW_VERSION));
         bleShowFw(fw);
         mtu = +h[4] || 23;
       }
@@ -2997,7 +2997,7 @@ async function bleGet() {
     return;
   }
   await applyProject(project);
-  bleUi(t('Fatto: il progetto dell\'X3 è nello strumento.'), { detail: t('{} schede manuali, {} lenti.', project.cards.length, project.lenses?.length || 0) });
+  bleUi(t('Fatto: il progetto dell\'X3 è nel configuratore web.'), { detail: t('{} schede manuali, {} lenti.', project.cards.length, project.lenses?.length || 0) });
 }
 
 $('#fwWanted').textContent = FW_VERSION;
@@ -3152,7 +3152,7 @@ function simPress(k, long) {
   if (!plan.length) return;
   if (sim.edit) { sim.msg = ''; simEditPress(k, long); simEditArm(); return renderSim(); }
   if (isFilters && long && (k === 'A' || k === 'B')) {
-    if (!stageCount()) { sim.msg = t('Nessun vetro nel kit: aggiungili nello strumento web.'); return renderSim(); }
+    if (!stageCount()) { sim.msg = t('Nessun vetro nel kit: aggiungili nel configuratore web.'); return renderSim(); }
     const ok = editableStages(sim.stages, sim.ndShown, sim.dioShown);
     if (!ok.length) { sim.msg = t('Tutti gli stadi sono occupati da ND e diottria.'); return renderSim(); }
     sim.edit = { i: ok[0] }; sim.msg = t('Modifica stadi: A/B stadio, C/D vetro. Si chiude da sola dopo {} s, o subito con X o Y.', EDIT_TIMEOUT_S); simEditArm();
@@ -3165,7 +3165,7 @@ function simPress(k, long) {
     sim.locked = !sim.locked; sim.lockRot = sim.rot;
     sim.msg = t(sim.locked ? 'ROTAZIONE BLOCCATA' : 'ROTAZIONE AUTOMATICA');
   } else if (k === 'X' && long) {
-    sim.msg = t('BLUETOOTH: in attesa dello strumento ("Bluetooth"). X o Y per uscire.');
+    sim.msg = t('BLUETOOTH: in attesa del configuratore web ("Bluetooth"). X o Y per uscire.');
   } else if (act.role === 'dio' || act.role === 'nd') {
     if (act.role === 'dio') sim.dio = Math.max(0, Math.min(dioSteps().length - 1, sim.dio + act.dir));
     else sim.nd = Math.max(0, Math.min(ndSteps().length - 1, sim.nd + act.dir));
@@ -3183,7 +3183,7 @@ function simPress(k, long) {
 
 function renderSim() {
   const plan = simPlan(), f = state.filters;
-  // Se cambiano i filtri nello strumento, il dispositivo riparte dai valori iniziali.
+  // Se cambiano i filtri nel configuratore web, il dispositivo riparte dai valori iniziali.
   const sig = JSON.stringify(f);
   if (sig !== sim.sig) { sim.sig = sig; sim.nd = Math.min(f.previewNd, ndSteps().length - 1); sim.dio = Math.min(f.previewDio, dioSteps().length - 1); sim.stages = [...f.stages]; sim.ndShown = sim.nd; sim.dioShown = sim.dio; clearTimeout(simSettleTimer); }
   if (sim.i >= plan.length) sim.i = 0;

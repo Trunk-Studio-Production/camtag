@@ -1,6 +1,6 @@
 # Filtri: ND, diottria e stadi del mattebox
 
-Specifica della schermata filtri. Vale per lo strumento web (`companion/`), per
+Specifica della schermata filtri. Vale per il configuratore web (`companion/`), per
 il simulatore e per il firmware (`device/`), che devono restare allineati.
 
 ## Concetti
@@ -10,7 +10,7 @@ il simulatore e per il firmware (`device/`), che devono restare allineati.
   (densità, stop o fattore) e con il tipo scelto (ND, IRND, FSND).
 - **Diottria**: un valore solo, fra quelli del kit diottrie (intere o split).
   Una diottria occupa di solito **due stadi**; quelle che ne occupano uno solo
-  (per esempio una +1/2 a lastra) si segnano nello strumento web.
+  (per esempio una +1/2 a lastra) si segnano nel configuratore web.
 - **Kit dei vetri**: i vetri che ci sono nella valigetta, esclusi gli ND pieni.
   Ogni voce è una famiglia con una gradazione (es. "Black Pro-Mist 1/4"), o un
   vetro senza gradazione. Uno per tipo: non ci sono doppioni. Il Rota Pola e i
@@ -71,7 +71,7 @@ Una regola sola, ogni volta che ND o diottria cambiano gli stadi che occupano
 
 - Un totale che il kit non ha come vetro singolo si può fare con **due vetri**
   (es. kit 0,3 · 0,6 · 0,9 · 1,2 · 1,8: 1,5 = 1,2 + 0,3 e 2,1 = 1,8 + 0,3).
-  Nello strumento web si spuntano i totali voluti; solo quelli entrano nella
+  Nel configuratore web si spuntano i totali voluti; solo quelli entrano nella
   scala, in ordine di densità insieme ai vetri singoli.
 - Se il kit ha già quel valore come vetro singolo, la coppia non si propone.
   Se un totale si fa in più modi vale la coppia con il vetro più denso. Mai
@@ -138,7 +138,7 @@ Una regola sola, ogni volta che ND o diottria cambiano gli stadi che occupano
 - Aggiornamenti parziali della riga mentre si modifica, completo all'uscita.
 - Il dispositivo ricorda il contenuto degli stadi, come ND e diottria.
 
-## Strumento web
+## Configuratore web
 
 - **ND** e **Diottrie**: kit, formato, tipo e valori iniziali. Sotto il kit ND,
   "Combinazioni di due ND": i totali possibili con i loro due vetri, da spuntare.
@@ -160,7 +160,7 @@ Una regola sola, ogni volta che ND o diottria cambiano gli stadi che occupano
   entrare insieme negli stadi.
 - Il simulatore tiene il suo stato (ND, diottria, stadi), come il dispositivo:
   quello che cambi con i tasti non tocca i valori di partenza. Riparte da
-  quelli quando cambi i filtri nello strumento.
+  quelli quando cambi i filtri nel configuratore web.
 - I progetti salvati prima di questa versione vengono convertiti: i vetri che
   erano "montati" finiscono negli stadi, in ordine.
 
@@ -210,4 +210,4 @@ riga e la successiva il firmware disegna un separatore nero da 2 px, in cima
 alla riga: largo tutta la lista, ma solo quanto la colonna del numero
 (`listNum`) nel secondo stadio di un vetro da due. Un vetro selezionato ha in
 negativo il suo pezzo e i numeri di tutti i suoi stadi. Comporre i pezzi deve
-dare l'anteprima dello strumento web pixel per pixel.
+dare l'anteprima del configuratore web pixel per pixel.

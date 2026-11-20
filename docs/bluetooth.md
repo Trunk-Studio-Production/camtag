@@ -34,7 +34,7 @@ client scrive, il dispositivo risponde con una notify.
 | `ACK <byte>` | — | durante un `GET`: byte ricevuti dal client |
 
 La versione del firmware non cambia il protocollo: con la stessa versione del
-protocollo (o una di `BLE.oldVersions`) firmware e strumento sono compatibili, e lo strumento mostra la
+protocollo (o una di `BLE.oldVersions`) firmware e configuratore web sono compatibili, e il configuratore web mostra la
 versione dell'X3 senza avvisi (con un firmware più vecchio dice anche qual è
 la più recente). Solo un protocollo diverso è un conflitto: l'invio si ferma
 e chiede di aggiornarli insieme.
@@ -51,7 +51,7 @@ attesa di `BEGIN`. Se il collegamento cade a metà, succede lo stesso.
 
 ## File di progetto
 
-Insieme alle card lo strumento manda `project.json`: lo stesso contenuto di
+Insieme alle card il configuratore web manda `project.json`: lo stesso contenuto di
 "Salva progetto" (schermate, lenti, kit, immagini, modifiche alle lenti usate)
 più `savedAt`, la data dell'invio. Sta in `/camtag` e quindi cambia solo al
 `COMMIT`, insieme alle card che descrive. Il firmware lo ignora (legge solo i
@@ -93,7 +93,7 @@ con risposta.
 
 ## Solo le pagine cambiate
 
-Ogni invio è completo (le pagine tolte nello strumento spariscono dall'X3), ma
+Ogni invio è completo (le pagine tolte nel configuratore web spariscono dall'X3), ma
 viaggiano solo i file cambiati: per ogni file il client chiede prima `KEEP`, e
 manda i dati con `FILE` solo dopo un `NO`. L'X3 copia sulla microSD i file
 uguali dalle card attuali, controllando il CRC mentre copia (se non torna
@@ -102,11 +102,11 @@ Niente `KEEP` per i file vuoti e per `project.json`, che cambia a ogni invio
 (`savedAt`).
 
 Perché funzioni, la stessa card deve uscire uguale byte per byte da
-un'esportazione all'altra: lo strumento disegna su canvas in software
+un'esportazione all'altra: il configuratore web disegna su canvas in software
 (`willReadFrequently` in `newCanvas`), perché Chromium passerebbe dalla GPU al
 software a metà e l'antialiasing diverso sposterebbe qualche pixel dopo la soglia.
 
-Con un X3 a protocollo 2 lo strumento non usa `KEEP` e manda tutto: è l'unica
+Con un X3 a protocollo 2 il configuratore web non usa `KEEP` e manda tutto: è l'unica
 versione precedente che accetta (`BLE.oldVersions`).
 
 ## Sostituzione delle card

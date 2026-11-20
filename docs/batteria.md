@@ -1,7 +1,7 @@
 # Batteria: acceso, a riposo, spento
 
 Come l'X3 gestisce l'energia e come si misura quanto consuma. I tempi sono
-costanti in cima a `device/src/main.cpp`; il simulatore dello strumento web
+costanti in cima a `device/src/main.cpp`; il simulatore del configuratore web
 segue lo stesso comportamento (`simPress`, `drawOffOverlay`).
 
 Il comportamento è provato sull'X3 (20/11/2026). I consumi invece sono ancora
@@ -71,7 +71,7 @@ una pressione più corta di così può sfuggire.
 
 - Se in `/camtag` ci sono `off.bmp` (792×528) e/o `off.p.bmp` (528×792) il
   firmware mostra quella, nella variante adatta al verso. Stesso formato delle
-  card, ma fuori dal giro delle pagine. Nello strumento web la compone la pagina
+  card, ma fuori dal giro delle pagine. Nel configuratore web la compone la pagina
   "Spento" (immagine di sfondo e scritta, `state.off`), oppure è una scheda
   manuale con "Schermata di spento" accesa (`c.off`, una sola), che la sostituisce.
 - Senza, mostra il nome CAMTAG al centro.

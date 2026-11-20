@@ -1,6 +1,6 @@
 #!/bin/sh
 # Test host della schermata filtri: compila Canvas + Filters con un SdFat finto e
-# li confronta con lo strumento web (filters_fixture.zip, da filters_fixture.js).
+# li confronta con il configuratore web (filters_fixture.zip, da filters_fixture.js).
 #   device/test/filters_test.sh [cartella-per-le-immagini]
 set -e
 here=$(cd "$(dirname "$0")" && pwd)

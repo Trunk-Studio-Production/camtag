@@ -1,7 +1,7 @@
 {
   "version": 1,
   "verified": false,
-  "note": "Famiglie e gradazioni tipiche, scritte a memoria: DA VERIFICARE sui cataloghi dei produttori prima di considerarle affidabili. Nello strumento web si può sempre scrivere una gradazione libera.",
+  "note": "Famiglie e gradazioni tipiche, scritte a memoria: DA VERIFICARE sui cataloghi dei produttori prima di considerarle affidabili. Nel configuratore web si può sempre scrivere una gradazione libera.",
   "filters": [
     { "id": "tiffen-black-pro-mist", "brand": "Tiffen", "name": "Black Pro-Mist", "category": "diffusione", "strengths": ["1/8", "1/4", "1/2", "1", "2"] },
     { "id": "tiffen-pro-mist", "brand": "Tiffen", "name": "Pro-Mist", "category": "diffusione", "strengths": ["1/8", "1/4", "1/2", "1", "2"] },
