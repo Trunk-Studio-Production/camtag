@@ -19,15 +19,28 @@ constexpr size_t kMaxRowBytes = 256;
 
 void Canvas::clear(bool black) { memset(fb_, black ? 0x00 : 0xFF, static_cast<size_t>(wb_) * ph_); }
 
-void Canvas::setPixel(int lx, int ly, bool black) {
-  if (lx < 0 || ly < 0 || lx >= width() || ly >= height()) return;
-  int x, y;
+void Canvas::toPanel(int lx, int ly, int& x, int& y) const {
   switch (rot_) {
     case ROT_90:  x = pw_ - 1 - ly; y = lx; break;
     case ROT_180: x = pw_ - 1 - lx; y = ph_ - 1 - ly; break;
     case ROT_270: x = ly; y = ph_ - 1 - lx; break;
     default:      x = lx; y = ly; break;
   }
+}
+
+void Canvas::fromPanel(int x, int y, int& lx, int& ly) const {
+  switch (rot_) {
+    case ROT_90:  lx = y; ly = pw_ - 1 - x; break;
+    case ROT_180: lx = pw_ - 1 - x; ly = ph_ - 1 - y; break;
+    case ROT_270: lx = ph_ - 1 - y; ly = x; break;
+    default:      lx = x; ly = y; break;
+  }
+}
+
+void Canvas::setPixel(int lx, int ly, bool black) {
+  if (lx < 0 || ly < 0 || lx >= width() || ly >= height()) return;
+  int x, y;
+  toPanel(lx, ly, x, y);
   uint8_t& b = fb_[static_cast<size_t>(y) * wb_ + (x >> 3)];
   const uint8_t mask = static_cast<uint8_t>(0x80 >> (x & 7));
   if (black)
@@ -76,7 +89,11 @@ void Canvas::battery(int x, int y, int percent) {
   fillRect(x + 4, y + 4, (28 * percent) / 100, 12, true);
 }
 
-Canvas::BmpResult Canvas::drawBmp(FsFile& f) {
+Canvas::BmpResult Canvas::drawBmp(FsFile& f) { return drawBmpImpl(f, true, 0, 0, -1); }
+
+Canvas::BmpResult Canvas::drawBmpAt(FsFile& f, int x, int y, int maxH) { return drawBmpImpl(f, false, x, y, maxH); }
+
+Canvas::BmpResult Canvas::drawBmpImpl(FsFile& f, bool centred, int atX, int atY, int maxH) {
   if (!f) return BmpResult::OpenFailed;
 
   uint8_t hdr[62];
@@ -105,13 +122,14 @@ Canvas::BmpResult Canvas::drawBmp(FsFile& f) {
   const int lum1 = pal[4] + pal[5] + pal[6];
   const bool bitOneIsWhite = lum1 >= lum0;
 
-  // Centre the image; negative offsets crop.
+  // Centre the image (or place it at atX, atY); negative offsets crop.
   const int lw = width(), lh = height();
-  const int offX = (lw - bw) / 2;
-  const int offY = (lh - bh) / 2;
+  const int offX = centred ? (lw - bw) / 2 : atX;
+  const int offY = centred ? (lh - bh) / 2 : atY;
+  const int32_t rows = maxH >= 0 && maxH < bh ? maxH : bh;
 
   uint8_t row[kMaxRowBytes];
-  for (int32_t r = 0; r < bh; r++) {
+  for (int32_t r = 0; r < rows; r++) {
     const int32_t srcRow = bottomUp ? (bh - 1 - r) : r;
     if (!f.seekSet(dataOffset + static_cast<uint32_t>(srcRow) * rowBytes)) return BmpResult::NotBmp;
     if (f.read(row, rowBytes) != static_cast<int>(rowBytes)) return BmpResult::NotBmp;

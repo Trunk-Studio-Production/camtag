@@ -44,7 +44,11 @@ git clone --depth 1 https://github.com/crosspoint-reader/crosspoint-reader refer
    - **F tenuto premuto (0,8 s)**: ricezione delle card via Bluetooth
    - le pressioni lunghe scattano mentre tieni premuto, allo scadere del
      tempo: non serve rilasciare per vedere l'effetto
-   - A, B, C, D non cambiano card
+   - A, B, C, D non cambiano card: sfogliano le pagine della lens chart e, sulla
+     schermata filtri, cambiano ND e diottria (indicazioni accanto ai tasti)
+   - **schermata filtri**: tieni **A** o **B** per modificare gli stadi del
+     mattebox (A/B scelgono lo stadio, C/D il vetro); si esce con E o F, tenendo
+     di nuovo A o B, o da soli dopo 5 s senza tocchi (`docs/filtri.md`)
    - **power**: spegne subito
    - dopo 20 s senza tasti si spegne da solo; l'e-paper continua a mostrare la card
    - il power lo riaccende sull'ultima card; ridisegna solo se nel frattempo
@@ -152,6 +156,18 @@ Compila:
 cd device && ../.venv/bin/pio run -e x3
 ```
 
+Test sull'host, senza X3:
+
+```bash
+device/test/filters_test.sh      # schermata filtri: uguale all'anteprima dello strumento web
+```
+
+`filters_test.sh` compone i pezzi esportati dallo strumento web come fa il
+firmware e li confronta pixel per pixel con le anteprime, insieme alle regole
+degli stadi. I dati stanno in `device/test/filters_fixture.zip`: se cambia
+l'esportazione dei filtri va rigenerato con `device/test/filters_fixture.js`
+(istruzioni nel file).
+
 ### Rischi e controlli prima di caricare
 
 **Caricare CamTag può rendere l'X3 inutilizzabile.** Leggi questa parte per
@@ -255,6 +271,7 @@ schermo, e aspetta l'X3 se va in sonno:
 .venv/bin/python scripts/taratura.py tasti
 .venv/bin/python scripts/taratura.py versi --carica   # compila e carica prima
 .venv/bin/python scripts/taratura.py card             # con le card sopra
+.venv/bin/python scripts/taratura.py filtri           # con la schermata filtri sopra
 .venv/bin/python scripts/taratura.py log              # registro dal vivo
 ```
 
@@ -268,8 +285,8 @@ schermo, e aspetta l'X3 se va in sonno:
       progetto nel browser e lascia le card come sono
 - [x] Card vere in verticale e in orizzontale, E/F in ciclo, rotazione
       automatica e blocco (E tenuto)
-- [x] Bilancieri sulla lens chart di più pagine nei 4 versi, anche con la
-      rotazione bloccata (come `lensPageDir` nel simulatore)
+- [x] Bilancieri sulla lens chart di più pagine nei 4 versi (come
+      `lensPageDir` nel simulatore)
 - [x] Velocità di ricezione dal Mac: 98 file, 1,1 MB in circa 40 s (erano
       100 s) chiedendo l'intervallo da 15 ms subito dopo lo scambio dell'MTU;
       mouse e tastiera Bluetooth in uso sul Mac rallentano
@@ -281,8 +298,16 @@ schermo, e aspetta l'X3 se va in sonno:
 - [ ] Lettura batteria (fuel gauge BQ27220): l'icona appare sotto il 20%
 - [ ] Ricezione via Bluetooth da Android (Chrome) e iPhone (BLE Link), consumo
       con il Bluetooth acceso
-- [ ] Schermata filtri: il firmware mostra solo lo sfondo (niente valori di ND
-      e diottria, indicazioni dei tasti, modifica degli stadi)
+- [x] Schermata filtri (`taratura.py filtri`): legge le card dello strumento
+      così come sono; ND e diottria con i bilancieri e indicazioni dei tasti nei
+      4 versi, riordino degli stadi dopo 2 s, modifica degli stadi (entrata,
+      scelta di stadio e vetro, uscita da sola dopo 5 s e con E); il mezzo
+      refresh dopo 2 s fermi toglie l'ombra dei cambi veloci di ND e diottria
+- [x] Rotazione bloccata che ferma tutto: girando l'X3 schermata filtri,
+      indicazioni e bilancieri restano quelli del verso bloccato
+- [x] Nessun tasto perso: prima cadevano tutti durante un aggiornamento dello
+      schermo (`taratura.py reattivita`); ora un compito li legge anche lì e li
+      mette in coda, e si eseguono appena lo schermo ha finito
 
 ## Prossimi passi
 

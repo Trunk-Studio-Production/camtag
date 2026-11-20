@@ -36,8 +36,16 @@ class Canvas {
   enum class BmpResult { Ok, OpenFailed, NotBmp, Unsupported };
   // Draws a 1-bit uncompressed BMP centred on the screen (cropped if larger).
   BmpResult drawBmp(FsFile& file);
+  // Draws it with its top-left corner at (x, y); maxH >= 0 crops it to that height.
+  BmpResult drawBmpAt(FsFile& file, int x, int y, int maxH = -1);
+
+  // Panel coordinates (native framebuffer) <-> logical coordinates of this canvas.
+  void toPanel(int lx, int ly, int& px, int& py) const;
+  void fromPanel(int px, int py, int& lx, int& ly) const;
 
  private:
+  BmpResult drawBmpImpl(FsFile& file, bool centred, int x, int y, int maxH);
+
   uint8_t* fb_;
   uint16_t pw_;
   uint16_t ph_;

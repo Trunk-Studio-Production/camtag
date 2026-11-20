@@ -2707,11 +2707,11 @@ function simEditPress(k, long) {
   if (k === 'E' || k === 'F' || (long && (k === 'A' || k === 'B'))) { sim.edit = null; sim.msg = 'Stadi salvati.'; return; }
   if (k === 'A' || k === 'B') {
     const ok = editableStages(st, sim.ndShown, sim.dioShown);
-    ed.i = ok[Math.max(0, Math.min(ok.length - 1, ok.indexOf(ed.i) + editNavStep(k, sim.rot)))];
+    ed.i = ok[Math.max(0, Math.min(ok.length - 1, ok.indexOf(ed.i) + editNavStep(k, simContentRot())))];
   } else if (k === 'C' || k === 'D') {
     // Vuoto, poi i vetri liberi del kit che ci stanno; in fondo si ricomincia.
     const opts = stageOptions(ed.i, st, stageRange(st.length, sim.ndShown, sim.dioShown).hi), j = opts.indexOf(st[ed.i]);
-    st[ed.i] = opts[(j + keyDir(k, sim.rot) + opts.length) % opts.length];
+    st[ed.i] = opts[(j + keyDir(k, simContentRot()) + opts.length) % opts.length];
   }
 }
 function simEditArm() {
@@ -2743,7 +2743,7 @@ function simSettle() {
 function simPress(k, long) {
   const plan = simPlan(), cur = plan[sim.i] || plan[0], isFilters = cur?.kind === 'filters';
   // Qualsiasi tasto che non sia ±ND o ±diottria applica subito il riordino in sospeso.
-  if (!(isFilters && !sim.edit && !sim.asleep && !(long && (k === 'A' || k === 'B')) && rockerAction(k, true, sim.rot).role)) simSettle();
+  if (!(isFilters && !sim.edit && !sim.asleep && !(long && (k === 'A' || k === 'B')) && rockerAction(k, true, simContentRot()).role)) simSettle();
   if (k === 'P') { sim.asleep = !sim.asleep; sim.edit = null; sim.msg = sim.asleep ? 'Spento: l\'e-paper resta visibile. Power per riaccendere.' : 'Acceso.'; return renderSim(); }
   if (sim.asleep) { sim.msg = 'È spento: solo il power lo riaccende.'; return renderSim(); }
   if (!plan.length) return;
@@ -2755,7 +2755,7 @@ function simPress(k, long) {
     sim.edit = { i: ok[0] }; sim.msg = `Modifica stadi: A/B stadio, C/D vetro. Si chiude da sola dopo ${EDIT_TIMEOUT_S} s, o subito con E o F.`; simEditArm();
     return renderSim();
   }
-  const act = rockerAction(k, isFilters, sim.rot);
+  const act = rockerAction(k, isFilters, simContentRot());
   const step = d => { sim.i = (sim.i + d + plan.length) % plan.length; };
   sim.msg = '';
   if (k === 'E' && long) {
@@ -2771,7 +2771,7 @@ function simPress(k, long) {
   } else if (cur.kind === 'lenschart' && 'ABCD'.includes(k)) {
     const lens = plan.map((p, i) => (p.kind === 'lenschart' ? i : -1)).filter(i => i >= 0);
     if (lens.length < 2) sim.msg = 'La lens chart ha una sola pagina: A–D non fanno nulla. Le schermate si cambiano con E e F.';
-    else sim.i = lens[(lens.indexOf(sim.i) + lensPageDir(k, sim.rot) + lens.length) % lens.length];
+    else sim.i = lens[(lens.indexOf(sim.i) + lensPageDir(k, simContentRot()) + lens.length) % lens.length];
   } else if (k === 'E') step(1);       // E (lato destro) = pagina successiva, in ciclo
   else if (k === 'F') step(-1);        // F (lato sinistro) = pagina precedente
   else sim.msg = 'Nessuna funzione per questo tasto qui: le pagine si cambiano con E e F.';
@@ -2809,11 +2809,13 @@ function renderSim() {
     tctx.putImageData(img, 0, 0);
     ctx.save(); ctx.translate(cv.width / 2, cv.height / 2); ctx.rotate(-angle * Math.PI / 180);
     ctx.drawImage(tmp, -r.w / 2, -r.h / 2); ctx.restore();
-    // Indicazioni sul bordo dei tasti (fisso), con il testo dritto per chi guarda.
+    // Indicazioni sul bordo dei tasti (fisso), con il testo nel verso del contenuto:
+    // dritto per chi guarda, salvo con la rotazione bloccata, che ferma tutto.
     if (item.kind === 'filters') {
+      const rot = simContentRot();
       for (const k of ['A', 'B', 'C', 'D']) {
-        const t = sim.edit ? editHint(k, sim.rot) : rockerHint(k, sim.rot); if (!t) continue;
-        ctx.save(); ctx.translate(KEY_POS[k] * cv.width, cv.height - STRIP.port / 2); ctx.rotate(-sim.rot * Math.PI / 180);
+        const t = sim.edit ? editHint(k, rot) : rockerHint(k, rot); if (!t) continue;
+        ctx.save(); ctx.translate(KEY_POS[k] * cv.width, cv.height - STRIP.port / 2); ctx.rotate(-rot * Math.PI / 180);
         ctx.font = `700 15px ui-monospace, Menlo, monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         const w = ctx.measureText(t).width + 10;
         ctx.fillStyle = '#fff'; ctx.fillRect(-w / 2, -11, w, 22); ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.strokeRect(-w / 2, -11, w, 22);

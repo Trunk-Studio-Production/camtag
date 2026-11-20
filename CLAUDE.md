@@ -15,6 +15,9 @@ costruttori di lenti e filtri nei dati vanno bene.
 - `device/` — firmware PlatformIO (C++/Arduino, ESP32-C3). È il nostro codice.
   `BleUpload.cpp` riceve le card via Bluetooth (NimBLE-Arduino, acceso solo in
   ricezione) e rimanda al telefono `project.json` (`GET`); `UploadProto.h` ha le parti provabili sull'host (`device/test/`).
+  `Filters.cpp` è la schermata filtri provabile sull'host (lettura di
+  `screen.ini`, regole degli stadi portate dal simulatore con gli stessi nomi,
+  composizione dei pezzi, indicazioni); tasti, tempi e refresh sono in `main.cpp`.
 - `companion/index.html` — strumento web a file singolo: lens chart e filtri
   generati in automatico più schede manuali (crew, note, lente singola, patch);
   esporta uno zip di BMP 1 bit o manda gli stessi file all'X3 via Web Bluetooth
@@ -81,8 +84,11 @@ tocchi va in sonno (10 minuti con `CAMTAG_DEBUG`, che oggi `x3` ha sempre): se
 la porta non c'è, prima di caricare o leggere la seriale fai premere il power.
 Aprire la seriale lo riavvia. Per le prove con l'utente usa
 `scripts/taratura.py` nel suo terminale (`tasti`, `versi`, `card` con le card
-sopra, `log` registro dal vivo; `--carica`): guida passo per passo, mostra dal
-vivo tasti, versi e card, e se l'X3 va in sonno lo aspetta e rifà il passo.
+sopra, `filtri` con la schermata filtri, `blocco` solo il blocco della rotazione,
+`reattivita` pressioni sentite da `keyScan` (`[adc]`) contro quelle eseguite, con
+gli aggiornamenti dello schermo (`[epd]`), `log` registro dal vivo; `--carica`):
+guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
+(righe `[filtri]` della seriale), e se l'X3 va in sonno lo aspetta e rifà il passo.
 
 ## Hardware X3 (dal profilo `XTEINK_X3` in BoardConfig.h)
 
@@ -153,7 +159,7 @@ vivo tasti, versi e card, e se l'X3 va in sonno lo aspetta e rifà il passo.
   chi guarda (a 90° e 180° è il primo tasto, A o C).
 - Anche il protocollo Bluetooth (`docs/bluetooth.md`) è un contratto tra i due.
 - Il formato è un contratto tra `companion/` e `device/`: se cambi uno, aggiorna
-  l'altro. **Il firmware non gestisce ancora la schermata filtri.**
+  l'altro.
 
 ## Decisioni di prodotto
 
@@ -242,8 +248,21 @@ vivo tasti, versi e card, e se l'X3 va in sonno lo aspetta e rifà il passo.
   pressione breve si legge al rilascio; quella lunga (0,8 s, anche A o B per la
   modifica) scatta allo scadere del tempo con il tasto ancora giù, e il
   rilascio che segue non conta (`holdFired` nel firmware, `simDown`/`simUp`).
+  Nel firmware i tasti A–F li legge `keyScan` (compito a parte, ogni 5 ms, anche
+  durante gli aggiornamenti dello schermo) in una coda con l'ora: una pressione
+  fatta mentre lo schermo si aggiorna si esegue dopo, breve o lunga secondo la
+  durata vera. ADC condiviso con `input.update()` (power) sotto `adcLock`.
 - Indicazioni dei tasti a schermo solo dove servono (filtri), disegnate dal
-  firmware sul bordo fisico dei tasti, così seguono la rotazione.
+  firmware sul bordo fisico dei tasti, così seguono la rotazione. La rotazione
+  bloccata ferma tutto: contenuto, indicazioni e funzione dei bilancieri (filtri
+  e lens chart) restano quelli del verso bloccato (`simContentRot`; nel firmware
+  `rotation`, mentre `physical` è la posizione vera): chi monta l'X3 a testa in
+  giù vuole vedere tutto a testa in giù. Sbloccando il contenuto raggiunge
+  subito la posizione vera.
+- Refresh della schermata filtri: veloce (`FAST_REFRESH`, solo i pezzi
+  cambiati) per ND, diottria e modifica; mezzo dopo `stages.settle` s fermi
+  (riordino degli stadi), sempre se a schermo restano ombre dei veloci
+  (`fastShadow`); completo all'uscita dalla modifica.
 
 ## Regole
 
@@ -251,8 +270,10 @@ vivo tasti, versi e card, e se l'X3 va in sonno lo aspetta e rifà il passo.
   in maiuscolo: mai passare le unità a `toUpperCase()`.
 - Firmware piccolo: niente allocazioni grandi o librerie nuove senza motivo.
   `Canvas` disegna in coordinate logiche; la rotazione la gestisce lui.
-- Dopo una modifica al firmware: compila. Per la logica di disegno c'è un test
-  host (stub di `SdFat.h` + `Canvas.cpp` compilati con `c++`): rifallo se tocchi `Canvas`.
+- Dopo una modifica al firmware: compila. Se tocchi `Canvas`, `Filters` o
+  l'esportazione dei filtri: `device/test/filters_test.sh` (stub di `SdFat.h`,
+  confronto pixel per pixel con le anteprime dello strumento; se cambia
+  l'esportazione rigenera `filters_fixture.zip` con `filters_fixture.js`).
   Per il protocollo Bluetooth: `device/test/upload_proto_test.cpp` (comando in `docs/bluetooth.md`).
 - Dopo una modifica allo strumento web: aprilo nel browser integrato e
   controlla l'anteprima; verifica che i BMP esportati abbiano le dimensioni giuste.
@@ -280,3 +301,5 @@ la posizione naturale è `Canvas::ROT_270`).
 
 - Soglie della rotazione (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) su camera vera.
 - Ghosting (`FULL_REFRESH_EVERY`) e consumo da spento.
+- Schermata filtri: provata sull'X3 (bilancieri, indicazioni, riordino,
+  modifica, ombra tolta dal mezzo refresh, blocco che ferma tutto).

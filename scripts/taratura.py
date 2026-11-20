@@ -8,10 +8,21 @@ di tempo. Se l'X3 va in sonno aspetta che torni.
     .venv/bin/python scripts/taratura.py tasti
     .venv/bin/python scripts/taratura.py versi [--carica] [--out risultato.json]
     .venv/bin/python scripts/taratura.py card
+    .venv/bin/python scripts/taratura.py filtri
+    .venv/bin/python scripts/taratura.py blocco
+    .venv/bin/python scripts/taratura.py reattivita
     .venv/bin/python scripts/taratura.py log [--file x3.log]
 
 `card` prova con le card vere sopra: verso della card e direzione dei bilancieri
 sulla lens chart nelle quattro posizioni, poi il blocco della rotazione.
+
+`filtri` prova la schermata filtri (card con la schermata filtri v3 sopra):
+indicazioni e bilancieri di ND e diottria nelle quattro posizioni, riordino
+degli stadi, modifica degli stadi e indicazioni con la rotazione bloccata.
+
+`reattivita` confronta ogni pressione sentita dall'hardware con quelle lette dal
+firmware: una pressione persa durante un aggiornamento dello schermo è colpa del
+firmware, una persa a schermo fermo va cercata nell'hardware.
 
 `log` mostra dal vivo quello che l'X3 scrive (tasti, versi, card, ricezione) e
 con `--file` lo salva anche, accelerometro compreso.
@@ -72,6 +83,11 @@ class X3:
         self.boots = 0      # collegamenti: ognuno riavvia l'X3
         self.events = collections.deque()  # righe [camtag] rotation …
         self.on_line = None  # chiamata per ogni riga ricevuta (modalità log)
+        self.got_key = None  # ultimo tasto visto da press_filters
+        self.flt_cfg = None  # riepilogo di screen.ini: {'nd': passi, 'dio': passi, 'vetri', 'stadi'}
+        self.flt = None      # ultimo stato della schermata filtri
+        self.flt_events = collections.deque()  # 'nd', 'diottria', 'riordino', 'modifica', 'fine modifica', 'scaduta'
+        self.posizione = None  # posizione vera con la rotazione bloccata
 
     def wait_port(self):
         told = False
@@ -141,6 +157,22 @@ class X3:
             m = re.match(r'\[camtag\] rotation (\w+)', line)
             if m:
                 self.events.append(m.group(1))
+                continue
+            m = re.match(r'\[camtag\] posizione (\d)', line)
+            if m:
+                self.posizione = int(m.group(1))
+                continue
+            m = re.match(r'\[filtri\] screen\.ini: nd=(\d+) dio=(\d+) vetri=(\d+) stadi=(\d+)', line)
+            if m:
+                self.flt_cfg = dict(zip(('nd', 'dio', 'vetri', 'stadi'), map(int, m.groups())))
+                continue
+            m = re.match(r'\[filtri\] (.+?) nd=(\d+) dio=(\d+) stadi_nd=\d+ stadi_dio=\d+ sel=(-?\d+) stadi=(\S*)', line)
+            if m:
+                self.flt = {'nd': int(m.group(2)), 'dio': int(m.group(3)), 'sel': int(m.group(4)), 'stadi': m.group(5)}
+                self.flt_events.append(m.group(1))
+                continue
+            if line.startswith('[filtri] modifica chiusa'):
+                self.flt_events.append('scaduta')
 
     def sample(self):
         if not self.imu:
@@ -161,7 +193,11 @@ class X3:
 def upload(x3):
     port = x3.wait_port()
     print(f'{DIM}compilo e carico il firmware (lo schermo lampeggia)…{X}')
-    run = subprocess.run([str(REPO / '.venv/bin/pio'), 'run', '-e', 'x3', '-t', 'upload', '--upload-port', port],
+    # Da un worktree il .venv è quello del checkout principale: pio sta accanto al Python in uso.
+    pio = REPO / '.venv/bin/pio'
+    if not pio.exists():
+        pio = Path(sys.executable).parent / 'pio'
+    run = subprocess.run([str(pio), 'run', '-e', 'x3', '-t', 'upload', '--upload-port', port],
                          cwd=REPO / 'device', capture_output=True, text=True)
     if run.returncode:
         print(run.stdout[-1500:])
@@ -358,8 +394,8 @@ def lock_test(x3):
     if ask_live(x3, '   La card è rimasta com\'era, senza girare? [s/n] ', ['s', 'n']) == 'n':
         bad.append('blocco: la card gira lo stesso')
     to_lens_page(x3)
-    print(f'   {DIM}Con la rotazione bloccata i bilancieri seguono comunque la posizione vera.{X}')
-    if not press_rocker(x3, 'A', -1, 'A|B ora è in alto'):
+    print(f'   {DIM}Con la rotazione bloccata i bilancieri restano quelli del verso bloccato (A|B arretra).{X}')
+    if not press_rocker(x3, 'A', -1, 'A|B, come in verticale'):
         bad.append('blocco: A nel verso sbagliato')
     print(f'   Tieni premuto {B}E{X} per sbloccare.')
     wait_until(x3, lambda: 'auto' in x3.events, lambda: f'{DIM}in attesa…{X}')
@@ -368,6 +404,235 @@ def lock_test(x3):
     print(f'   {OK}✓ sbloccata, la card ha seguito il verso{X}')
 
     return bad
+
+
+# --- Schermata filtri -----------------------------------------------------------------
+# Per posizione (come POSITIONS): verso del firmware, tasti come keys.<gradi> in
+# screen.ini (rockerAction nello strumento web) e indicazioni in ordine per chi guarda.
+FILTER_STEPS = [
+    (3, {'A': 'dio-', 'B': 'dio+', 'C': 'nd-', 'D': 'nd+'}, 'in basso, da sinistra: -DIO +DIO -ND +ND'),
+    (2, {'A': 'nd+', 'B': 'nd-', 'C': 'dio+', 'D': 'dio-'}, 'a sinistra, dall\'alto: +ND -ND +DIO -DIO'),
+    (1, {'A': 'dio+', 'B': 'dio-', 'C': 'nd+', 'D': 'nd-'}, 'in alto, da sinistra: -ND +ND -DIO +DIO'),
+    (0, {'A': 'dio-', 'B': 'dio+', 'C': 'nd-', 'D': 'nd+'}, 'a destra, dall\'alto: +ND -ND +DIO -DIO'),
+]
+
+
+def is_filters(card):
+    return card is not None and re.match(r'\d+_filters\.', card[1]) is not None
+
+
+def to_filters_page(x3):
+    if not is_filters(x3.card):
+        print('   Premi E o F fino alla schermata filtri.')
+        wait_until(x3, lambda: is_filters(x3.card), lambda: f'{DIM}in attesa…{X}')
+
+
+# Reazioni a un tasto; il riordino e la fine della modifica per tempo arrivano da soli.
+KEY_EVENTS = {'nd', 'diottria', 'modifica', 'fine modifica'}
+
+
+def press_filters(x3, key, where, done=None, wait=1.5):
+    """Fa premere un tasto e aspetta la reazione della schermata filtri (o il tempo `wait`
+    dopo la pressione, se il firmware non cambia nulla, per esempio a fine scala)."""
+    before = dict(x3.flt or {})
+    print(f'   Premi {B}{key}{X}  {DIM}({where}){X}')
+    x3.keys.clear()
+    x3.flt_events.clear()
+    seen = []
+
+    def finished():
+        if x3.keys and not seen:
+            seen.append(time.time())
+        if done:
+            return done()
+        return bool(KEY_EVENTS & set(x3.flt_events)) or bool(seen and time.time() - seen[0] > wait)
+
+    wait_until(x3, finished, lambda: f'{DIM}in attesa di {key}…{X}')
+    got = KEY_NAMES.get(x3.keys[0]) if x3.keys else None
+    x3.got_key = got
+    if got and got != key:
+        print(f'   {WARN}hai premuto {got}, non {key}{X}')
+    return before, dict(x3.flt or {})
+
+
+def leave_edit(x3):
+    """Un A o B tenuto troppo apre la modifica degli stadi: si esce con E."""
+    print(f'   {WARN}hai tenuto premuto: si è aperta la modifica degli stadi.{X} Premi {B}E{X} per uscire.')
+    x3.flt_events.clear()
+    wait_until(x3, lambda: 'fine modifica' in x3.flt_events, lambda: f'{DIM}in attesa di E…{X}')
+
+
+def check_value(x3, key, role, where, sign):
+    name = {'nd': 'ND', 'dio': 'diottria'}[role]
+    top = x3.flt_cfg[role] - 1
+    while True:
+        before, after = press_filters(x3, key, where)
+        if 'modifica' in x3.flt_events and 'fine modifica' not in x3.flt_events:
+            leave_edit(x3)
+        elif x3.got_key and x3.got_key != key:
+            pass
+        else:
+            break
+        print(f'   {DIM}rifacciamo: pressione breve su {key}{X}')
+    if not before:
+        print(f'   {WARN}stato dei filtri non ancora letto: riprova{X}')
+        return False
+    want = max(0, min(top, before[role] + sign))
+    ok = after.get(role) == want
+    word = 'su' if sign > 0 else 'giù'
+    note = '' if want != before[role] else f' {DIM}(era già in fondo alla scala){X}'
+    print(f'   {OK + "✓" if ok else BAD + "✗"} {key}: {name} {before[role]} → {after.get(role)}{X}{note}'
+          + ('' if ok else f'  (doveva andare {word}, a {want})'))
+    return ok
+
+
+def filters_position(x3, i, verso, keys, hints, where):
+    bad = []
+    print(f'{B}{i}/4  {where}{X}')
+    wait_until(x3, lambda: x3.verso == verso, lambda: f'{DIM}aspetto che la schermata giri (ora verso {x3.verso}){X}')
+    to_filters_page(x3)
+    time.sleep(1.5)
+    x3.pump()
+    roles = ['nd'] + (['dio'] if x3.flt_cfg['dio'] else [])
+    shown = hints if x3.flt_cfg['dio'] else re.sub(r' ?[-+]DIO', '', hints)
+    if ask_live(x3, f'   Indicazioni dei tasti {shown}, dritte e accanto ai tasti? [s/n] ', ['s', 'n']) == 'n':
+        bad.append(f'{where}: indicazioni sbagliate')
+    for role in roles:
+        for sign in (1, -1):
+            key = next(k for k, a in keys.items() if a == f'{role}{"+" if sign > 0 else "-"}')
+            if not check_value(x3, key, role, f'{"+" if sign > 0 else "-"}{role.upper()}', sign):
+                bad.append(f'{where}: {key} non fa {"+" if sign > 0 else "-"}{role.upper()}')
+    return bad
+
+
+def edit_test(x3):
+    bad = []
+    print(f'{B}Modifica degli stadi{X}')
+    print('   Rimetti l\'X3 verticale con i tasti in basso.')
+    wait_until(x3, lambda: x3.verso == 3, lambda: f'{DIM}aspetto il verso verticale (ora {x3.verso}){X}')
+    to_filters_page(x3)
+    if not x3.flt_cfg['stadi'] or not x3.flt_cfg['vetri']:
+        print(f'   {WARN}niente stadi o kit dei vetri vuoto: niente da modificare{X}')
+        return bad
+    # ND e diottria occupano stadi: a "—" li lasciano tutti liberi per i vetri.
+    for role, key, name in (('nd', 'C', '-ND'), ('dio', 'A', '-DIO')):
+        if role == 'dio' and not x3.flt_cfg['dio']:
+            continue
+        if (x3.flt or {}).get(role, 0) > 0:
+            print(f'   Porta {"ND" if role == "nd" else "diottria"} a — : premi {B}{key}{X} finché non arriva in fondo.')
+        while (x3.flt or {}).get(role, 0) > 0:
+            press_filters(x3, key, name)
+    print(f'   Tieni premuto {B}A{X} finché una riga degli stadi va in negativo.')
+    x3.flt_events.clear()
+    wait_until(x3, lambda: 'modifica' in x3.flt_events, lambda: f'{DIM}in attesa…{X}')
+    print(f'   {OK}✓ modifica aperta{X} sullo stadio {x3.flt["sel"] + 1}; le indicazioni ora sono ▲ ▼ − +')
+    if ask_live(x3, '   Sotto ci sono ▲ ▼ − + e la riga selezionata è in negativo? [s/n] ', ['s', 'n']) == 'n':
+        bad.append('modifica: indicazioni o selezione non visibili')
+    before, after = press_filters(x3, 'B', '▼, stadio dopo')
+    if after['sel'] < before['sel']:
+        bad.append('modifica: B torna indietro invece di andare avanti')
+        print(f'   {BAD}✗ la selezione è tornata indietro{X}')
+    else:
+        print(f'   {OK}✓{X} stadio {before["sel"] + 1} → {after["sel"] + 1}' + ('' if after['sel'] > before['sel'] else f' {DIM}(era l\'ultimo selezionabile){X}'))
+    before, after = press_filters(x3, 'D', '+, vetro dopo')
+    ok = after['stadi'] != before['stadi']
+    print(f'   {OK + "✓" if ok else BAD + "✗"} stadi {before["stadi"]} → {after["stadi"]}{X}')
+    if not ok:
+        bad.append('modifica: D non cambia il vetro')
+    print(f'   Ora {B}non toccare nulla{X}: dopo 5 secondi la modifica si chiude da sola.')
+    x3.flt_events.clear()
+    t0 = time.time()
+    wait_until(x3, lambda: 'fine modifica' in x3.flt_events or time.time() - t0 > 12,
+               lambda: f'{DIM}{time.time() - t0:.0f} s…{X}')
+    if 'scaduta' in x3.flt_events:
+        print(f'   {OK}✓ chiusa da sola dopo {time.time() - t0:.0f} s{X}')
+    else:
+        bad.append('modifica: non si chiude da sola')
+        print(f'   {BAD}✗ la modifica non si è chiusa{X}')
+    print(f'   Tieni premuto {B}B{X} per riaprirla, poi premi {B}E{X} per uscire.')
+    x3.flt_events.clear()
+    wait_until(x3, lambda: 'modifica' in x3.flt_events, lambda: f'{DIM}in attesa di B tenuto…{X}')
+    card = x3.card
+    _, after = press_filters(x3, 'E', 'esce dalla modifica', done=lambda: 'fine modifica' in x3.flt_events)
+    ok = x3.card == card and after['sel'] == -1
+    print(f'   {OK + "✓ uscito, stessa schermata" if ok else BAD + "✗ E ha cambiato schermata"}{X}')
+    if not ok:
+        bad.append('modifica: E cambia schermata invece di uscire')
+    return bad
+
+
+def filters_lock_test(x3):
+    bad = []
+    print(f'{B}Rotazione bloccata{X}')
+    print(f'   Con l\'X3 verticale (tasti in basso) tieni premuto {B}E{X} finché compare ROTAZIONE BLOCCATA.')
+    x3.events.clear()
+    wait_until(x3, lambda: 'locked' in x3.events, lambda: f'{DIM}in attesa…{X}')
+    print('   Gira l\'X3 di un quarto in senso orario (tasti a sinistra).')
+    x3.posizione = None
+    wait_until(x3, lambda: x3.posizione == 2, lambda: f'{DIM}aspetto la nuova posizione…{X}')
+    time.sleep(1.5)
+    to_filters_page(x3)
+    if ask_live(x3, '   Schermata e indicazioni sono rimaste ferme, girate insieme all\'X3 (nessuna si è spostata)? [s/n] ',
+                ['s', 'n']) == 'n':
+        bad.append('bloccata: le indicazioni non restano ferme con la schermata')
+    # Il blocco ferma anche i bilancieri: valgono quelli della posizione verticale.
+    if not check_value(x3, 'D', 'nd', '+ND: D come in verticale, anche se ora è in alto', 1):
+        bad.append('bloccata: D non fa più +ND')
+    print(f'   Tieni premuto {B}E{X} per sbloccare.')
+    wait_until(x3, lambda: 'auto' in x3.events, lambda: f'{DIM}in attesa…{X}')
+    print(f'   {OK}✓ sbloccata{X}')
+    return bad
+
+
+def test_filters(x3, start=1, only=None):
+    print(f'\n{B}Prova della schermata filtri{X}: tieni l\'X3 in mano, non appoggiato.')
+    t0 = time.time()
+    wait_until(x3, lambda: x3.flt_cfg is not None or time.time() - t0 > 10,
+               lambda: f'{DIM}aspetto che l\'X3 legga screen.ini…{X}', restart=False)
+    cfg = x3.flt_cfg
+    if not cfg:
+        print(f'{BAD}Sulle card non c\'è una schermata filtri v3{X}: mandale dallo strumento web (Bluetooth) e riprova.')
+        return
+    print(f'   screen.ini: {cfg["nd"]} passi di ND, {cfg["dio"]} di diottria, {cfg["vetri"]} vetri, {cfg["stadi"]} stadi\n')
+    bad = []
+    for i, ((verso, keys, hints), where) in enumerate(zip(FILTER_STEPS, POSITIONS), 1):
+        if i < start or only:
+            continue
+        while True:
+            try:
+                bad += filters_position(x3, i, verso, keys, hints, where)
+                break
+            except Restart:
+                print(f'   {WARN}l\'X3 si è riavviato: rifaccio la posizione {i}{X}')
+        print()
+    for step in (filters_lock_test,) if only == 'blocco' else (settle_test, edit_test, filters_lock_test):
+        while True:
+            try:
+                bad += step(x3)
+                break
+            except Restart:
+                print(f'   {WARN}l\'X3 si è riavviato: rifaccio il passo{X}')
+        print()
+    print(f'{OK}Tutto come previsto.{X}' if not bad else f'{BAD}Da correggere:{X}\n   ' + '\n   '.join(bad))
+
+
+def settle_test(x3):
+    print(f'{B}Riordino degli stadi{X}')
+    to_filters_page(x3)
+    keys = FILTER_STEPS[[s[0] for s in FILTER_STEPS].index(x3.verso)][1] if x3.verso in (0, 1, 2, 3) else FILTER_STEPS[0][1]
+    key = next(k for k, a in keys.items() if a == 'nd+')
+    before, _ = press_filters(x3, key, '+ND')
+    if before.get('nd', 0) == x3.flt_cfg['nd'] - 1:
+        key = next(k for k, a in keys.items() if a == 'nd-')
+        press_filters(x3, key, '-ND')
+    x3.flt_events.clear()
+    t0 = time.time()
+    wait_until(x3, lambda: 'riordino' in x3.flt_events or time.time() - t0 > 6, lambda: f'{DIM}{time.time() - t0:.1f} s…{X}')
+    if 'riordino' in x3.flt_events:
+        print(f'   {OK}✓ stadi rimessi a posto dopo {time.time() - t0:.1f} s fermi{X} (ND {x3.flt["nd"]}, stadi {x3.flt["stadi"]})')
+        return []
+    print(f'   {BAD}✗ nessun riordino dopo 6 s{X}')
+    return ['riordino: gli stadi non si aggiornano']
 
 
 # Canvas::Rotation -> posizione fisica, secondo kQuarterTurns in device/src/main.cpp.
@@ -398,17 +663,111 @@ def show_log(x3, path):
         time.sleep(0.02)
 
 
+# --- Reattività dei tasti -----------------------------------------------------------
+# Il firmware di debug ha un compito che legge la scala dei tasti ogni 5 ms anche mentre
+# lo schermo si aggiorna ([adc] giu/su), e segna ogni aggiornamento ([epd] ... da t a t).
+# Una pressione vista dall'hardware ma non dal loop ("tasto logico") è persa: se cadeva
+# dentro un aggiornamento è colpa nostra, se no va guardato l'hardware.
+def test_reactivity(x3):
+    print(f"""
+{B}Reattività dei tasti{X}: usa l'X3 come al solito. Sulla schermata filtri cambia ND e
+diottria, anche in fretta e subito dopo un cambio; sulle altre card E e F.
+Ogni pressione che l'hardware sente compare qui: {OK}✓{X} letta dal firmware, {BAD}✗{X} persa.
+Se premi un tasto e qui {B}non compare nulla{X}, non l'ha sentita nemmeno l'hardware.
+ctrl-C per finire e vedere il riepilogo.
+""")
+    busy = collections.deque(maxlen=60)     # (tipo, da, a) in ms dell'X3
+    logical = collections.deque(maxlen=60)  # (tasto, t)
+    down = {}                               # tasto -> (t, raw)
+    pending = []                            # (tasto, da, a, raw, ora del Mac)
+    stats = collections.Counter()
+    refreshing = []                         # ora del Mac dell'aggiornamento in corso
+    prev = x3.on_line
+
+    def on_line(line):
+        if prev:
+            prev(line)
+        if line.startswith('[camtag] device:'):
+            busy.clear(); logical.clear(); down.clear(); pending.clear(); refreshing.clear()
+            print(f'   {DIM}l\'X3 si è riavviato{X}')
+            return
+        m = re.match(r'\[adc\] giu (\d) raw=(\d+) t=(\d+)', line)
+        if m:
+            down[int(m.group(1))] = (int(m.group(3)), int(m.group(2)))
+            return
+        m = re.match(r'\[adc\] su (\d) t=(\d+)', line)
+        if m and int(m.group(1)) in down:
+            b = int(m.group(1))
+            t0, raw = down.pop(b)
+            pending.append((b, t0, int(m.group(2)), raw, time.time()))
+            return
+        m = re.match(r'\[camtag\] tasto logico (\d) t=(\d+)(?: ritardo=(\d+))?', line)
+        if m:
+            logical.append((int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)))
+            return
+        if line.startswith('[epd] inizio'):
+            refreshing[:] = [time.time()]
+            return
+        m = re.match(r'\[epd\] (\w+) da (\d+) a (\d+)', line)
+        if m:
+            refreshing.clear()
+            busy.append((m.group(1), int(m.group(2)), int(m.group(3))))
+
+    def judge(b, t0, t1, raw):
+        name, ms = KEY_NAMES.get(b, '?'), t1 - t0
+        got = [late for k, t, late in logical if k == b and t0 - 30 <= t <= t1 + 30]
+        if got:
+            stats['lette'] += 1
+            late = f', eseguita dopo {got[0]} ms (aspettava lo schermo)' if got[0] > 100 else ''
+            print(f'   {OK}✓ {name}{X}  {DIM}{ms} ms, valore {raw}{late}{X}')
+            return
+        hit = [(kind, a, z) for kind, a, z in busy if a <= t1 and t0 <= z]
+        if hit:
+            kind, a, z = hit[0]
+            stats[f'perse durante un aggiornamento {kind}'] += 1
+            print(f'   {BAD}✗ {name} persa{X}: premuta e lasciata mentre lo schermo faceva un aggiornamento '
+                  f'{kind} ({z - a} ms){DIM}, pressione di {ms} ms{X}')
+        else:
+            stats['perse a schermo fermo'] += 1
+            print(f'   {BAD}✗ {name} persa a schermo fermo{X}{DIM}: pressione di {ms} ms, valore {raw}{X}')
+
+    x3.on_line = on_line
+    try:
+        while True:
+            x3.pump()
+            # Il loop scrive il "tasto logico" entro pochi ms, o appena finito
+            # l'aggiornamento: mezzo secondo dopo il rilascio, a schermo fermo, si giudica.
+            if refreshing and time.time() - refreshing[0] < 10:
+                time.sleep(0.02)
+                continue
+            for p in [p for p in pending if time.time() - p[4] > 0.5]:
+                pending.remove(p)
+                judge(*p[:4])
+            time.sleep(0.02)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        x3.on_line = prev
+    total = sum(stats.values())
+    print(f'\n{B}Riepilogo{X}: {total} pressioni sentite dall\'hardware')
+    for k, n in stats.most_common():
+        print(f'   {n:3d}  {k}')
+
+
 def main():
     ap = argparse.ArgumentParser(description='Prova guidata dell\'X3 con riscontro dal vivo.')
-    ap.add_argument('prova', choices=['tasti', 'versi', 'card', 'log'])
+    ap.add_argument('prova', choices=['tasti', 'versi', 'card', 'filtri', 'blocco', 'reattivita', 'log'])
     ap.add_argument('--carica', action='store_true', help='compila e carica il firmware prima di cominciare')
     ap.add_argument('--out', help='salva il risultato della prova dei versi in questo file JSON')
-    ap.add_argument('--da', type=int, default=1, help='prova card: riparti da questa posizione (1-4)')
-    ap.add_argument('--file', help='modalità log: salva anche in questo file')
+    ap.add_argument('--da', type=int, default=1, help='prove card e filtri: riparti da questa posizione (1-4)')
+    ap.add_argument('--file', help='salva anche il registro della seriale in questo file')
     ap.add_argument('--porta', help='porta seriale (di solito si trova da sola)')
     args = ap.parse_args()
 
     x3 = X3(args.porta)
+    if args.file and args.prova != 'log':
+        log = open(args.file, 'a', buffering=1)
+        x3.on_line = lambda line: log.write(f'{time.strftime("%H:%M:%S")} {line}\n')
     try:
         if args.carica:
             upload(x3)
@@ -417,6 +776,12 @@ def main():
             test_keys(x3)
         elif args.prova == 'card':
             test_cards(x3, args.da)
+        elif args.prova == 'filtri':
+            test_filters(x3, args.da)
+        elif args.prova == 'reattivita':
+            test_reactivity(x3)
+        elif args.prova == 'blocco':
+            test_filters(x3, only='blocco')
         elif args.prova == 'log':
             show_log(x3, args.file)
         else:

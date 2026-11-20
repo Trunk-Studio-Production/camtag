@@ -5,7 +5,9 @@
 
 namespace tinyfont {
 
-constexpr const char* kChars = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ./:-%!_";
+// \x1e and \x1f are the triangles up and down (key hints: "▲" and "▼").
+constexpr const char* kChars = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ./:-%!_+\x1e\x1f";
+constexpr char kUp = '\x1e', kDown = '\x1f';
 
 // One glyph = 5 columns, bit 0 = top row.
 constexpr uint8_t kGlyphs[][5] = {
@@ -53,6 +55,9 @@ constexpr uint8_t kGlyphs[][5] = {
     {0x23, 0x13, 0x08, 0x64, 0x62},  // %
     {0x00, 0x00, 0x5F, 0x00, 0x00},  // !
     {0x40, 0x40, 0x40, 0x40, 0x40},  // _
+    {0x08, 0x08, 0x3E, 0x08, 0x08},  // +
+    {0x30, 0x3C, 0x3E, 0x3C, 0x30},  // ▲
+    {0x06, 0x1E, 0x3E, 0x1E, 0x06},  // ▼
 };
 
 inline const uint8_t* glyphFor(char c) {
