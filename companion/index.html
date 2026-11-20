@@ -1082,9 +1082,29 @@ function filterListRows(f = state.filters) {
   for (const e of f.effects) rows.push({ name: e.name, values: e.strengths.map(x => x.s).filter(Boolean) });
   return rows;
 }
-// Nome a sinistra (colonna larga quanto il nome più lungo), gradazioni a destra
-// che vanno a capo; una misura sola per tutta la pagina, la più grande che entra.
-// In orizzontale, con tante righe, due colonne affiancate se il testo cresce.
+// Due disposizioni, scelte da sole: nome e gradazioni affiancati (colonna del
+// nome larga quanto il più lungo) quando ogni riga sta su una linea; altrimenti
+// nome sopra e gradazioni sotto, a tutta larghezza. Se le gradazioni devono
+// comunque andare a capo (solo se così il testo cresce di oltre il 25%) si
+// dividono in parti uguali (3 + 2, mai 4 + 1).
+// Una misura sola per tutta la pagina, la più grande che entra; in orizzontale,
+// con tante righe, due colonne affiancate se il testo cresce almeno del 20%.
+function balancedLines(ctx, values, maxW, gap) {
+  if (!values.length) return [[]];
+  const ws = values.map(v => ctx.measureText(v).width);
+  if (ws.some(w => w > maxW)) return null;
+  for (let n = 1; n <= values.length; n++) {
+    const base = Math.floor(values.length / n), extra = values.length % n, lines = [];
+    let k = 0, ok = true;
+    for (let li = 0; li < n && ok; li++) {  // le prime linee prendono un elemento in più
+      const line = []; let x = 0;
+      for (const end = k + base + (li < extra ? 1 : 0); k < end; k++) { line.push({ v: values[k], x }); x += ws[k] + gap; }
+      ok = x - gap <= maxW; lines.push(line);
+    }
+    if (ok) return lines;
+  }
+  return null;
+}
 function drawFilterList(ctx, W, H) {
   const pad = Math.round(W * 0.035), barH = H > W ? 64 : 56;
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, barH);
@@ -1099,44 +1119,49 @@ function drawFilterList(ctx, W, H) {
     return;
   }
   const top = barH + Math.round(pad * 0.6), availH = H - top - pad * 0.6;
-  // Misura una disposizione: per ogni riga le righe di testo delle gradazioni.
-  const plan = (s, cols) => {
-    const colW = (W - pad * (cols + 1)) / cols, gap = Math.round(s * 0.7), rowPad = Math.round(s * 0.45);
+  // Prova una disposizione a misura s: null se non entra.
+  const plan = (s, cols, stack, oneLine) => {
+    const colW = (W - pad * (cols + 1)) / cols, gap = Math.round(s * 0.8), rowPad = Math.round(s * 0.4), lh = s * 1.2;
     ctx.font = `800 ${s}px ${FONT}`;
-    const nameW = Math.min(Math.max(...rows.map(r => ctx.measureText(r.name.toUpperCase()).width)), colW * 0.55);
-    if (rows.some(r => ctx.measureText(r.name.toUpperCase()).width > colW * 0.55)) return null;
-    const valW = colW - nameW - gap;
+    const nameWs = rows.map(r => ctx.measureText(r.name.toUpperCase()).width);
+    if (nameWs.some(w => w > colW)) return null;
+    const nameW = stack ? 0 : Math.max(...nameWs) + gap, valW = colW - nameW;
+    if (!stack && valW < colW * 0.3) return null;
     ctx.font = `600 ${s}px ${FONT}`;
-    const laid = rows.map(r => {
-      const lines = [[]]; let x = 0;
-      for (const v of r.values) {
-        const w = ctx.measureText(v).width;
-        if (w > valW) return null;
-        if (x && x + w > valW) { lines.push([]); x = 0; }
-        lines[lines.length - 1].push({ v, x }); x += w + gap;
-      }
-      return { ...r, lines, h: Math.max(1, lines.length) * s * 1.2 + rowPad * 2 };
-    });
-    if (laid.some(r => !r)) return null;
-    const per = Math.ceil(laid.length / cols), colsH = [];
-    for (let c = 0; c < cols; c++) colsH.push(laid.slice(c * per, (c + 1) * per).reduce((a, r) => a + r.h, 0));
-    return Math.max(...colsH) <= availH ? { s, cols, colW, nameW, gap, rowPad, laid, per } : null;
+    const laid = [];
+    for (const r of rows) {
+      const lines = balancedLines(ctx, r.values, valW, gap);
+      if (!lines || ((oneLine || !stack) && lines.length > 1)) return null;
+      const valLines = r.values.length ? lines.length : 0;
+      laid.push({ ...r, lines, h: (stack ? 1 + valLines : 1) * lh + rowPad * 2 });
+    }
+    const per = Math.ceil(laid.length / cols);
+    for (let c = 0; c < cols; c++) if (laid.slice(c * per, (c + 1) * per).reduce((a, r) => a + r.h, 0) > availH) return null;
+    return { s, cols, stack, colW, nameW, rowPad, lh, laid, per };
   };
-  const best = cols => { for (let s = 52; s >= 12; s -= 2) { const p = plan(s, cols); if (p) return p; } return plan(12, cols) || null; };
-  let L = best(1);
-  if (W > H && rows.length > 4) { const two = best(2); if (two && (!L || two.s >= L.s * 1.2)) L = two; }
+  const best = (cols, stack, oneLine) => { for (let s = 48; s >= 12; s -= 2) { const p = plan(s, cols, stack, oneLine); if (p) return p; } return null; };
+  // Meglio senza a capo: affiancato, o nome sopra con le gradazioni su una linea.
+  // Si va a capo solo se così il testo crescerebbe di oltre il 25%.
+  const pick = cols => {
+    const side = best(cols, false), line = best(cols, true, true), wrapped = best(cols, true, false);
+    const flat = side && (!line || side.s >= line.s) ? side : line;
+    return flat && (!wrapped || flat.s >= wrapped.s * 0.8) ? flat : wrapped;
+  };
+  let L = pick(1);
+  if (W > H && rows.length > 4) { const two = pick(2); if (two && (!L || two.s >= L.s * 1.2)) L = two; }
   if (!L) return;
-  const { s, colW, nameW, gap, rowPad, laid, per } = L;
+  const { s, colW, nameW, rowPad, lh, laid, per, stack } = L;
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   laid.forEach((r, i) => {
     const c = Math.floor(i / per), x = Math.round(pad + c * (colW + pad));
-    let y = top + laid.slice(c * per, i).reduce((a, q) => a + q.h, 0);
+    const y = top + laid.slice(c * per, i).reduce((a, q) => a + q.h, 0);
     // Separatore da 2 px su pixel interi (vedi drawLensChart).
     if (i % per) ctx.fillRect(x, Math.round(y), Math.round(colW), 2);
     const base = y + rowPad + s * 0.92;
     ctx.font = `800 ${s}px ${FONT}`; ctx.fillText(r.name.toUpperCase(), x, base);
     ctx.font = `600 ${s}px ${FONT}`;
-    r.lines.forEach((line, j) => line.forEach(t => ctx.fillText(t.v, x + nameW + gap + t.x, base + j * s * 1.2)));
+    const vy = stack ? base + lh : base;
+    r.lines.forEach((line, j) => line.forEach(t => ctx.fillText(t.v, x + nameW + t.x, vy + j * lh)));
   });
 }
 
