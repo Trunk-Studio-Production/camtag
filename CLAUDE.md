@@ -250,7 +250,12 @@ passo per passo e mostra dal vivo tasti e accelerometro, senza limiti di tempo.
   Per il protocollo Bluetooth: `device/test/upload_proto_test.cpp` (comando in `docs/bluetooth.md`).
 - Dopo una modifica allo strumento web: aprilo nel browser integrato e
   controlla l'anteprima; verifica che i BMP esportati abbiano le dimensioni giuste.
-- **Mai caricare firmware sull'X3 senza un backup completo della flash** (vedi README).
+- **Mai caricare firmware su un X3 nuovo senza i tre controlli del README**
+  ("Rischi e controlli prima di caricare": compare sulla USB,
+  `get-security-info` pulito, flash letta due volte uguale, che è anche il
+  backup). Un'unità con la USB bloccata può restare inutilizzabile: se un
+  controllo non passa, fermati. Il README deve dire sempre chiaro che il
+  caricamento è a rischio di chi lo fa.
   Il caricamento lo fa l'utente, o lo fai tu solo se lo chiede esplicitamente.
 
 ## Manutenzione di questo file

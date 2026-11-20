@@ -3,6 +3,11 @@
 Un badge e-paper per il reparto camera: mostra card con lente, crew, note e
 immagini, si sfoglia con i tasti e resta visibile anche da spento.
 
+> **⚠️ Firmware non ufficiale: lo carichi a tuo rischio.** CamTag sostituisce il
+> firmware dell'X3 e, nel caso peggiore, può lasciarlo inutilizzabile senza
+> rimedio. Non c'è alcuna garanzia. Prima di caricarlo leggi
+> [Rischi e controlli prima di caricare](#rischi-e-controlli-prima-di-caricare).
+
 ## Struttura
 
 | Cartella | Contenuto |
@@ -146,35 +151,98 @@ Compila:
 cd device && ../.venv/bin/pio run -e x3
 ```
 
-### Prima di caricarlo sull'X3
+### Rischi e controlli prima di caricare
 
-1. **Fai un backup completo della flash originale.** Collega l'X3 via USB-C e:
+**Caricare CamTag può rendere l'X3 inutilizzabile.** Leggi questa parte per
+intero prima di collegare il cavo.
+
+#### Cosa può andare storto
+
+- CamTag è un firmware non ufficiale, senza alcun legame con Xteink. Il
+  caricamento sostituisce il firmware originale, il bootloader e la tabella
+  partizioni, e può far decadere la garanzia del dispositivo.
+- **CamTag non si aggiorna via rete.** L'unica strada per caricare altro, o per
+  tornare indietro, è la USB. Se sul tuo X3 la USB non funziona, resti con
+  quello che c'è sopra.
+- **Alcune unità escono di fabbrica con il caricamento USB bloccato**, in
+  particolare quelle vendute da negozi terzi e non da xteink.com (lo documenta
+  [CrossPoint](https://github.com/crosspoint-reader/crosspoint-reader#usb-locked-devices-xteink-unlocker)).
+  Su un'unità bloccata un firmware non previsto dal loro strumento di sblocco
+  può lasciare il dispositivo fermo per sempre, e CamTag non è tra quelli
+  previsti. **Su un'unità bloccata non caricare CamTag.**
+- Come funzioni quel blocco non lo sappiamo. I controlli qui sotto dicono con
+  ragionevole sicurezza se un X3 è a rischio, ma non sono una garanzia.
+- Finora CamTag è stato provato su un solo X3: comprato da un negozio terzo,
+  con firmware originale V6.1.15, e non bloccato.
+
+#### Controlli: se anche uno solo non passa, non caricare
+
+Servono un cavo USB-C dati e l'X3 **acceso e sveglio**: in sonno non compare
+sulla USB. `esptool` è quello che PlatformIO installa alla prima compilazione
+(se manca: `.venv/bin/pip install esptool`, poi `.venv/bin/python -m esptool`).
+Qui sotto `esptool` sta per `~/.platformio/penv/bin/python -m esptool --chip esp32c3`.
+
+1. **L'X3 compare sulla USB.** Con il firmware originale in funzione:
 
    ```bash
-   ~/.platformio/penv/bin/python -m esptool --chip esp32c3 read-flash 0 0x1000000 backup-x3-originale.bin
+   ls /dev/cu.usbmodem*        # macOS; su Linux /dev/ttyACM*
    ```
 
-   Conserva questo file: è il modo più sicuro per tornare allo stato di fabbrica.
-   L'X3 deve essere acceso e sveglio, altrimenti non compare sulla USB. La lettura
-   dura circa un minuto; rifalla su un secondo file e confronta le impronte
-   (`shasum -a 256`) prima di fidarti.
-   (`esptool` è quello che PlatformIO installa alla prima compilazione; se manca:
-   `.venv/bin/pip install esptool` e usa `.venv/bin/python -m esptool`.)
-2. **Verifica che il caricamento via USB non sia bloccato** (unità da negozi terzi).
-   Se il backup fallisce o il dispositivo non viene visto, fermati: non forzare.
-3. Solo dopo, carica:
+   Se non compare, prova un altro cavo e un'altra porta. Se continua a non
+   comparire, è il segno di un'unità bloccata: fermati.
+
+2. **Il chip non ha protezioni attive.**
 
    ```bash
-   cd device && ../.venv/bin/pio run -e x3 -t upload && ../.venv/bin/pio device monitor
+   esptool get-security-info
    ```
+
+   Devi leggere `Flags: 0x00000000`, `Secure Boot: Disabled` e
+   `Flash Encryption: Disabled`, e prima `Stub flasher running`. Con valori
+   diversi, o se esptool non riesce a collegarsi, fermati.
+
+3. **Tutta la flash si legge, due volte uguale.** È anche il backup:
+
+   ```bash
+   esptool read-flash 0 0x1000000 backup-x3-originale.bin
+   esptool read-flash 0 0x1000000 backup-x3-rilettura.bin
+   shasum -a 256 backup-x3-originale.bin backup-x3-rilettura.bin
+   ```
+
+   Ogni lettura dura circa un minuto e deve dare 16777216 byte; le due impronte
+   devono essere identiche. Se una lettura fallisce o le impronte differiscono,
+   fermati.
+
+Dopo ogni comando esptool riavvia l'X3, e il firmware originale torna in sonno:
+premi il power e controlla che riparta come prima.
+
+**Conserva `backup-x3-originale.bin` in almeno due posti.** È la copia esatta del
+tuo dispositivo e l'unico modo per tornare allo stato di fabbrica. Contiene i
+dati della tua unità: non pubblicarlo.
+
+#### Caricare
+
+Solo con i tre controlli passati e il backup al sicuro:
+
+```bash
+cd device && ../.venv/bin/pio run -e x3 -t upload && ../.venv/bin/pio device monitor
+```
+
+Tieni l'X3 sveglio e collegato finché il caricamento non ha finito.
 
 ### Ripristino
 
+- Backup completo, che riporta l'X3 esattamente com'era:
+  `~/.platformio/penv/bin/python -m esptool --chip esp32c3 write-flash 0 backup-x3-originale.bin`.
 - Firmware originale Xteink o CrossPoint: dal flasher web su crosspointreader.com.
-- Backup completo: `~/.platformio/penv/bin/python -m esptool --chip esp32c3 write-flash 0 backup-x3-originale.bin`.
+  La tabella partizioni di CamTag è la stessa di CrossPoint.
 
-La tabella partizioni è la stessa di CrossPoint, quindi i suoi strumenti di
-ripristino restano compatibili.
+Entrambe le strade passano dalla USB, con l'X3 sveglio (con CamTag: premi il
+power, hai 20 secondi prima che torni in sonno). Se la USB non risponde più,
+resta solo riscrivere la memoria con un programmatore esterno aprendo il
+dispositivo, come descrive
+[CrossPoint](https://github.com/crosspoint-reader/crosspoint-reader/blob/HEAD/docs/fix-bricked-xteink.md):
+un'operazione delicata, che può finire di romperlo.
 
 ## Da verificare sull'hardware
 
@@ -212,6 +280,11 @@ CamTag (firmware e strumento web) è software libero, distribuito con la
 licenza **GNU GPL v3.0**: testo completo in [`LICENSE`](LICENSE). Puoi usarlo,
 studiarlo, modificarlo e ridistribuirlo; chi distribuisce una versione
 modificata deve renderne disponibile il codice con la stessa licenza.
+
+**Nessuna garanzia.** Come dicono gli articoli 15 e 16 della licenza, il
+software è fornito "così com'è": chi lo usa lo fa a proprio rischio, e gli
+autori non rispondono di danni a dispositivi, dati o altro, compreso un X3 reso
+inutilizzabile dal caricamento del firmware.
 
 Restano con le loro licenze:
 - FreeInk SDK (`third_party/freeink-sdk/`): MIT;
