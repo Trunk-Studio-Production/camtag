@@ -2389,7 +2389,9 @@ const BLE = {
   ctrl: 'c4a70002-1b2e-4f3a-9d6e-3a7c5e0b2f10',
   data: 'c4a70003-1b2e-4f3a-9d6e-3a7c5e0b2f10',
   version: 2,        // protocollo: docs/bluetooth.md
-  window: 8192,      // byte in volo non ancora confermati (il dispositivo ne tiene 16 KB)
+  // Byte in volo non ancora confermati (il dispositivo ne tiene 16 KB). Non alzarla:
+  // con 24 KB il browser sul Mac intasa la sua coda di scritture e l'invio rallenta o si blocca.
+  window: 8192,
   ackEvery: 2048,    // GET: il client conferma ogni 2 KB ricevuti
   timeoutMs: 15000,
 };
@@ -2416,7 +2418,7 @@ function bleSupportNote() {
   if (!navigator.bluetooth) {
     const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     return ios ? 'Safari e gli altri browser di iPhone non hanno il Bluetooth per le pagine web. Apri questa pagina in un browser con Web Bluetooth, per esempio BLE Link o Bluefy.'
-      : 'Questo browser non ha il Bluetooth per le pagine web. Usa Chrome o Edge (su Android, Mac, Windows o Linux).';
+      : 'Questo browser non ha il Bluetooth per le pagine web. Usa Chrome, Edge o Brave (su Android, Mac, Windows o Linux; in Brave va acceso in brave://flags, "Web Bluetooth API").';
   }
   return '';
 }
@@ -2462,7 +2464,13 @@ async function bleSession(work, onFail) {
   const enc = new TextEncoder(), dec = new TextDecoder();
   let ctrl, data;
   link.cmd = c => (ctrl.writeValueWithResponse ? ctrl.writeValueWithResponse(enc.encode(c)) : ctrl.writeValue(enc.encode(c)));
-  link.write = chunk => (data.writeValueWithoutResponse ? data.writeValueWithoutResponse(chunk) : data.writeValue(chunk));
+  // Una scrittura che non si chiude (il Mac a volte la lascia appesa) diventa un errore, non un'attesa infinita.
+  const timed = (p, ms) => {
+    let t;
+    const late = new Promise((_, rej) => { t = setTimeout(() => rej(new Error('Il dispositivo non risponde. Riprova.')), ms); });
+    return Promise.race([p, late]).finally(() => clearTimeout(t));
+  };
+  link.write = chunk => timed(data.writeValueWithoutResponse ? data.writeValueWithoutResponse(chunk) : data.writeValue(chunk), BLE.timeoutMs);
   link.connected = () => !!ctrl && !disconnected;
   link.cancelled = () => cancelled;
   bleRun = { cancel: () => { cancelled = true; wake(); } };

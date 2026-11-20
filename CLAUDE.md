@@ -77,10 +77,12 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 `~/.platformio/penv/bin/python -m esptool` (nel `.venv` non c'è).
 
 L'X3 compare su USB (`/dev/cu.usbmodem*`) solo da sveglio, e dopo 20 s senza
-tocchi va in sonno: prima di caricare o leggere la seriale fai premere il power.
+tocchi va in sonno (10 minuti con `CAMTAG_DEBUG`, che oggi `x3` ha sempre): se
+la porta non c'è, prima di caricare o leggere la seriale fai premere il power.
 Aprire la seriale lo riavvia. Per le prove con l'utente usa
-`scripts/taratura.py` (`tasti`, `versi`, `--carica`) nel suo terminale: guida
-passo per passo e mostra dal vivo tasti e accelerometro, senza limiti di tempo.
+`scripts/taratura.py` nel suo terminale (`tasti`, `versi`, `card` con le card
+sopra, `log` registro dal vivo; `--carica`): guida passo per passo, mostra dal
+vivo tasti, versi e card, e se l'X3 va in sonno lo aspetta e rifà il passo.
 
 ## Hardware X3 (dal profilo `XTEINK_X3` in BoardConfig.h)
 
@@ -104,6 +106,9 @@ passo per passo e mostra dal vivo tasti e accelerometro, senza limiti di tempo.
   alto a destra. I 4 in basso sono su un solo ingresso analogico (uno alla
   volta). **Solo il power risveglia** dal sonno.
 - Lo spegnimento porta GPIO13 basso come fa CrossPoint; l'e-paper resta visibile.
+- Dopo ogni aggiornamento il pannello va spento (`displayBuffer(…, true)`, o
+  `turnOffScreen` nelle altre chiamate): lasciato alimentato, in pochi minuti
+  l'immagine scivola verso quella precedente (fantasma).
 
 ## Formato card
 
@@ -267,7 +272,8 @@ non è più vero invece di aggiungere note.
 
 ## Da tarare sull'hardware (aperto)
 
-Tasti, assi IMU e verso dello schermo sono tarati sull'X3 (`kKeyA`…`kKeyF`,
+Provati sull'X3: ricezione Bluetooth dal Mac (1,1 MB in ~40 s) e "Importa dall'X3", card vere, E/F, rotazione e
+blocco, bilancieri della lens chart nei 4 versi. Tasti, assi IMU e verso dello schermo sono tarati sull'X3 (`kKeyA`…`kKeyF`,
 `kImuSwapXY`, `kImuSignX`, `kImuSignY`, `kQuarterTurns` in `device/src/main.cpp`:
 la posizione naturale è `Canvas::ROT_270`).
 

@@ -39,7 +39,11 @@
 namespace {
 
 constexpr const char* kCardDir = "/camtag";
+#ifdef CAMTAG_DEBUG
+constexpr uint32_t IDLE_SLEEP_MS = 600000;  // prove al banco: niente corse col power
+#else
 constexpr uint32_t IDLE_SLEEP_MS = 20000;
+#endif
 constexpr uint32_t RECEIVE_IDLE_MS = 180000;
 // Durante un trasferimento il display si aggiorna al massimo ogni tanto: ogni
 // aggiornamento ferma la scrittura sulla microSD.
@@ -203,7 +207,9 @@ int batteryPercent() {
 
 void present(bool forceFull) {
   const bool full = forceFull || changesSinceFull >= FULL_REFRESH_EVERY;
-  display->displayBuffer(full ? EInkDisplay::FULL_REFRESH : EInkDisplay::HALF_REFRESH);
+  // Pannello spento subito dopo ogni aggiornamento: lasciato alimentato,
+  // l'immagine scivola in pochi minuti verso quella di prima (fantasma).
+  display->displayBuffer(full ? EInkDisplay::FULL_REFRESH : EInkDisplay::HALF_REFRESH, true);
   changesSinceFull = full ? 0 : changesSinceFull + 1;
 }
 
@@ -286,6 +292,9 @@ void toggleRotationLock() {
 
 // --- Ricezione via Bluetooth ----------------------------------------------------
 void drawReceive(const char* status, const char* detail, bool full) {
+#ifdef CAMTAG_DEBUG
+  const uint32_t t0 = millis();
+#endif
   Canvas c = canvas(rotation);
   const bool port = Canvas::isPortrait(rotation);
   const int mid = c.height() / 2;
@@ -298,6 +307,7 @@ void drawReceive(const char* status, const char* detail, bool full) {
   c.textCentered(c.height() - 64, "E O F PER USCIRE", 2);
   present(full);
   lastReceiveDrawMs = millis();
+  LOGF("[camtag] schermo ricezione: %lu ms\n", static_cast<unsigned long>(lastReceiveDrawMs - t0));
   prefs.putString("shown", "");  // al prossimo avvio ridisegna la card
 }
 

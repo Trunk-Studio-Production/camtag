@@ -9,6 +9,15 @@
 
 #include "UploadProto.h"
 
+// Con CAMTAG_DEBUG: collegamento negoziato e tempi dei trasferimenti sulla seriale.
+#ifdef CAMTAG_DEBUG
+#define BLOG(...) Serial.printf(__VA_ARGS__)
+#else
+#define BLOG(...) \
+  do {            \
+  } while (0)
+#endif
+
 namespace bleupload {
 namespace {
 
@@ -22,6 +31,7 @@ constexpr const char* kOldDir = "/camtag.old";
 
 // Il client tiene in volo al massimo 8 KB non confermati (docs/bluetooth.md):
 // il buffer è il doppio, così non si riempie mai mentre il display aggiorna.
+// Allocato solo in ricezione.
 constexpr size_t kDataBufBytes = 16384;
 constexpr uint32_t kAckEvery = 2048;
 // Verso il telefono (GET) vale la stessa finestra, con i ruoli scambiati.
@@ -39,6 +49,21 @@ volatile bool isConnected = false;
 volatile bool connChanged = false;
 volatile bool overflow = false;
 volatile uint16_t mtu = 23;
+// Chrome manda un pacchetto per intervallo del collegamento, quindi la velocità
+// dipende da questo. Le regole Apple accettano 15 ms esatti (minimo = massimo).
+// Appena collegato il Mac regola i parametri per conto suo (una richiesta in quel
+// momento si scontra con la sua e va persa); a metà dei dati invece blocca le
+// scritture di Chrome. Quindi si chiede subito dopo lo scambio dell'MTU, l'ultima
+// regolazione del Mac e prima di qualsiasi comando; se l'MTU non cambia, dopo
+// kParamsDelayMs dal loop.
+constexpr uint32_t kParamsDelayMs = 2000;
+volatile uint32_t paramsDueMs = 0;
+
+void requestFastInterval(uint16_t handle) {
+  paramsDueMs = 0;
+  NimBLEDevice::getServer()->updateConnParams(handle, 12, 12, 0, 400);
+  BLOG("[ble] chiesto intervallo 15 ms\n");
+}
 bool running = false;
 
 enum class Phase { Idle, Session, Receiving, Sending };
@@ -52,12 +77,17 @@ uint32_t lastAck = 0;
 uint16_t files = 0;
 uint32_t sent = 0;   // GET: byte inviati
 uint32_t acked = 0;  // GET: byte confermati dal client
+uint32_t sessionStartMs = 0;  // BEGIN
+uint32_t sessionBytes = 0;
+uint32_t fileStartMs = 0;
+uint32_t sdUs = 0;  // tempo passato a scrivere sulla microSD nella sessione
 uint8_t pending[512];
 size_t pendingLen = 0;  // pacchetto letto ma non ancora accettato da NimBLE
 char error[32] = "";
 
 void reply(const char* msg) {
-  if (ctrlChr && isConnected) ctrlChr->notify(reinterpret_cast<const uint8_t*>(msg), strlen(msg));
+  const bool ok = ctrlChr && isConnected && ctrlChr->notify(reinterpret_cast<const uint8_t*>(msg), strlen(msg));
+  if (!ok || strncmp(msg, "ACK", 3) != 0) BLOG("[ble] -> %s%s\n", msg, ok ? "" : "  (NON INVIATA)");
 }
 
 class ServerCallbacks : public NimBLEServerCallbacks {
@@ -65,16 +95,27 @@ class ServerCallbacks : public NimBLEServerCallbacks {
     isConnected = true;
     connChanged = true;
     connHandle = info.getConnHandle();
-    // 15-30 ms: veloce ma dentro i limiti che iOS accetta.
-    server->updateConnParams(info.getConnHandle(), 12, 24, 0, 400);
+    BLOG("[ble] collegato: intervallo %.2f ms, latenza %u, MTU %u\n", info.getConnInterval() * 1.25f,
+         info.getConnLatency(), info.getMTU());
+    paramsDueMs = millis() + kParamsDelayMs;
   }
-  void onDisconnect(NimBLEServer*, NimBLEConnInfo&, int) override {
+  void onDisconnect(NimBLEServer*, NimBLEConnInfo&, int reason) override {
+    BLOG("[ble] scollegato, motivo 0x%x\n", reason);
     isConnected = false;
     connChanged = true;
     connHandle = BLE_HS_CONN_HANDLE_NONE;
     NimBLEDevice::startAdvertising();
   }
-  void onMTUChange(uint16_t value, NimBLEConnInfo&) override { mtu = value; }
+  void onMTUChange(uint16_t value, NimBLEConnInfo& info) override {
+    mtu = value;
+    BLOG("[ble] MTU %u\n", value);
+    if (paramsDueMs) requestFastInterval(info.getConnHandle());
+  }
+  void onConnParamsUpdate(NimBLEConnInfo& info) override {
+    BLOG("[ble] nuovi parametri: intervallo %.2f ms, latenza %u\n", info.getConnInterval() * 1.25f,
+         info.getConnLatency());
+  }
+  void onPhyUpdate(NimBLEConnInfo&, uint8_t tx, uint8_t rx) override { BLOG("[ble] PHY tx %u rx %u\n", tx, rx); }
 };
 
 class CtrlCallbacks : public NimBLECharacteristicCallbacks {
@@ -136,9 +177,14 @@ bool swapIn() {
 }
 
 Event finishFile() {
+  const uint32_t t = micros();
   file.close();
+  sdUs += micros() - t;
   if (fileCrc != expectedCrc) return fail("CRC", "DATI ROVINATI");
   files++;
+  sessionBytes += received;
+  BLOG("[ble] file %lu B in %lu ms\n", static_cast<unsigned long>(received),
+       static_cast<unsigned long>(millis() - fileStartMs));
   char msg[24];
   snprintf(msg, sizeof(msg), "DONE %lu", static_cast<unsigned long>(received));
   reply(msg);
@@ -147,6 +193,7 @@ Event finishFile() {
 }
 
 Event handle(const char* line) {
+  if (strncmp(line, "ACK", 3) != 0) BLOG("[ble] <- %s\n", line);
   const upload::Command c = upload::parse(line);
   char msg[48];
   switch (c.cmd) {
@@ -159,6 +206,9 @@ Event handle(const char* line) {
       cleanup();
       if (!SdMan.mkdir(kTmpDir)) return fail("SD", "MICROSD NON SCRIVIBILE");
       phase = Phase::Session;
+      sessionStartMs = millis();
+      sessionBytes = 0;
+      sdUs = 0;
       reply("OK");
       return Event::Progress;
 
@@ -167,12 +217,15 @@ Event handle(const char* line) {
       String path = String(kTmpDir) + "/" + c.path;
       const int slash = path.lastIndexOf('/');
       if (slash > static_cast<int>(strlen(kTmpDir))) SdMan.mkdir(path.substring(0, slash).c_str());
+      const uint32_t t = micros();
       file = SdMan.open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
+      sdUs += micros() - t;
       if (!file) return fail("SD", "MICROSD NON SCRIVIBILE");
       fileSize = c.size;
       expectedCrc = c.crc;
       fileCrc = 0;
       received = lastAck = 0;
+      fileStartMs = millis();
       phase = Phase::Receiving;
       if (fileSize == 0) return finishFile();
       reply("OK");
@@ -181,6 +234,12 @@ Event handle(const char* line) {
 
     case upload::Cmd::Commit:
       if (phase != Phase::Session || files == 0) return fail("STATO", "ERRORE DI PROTOCOLLO");
+      {
+        const uint32_t ms = millis() - sessionStartMs;
+        BLOG("[ble] totale: %u file, %lu B in %lu ms = %.1f KB/s; microSD %lu ms\n", files,
+             static_cast<unsigned long>(sessionBytes), static_cast<unsigned long>(ms),
+             ms ? sessionBytes / 1.024f / ms : 0.0f, static_cast<unsigned long>(sdUs / 1000));
+      }
       if (!swapIn()) return fail("SD", "MICROSD NON SCRIVIBILE");
       phase = Phase::Idle;
       reply("OK");
@@ -264,13 +323,16 @@ Event drainData() {
   size_t n;
   while ((n = xStreamBufferReceive(dataBuf, buf, sizeof(buf), 0)) > 0) {
     if (phase != Phase::Receiving || received + n > fileSize) return fail("DATI", "ERRORE DI PROTOCOLLO");
+    const uint32_t t = micros();
     if (file.write(buf, n) != n) return fail("SD", "MICROSD PIENA O GUASTA");
+    sdUs += micros() - t;
     fileCrc = upload::crc32(fileCrc, buf, n);
     received += n;
     if (received == fileSize) {
       ev = finishFile();
       if (ev == Event::Failed) return ev;
     } else if (received - lastAck >= kAckEvery) {
+      if (received / 8192 != lastAck / 8192) BLOG("[ble] ricevuti %lu B\n", static_cast<unsigned long>(received));
       lastAck = received;
       char msg[24];
       snprintf(msg, sizeof(msg), "ACK %lu", static_cast<unsigned long>(received));
@@ -280,13 +342,24 @@ Event drainData() {
   return ev;
 }
 
+// La RAM del Bluetooth torna libera fuori dalla ricezione.
+void freeBuffers() {
+  if (dataBuf) vStreamBufferDelete(dataBuf);
+  if (cmdQueue) vQueueDelete(cmdQueue);
+  dataBuf = nullptr;
+  cmdQueue = nullptr;
+}
+
 }  // namespace
 
 bool start(const char* deviceName) {
   if (running) return true;
   if (!cmdQueue) cmdQueue = xQueueCreate(8, kCmdLen);
   if (!dataBuf) dataBuf = xStreamBufferCreate(kDataBufBytes, 1);
-  if (!cmdQueue || !dataBuf) return false;
+  if (!cmdQueue || !dataBuf) {
+    freeBuffers();
+    return false;
+  }
   xQueueReset(cmdQueue);
   xStreamBufferReset(dataBuf);
   overflow = false;
@@ -319,7 +392,11 @@ bool start(const char* deviceName) {
   scanData.setName(deviceName);
   adv->setScanResponseData(scanData);
   running = adv->start();
-  if (!running) NimBLEDevice::deinit(true);
+  if (!running) {
+    NimBLEDevice::deinit(true);
+    freeBuffers();
+  }
+  BLOG("[ble] RAM libera con il Bluetooth acceso: %lu B\n", static_cast<unsigned long>(ESP.getFreeHeap()));
   return running;
 }
 
@@ -330,6 +407,7 @@ void stop() {
   ctrlChr = dataChr = nullptr;
   isConnected = false;
   running = false;
+  freeBuffers();
 }
 
 Event poll() {
@@ -343,6 +421,7 @@ Event poll() {
     }
     return Event::Connected;
   }
+  if (paramsDueMs && isConnected && static_cast<int32_t>(millis() - paramsDueMs) >= 0) requestFastInterval(connHandle);
   if (overflow) {
     overflow = false;
     return fail("OVERFLOW", "TRASFERIMENTO TROPPO VELOCE");

@@ -59,6 +59,16 @@ firmware li scrive sulla microSD (che condivide l'SPI con il display) e solo
 dopo manda `ACK`. Il client tiene in volo al massimo **8 KB** non confermati
 (byte inviati del file − ultimo `ACK`), così il buffer non si riempie anche
 quando il display si sta aggiornando. Se si riempie comunque: `ERR OVERFLOW`.
+Non alzare la finestra: con 24 KB il browser sul Mac intasa la sua coda di
+scritture senza risposta, e l'invio rallenta fino a 1 KB/s o resta appeso.
+
+Il browser manda un pacchetto per intervallo del collegamento: la velocità
+dipende quasi solo da quello. Il dispositivo chiede 15 ms esatti (le regole
+Apple non danno di meno; con "15-30 ms" il Mac sceglie 30) subito dopo lo
+scambio dell'MTU: appena collegato si scontrerebbe con la regolazione del
+telefono o del computer e andrebbe persa, a metà dei dati bloccherebbe le
+scritture del browser. Dal Mac con Brave (Chromium): 21-29 KB/s, 1,1 MB in 40-55 s. Altri
+dispositivi Bluetooth in uso sul Mac (mouse, tastiera) rallentano.
 
 Con `GET` i ruoli si scambiano: il dispositivo manda pacchetti di MTU − 3 byte
 (al massimo 512) e non tiene più di 8 KB non confermati; il client risponde

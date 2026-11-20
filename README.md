@@ -77,7 +77,8 @@ della microSD con **Importa progetto**.
 Requisiti:
 - la pagina va aperta in **HTTPS** (o da `localhost`): su `http://` il browser
   non dà il Bluetooth alle pagine;
-- **Android, Mac, Windows, Linux**: Chrome o Edge;
+- **Android, Mac, Windows, Linux**: Chrome, Edge o Brave (provato su Mac; in
+  Brave il Bluetooth va acceso in `brave://flags`, voce "Web Bluetooth API");
 - **iPhone e iPad**: Safari non ha Web Bluetooth; serve un browser che lo
   aggiunga, come **BLE Link** (provato) o Bluefy.
 
@@ -246,12 +247,15 @@ un'operazione delicata, che può finire di romperlo.
 
 ## Da verificare sull'hardware
 
-Tasti e versi si provano dal terminale con `scripts/taratura.py`, che mostra
-subito ogni tasto premuto e i valori dell'accelerometro:
+Le prove si fanno dal terminale con `scripts/taratura.py` (firmware compilato
+con `CAMTAG_DEBUG`), che mostra subito ogni tasto premuto, il verso e la card a
+schermo, e aspetta l'X3 se va in sonno:
 
 ```bash
 .venv/bin/python scripts/taratura.py tasti
 .venv/bin/python scripts/taratura.py versi --carica   # compila e carica prima
+.venv/bin/python scripts/taratura.py card             # con le card sopra
+.venv/bin/python scripts/taratura.py log              # registro dal vivo
 ```
 
 - [x] Rilevamento dell'X3, display e microSD
@@ -259,20 +263,49 @@ subito ogni tasto premuto e i valori dell'accelerometro:
 - [x] Assi IMU e verso dello schermo (`kImuSwapXY`, `kImuSignX`, `kImuSignY`,
       `kQuarterTurns`): la scritta resta dritta nei 4 versi
 - [x] Riaccensione con il power
+- [x] Ricezione via Bluetooth da Brave sul Mac: crea `/camtag` anche la prima
+      volta e mostra quanti file ha ricevuto; "Importa dall'X3" riporta il
+      progetto nel browser e lascia le card come sono
+- [x] Card vere in verticale e in orizzontale, E/F in ciclo, rotazione
+      automatica e blocco (E tenuto)
+- [x] Bilancieri sulla lens chart di più pagine nei 4 versi, anche con la
+      rotazione bloccata (come `lensPageDir` nel simulatore)
+- [x] Velocità di ricezione dal Mac: 98 file, 1,1 MB in circa 40 s (erano
+      100 s) chiedendo l'intervallo da 15 ms subito dopo lo scambio dell'MTU;
+      mouse e tastiera Bluetooth in uso sul Mac rallentano
+- [x] Pannello spento dopo ogni aggiornamento: anche con l'X3 sveglio a lungo
+      non riaffiora la schermata precedente
 - [ ] Soglie della rotazione (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) su camera vera
 - [ ] Ghosting: ogni quanto serve un refresh completo (ora ogni 6 cambi)
 - [ ] Consumo da spento
 - [ ] Lettura batteria (fuel gauge BQ27220): l'icona appare sotto il 20%
-- [ ] Ricezione via Bluetooth: velocità reale, Android (Chrome) e iPhone
-      (BLE Link), consumo con il Bluetooth acceso
+- [ ] Ricezione via Bluetooth da Android (Chrome) e iPhone (BLE Link), consumo
+      con il Bluetooth acceso
+- [ ] Schermata filtri: il firmware mostra solo lo sfondo (niente valori di ND
+      e diottria, indicazioni dei tasti, modifica degli stadi)
 
 ## Prossimi passi
 
 1. **Database lenti** nello strumento web.
-2. **Rotazione anche da spento**: risveglio a timer (es. ogni 10 s) per leggere
+2. **Invio solo delle card cambiate**: l'X3 dice cosa ha già (percorso e CRC),
+   lo strumento manda solo i file nuovi o cambiati e il dispositivo copia gli
+   altri dalla cartella attuale. Un invio tipico passerebbe da quasi un minuto
+   a pochi secondi.
+3. **Tempo prima del sonno** scelto dall'utente nello strumento web, dopo aver
+   misurato i consumi reali (oggi 20 s; 10 minuti nel firmware di debug).
+   Serve anche una configurazione di compilazione senza `CAMTAG_DEBUG`: oggi
+   `x3` lo ha sempre acceso.
+4. **Cura dello schermo**: la card resta a schermo da spento (l'e-paper non
+   consuma e non si rovina così). In più: una *modalità deposito* che a
+   batteria quasi scarica, o a comando, pulisce lo schermo con un refresh
+   completo e lo lascia bianco con una scritta, per i periodi lunghi senza uso;
+   tarare ogni quanto serve il refresh completo (`FULL_REFRESH_EVERY`). Caldo
+   oltre i 50 °C circa e sole diretto per mesi rovinano il pannello: conta il
+   supporto.
+5. **Rotazione anche da spento**: risveglio a timer (es. ogni 10 s) per leggere
    l'IMU e ridisegnare solo se è cambiato il verso. Da valutare dopo aver
    misurato i consumi reali.
-3. **Supporto** stampato in 3D per il montaggio sulla camera.
+6. **Supporto** stampato in 3D per il montaggio sulla camera.
 
 ## Licenza
 
