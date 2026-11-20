@@ -106,7 +106,8 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 - `NN_filterlist` (facoltativa, `state.auto.filterlist`, spenta di partenza):
   elenco di tutti i vetri a disposizione (ND del kit, diottrie intere e split,
   famiglie con le gradazioni; le coppie di ND no), generato da `filterListRows`.
-  Nome e gradazioni affiancati se ogni riga sta su una linea, se no nome sopra;
+  Nome e gradazioni affiancati se ogni riga sta su una linea, se no nome sopra
+  e gradazioni a 0,7 della sua misura (`VAL_STACK`);
   a capo solo se il testo cresce di oltre il 25%, in parti uguali (3 + 2).
   Nello strumento ha lo stesso editor dei filtri (`filtersEditor(ed, true)`).
   Per il firmware è una card qualsiasi.

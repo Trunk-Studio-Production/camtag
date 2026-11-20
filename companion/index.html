@@ -1105,6 +1105,7 @@ function balancedLines(ctx, values, maxW, gap) {
   }
   return null;
 }
+const VAL_STACK = 0.7;
 function drawFilterList(ctx, W, H) {
   const pad = Math.round(W * 0.035), barH = H > W ? 64 : 56;
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, barH);
@@ -1121,23 +1122,25 @@ function drawFilterList(ctx, W, H) {
   const top = barH + Math.round(pad * 0.6), availH = H - top - pad * 0.6;
   // Prova una disposizione a misura s: null se non entra.
   const plan = (s, cols, stack, oneLine) => {
-    const colW = (W - pad * (cols + 1)) / cols, gap = Math.round(s * 0.8), rowPad = Math.round(s * 0.4), lh = s * 1.2;
+    // Con il nome sopra le gradazioni sono più piccole (VAL_STACK), così non gli fanno concorrenza.
+    const vs = stack ? Math.round(s * VAL_STACK) : s;
+    const colW = (W - pad * (cols + 1)) / cols, gap = Math.round(vs * 0.8), rowPad = Math.round(s * 0.4), lh = s * 1.2, vlh = vs * 1.25;
     ctx.font = `800 ${s}px ${FONT}`;
     const nameWs = rows.map(r => ctx.measureText(r.name.toUpperCase()).width);
     if (nameWs.some(w => w > colW)) return null;
-    const nameW = stack ? 0 : Math.max(...nameWs) + gap, valW = colW - nameW;
+    const nameW = stack ? 0 : Math.max(...nameWs) + Math.round(s * 0.8), valW = colW - nameW;
     if (!stack && valW < colW * 0.3) return null;
-    ctx.font = `600 ${s}px ${FONT}`;
+    ctx.font = `600 ${vs}px ${FONT}`;
     const laid = [];
     for (const r of rows) {
       const lines = balancedLines(ctx, r.values, valW, gap);
       if (!lines || ((oneLine || !stack) && lines.length > 1)) return null;
       const valLines = r.values.length ? lines.length : 0;
-      laid.push({ ...r, lines, h: (stack ? 1 + valLines : 1) * lh + rowPad * 2 });
+      laid.push({ ...r, lines, h: (stack ? lh + valLines * vlh : lh) + rowPad * 2 });
     }
     const per = Math.ceil(laid.length / cols);
     for (let c = 0; c < cols; c++) if (laid.slice(c * per, (c + 1) * per).reduce((a, r) => a + r.h, 0) > availH) return null;
-    return { s, cols, stack, colW, nameW, rowPad, lh, laid, per };
+    return { s, vs, cols, stack, colW, nameW, rowPad, lh, vlh, laid, per };
   };
   const best = (cols, stack, oneLine) => { for (let s = 48; s >= 12; s -= 2) { const p = plan(s, cols, stack, oneLine); if (p) return p; } return null; };
   // Meglio senza a capo: affiancato, o nome sopra con le gradazioni su una linea.
@@ -1150,7 +1153,7 @@ function drawFilterList(ctx, W, H) {
   let L = pick(1);
   if (W > H && rows.length > 4) { const two = pick(2); if (two && (!L || two.s >= L.s * 1.2)) L = two; }
   if (!L) return;
-  const { s, colW, nameW, rowPad, lh, laid, per, stack } = L;
+  const { s, vs, colW, nameW, rowPad, lh, vlh, laid, per, stack } = L;
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   laid.forEach((r, i) => {
     const c = Math.floor(i / per), x = Math.round(pad + c * (colW + pad));
@@ -1159,9 +1162,9 @@ function drawFilterList(ctx, W, H) {
     if (i % per) ctx.fillRect(x, Math.round(y), Math.round(colW), 2);
     const base = y + rowPad + s * 0.92;
     ctx.font = `800 ${s}px ${FONT}`; ctx.fillText(r.name.toUpperCase(), x, base);
-    ctx.font = `600 ${s}px ${FONT}`;
-    const vy = stack ? base + lh : base;
-    r.lines.forEach((line, j) => line.forEach(t => ctx.fillText(t.v, x + nameW + t.x, vy + j * lh)));
+    ctx.font = `600 ${vs}px ${FONT}`;
+    const vy = stack ? base + vlh : base;
+    r.lines.forEach((line, j) => line.forEach(t => ctx.fillText(t.v, x + nameW + t.x, vy + j * vlh)));
   });
 }
 
