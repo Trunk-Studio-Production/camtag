@@ -444,13 +444,16 @@ const TYPE_LABEL = { lens: 'Lente', crew: 'Crew', notes: 'Note', patch: 'Patch' 
 
 function freshState() {
   return {
-    version: 6, device: 'x3', production: '', lensByMount: false, lensSplit: false, lensSeries: 'mix', zoomsLast: true, lensFront: true, lensMount: false,
+    version: 7, device: 'x3', production: '', lensByMount: false, lensSplit: false, lensSeries: 'mix', zoomsLast: true, lensFront: true, lensMount: false,
     auto: { lenschart: true, filters: true, filterlist: false },
     lenses: [],
     filters: { ndFormat: 'density', ndType: 'ND', nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], ndCombos: [], dio: [], effects: [], stages: [null, null, null], previewNd: 0, previewDio: 0 },
     cards: [DEFAULTS.crew()],
+    off: freshOff(),
   };
 }
+// Schermata di spento composta dallo strumento (e le impostazioni di settings.ini).
+function freshOff() { return { keys: true, logo: true, text: '', img: null, fit: 'cover', dither: 'atkinson', threshold: 128, contrast: 0, pivot: 128 }; }
 
 function migrate(s) {
   if (!s || !Array.isArray(s.cards)) return s;
@@ -459,6 +462,10 @@ function migrate(s) {
   for (const k of ['production', 'lensByMount', 'lensSplit', 'lensSeries', 'zoomsLast', 'lensFront', 'lensMount', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
   s.filters = Object.assign(f.filters, s.filters);
   s.auto = Object.assign({ ...f.auto }, s.auto);
+  // v7: schermata di spento composta, etichette dei tasti. Chi aveva già una scheda di
+  // spento la ritrova com'era, senza il nome sopra.
+  if (!s.off) s.off = { ...f.off, logo: !s.cards.some(c => c.off) };
+  s.off = Object.assign(freshOff(), s.off);
   if ('ir' in s.filters) { if (s.filters.ir) s.filters.ndType = 'IRND'; delete s.filters.ir; }  // vecchia casella IRND
   // Vecchi "filtri di stile" (un elemento per filtro montato) -> kit con gradazioni montate.
   if (Array.isArray(s.filters.style)) {
@@ -475,7 +482,7 @@ function migrate(s) {
   normalizeStages(s.filters);  // i vetri vanno al loro posto dopo, con lo stato pronto (fitStart)
   // v6: font, soglia del testo e separatore decimale non sono più opzioni (Inter, 128, punto).
   delete s.typo; delete s.decimal;
-  s.device = 'x3'; s.version = 6;
+  s.device = 'x3'; s.version = 7;
   return s;
 }
 
@@ -1438,6 +1445,8 @@ function renderScreen(s, layout, opts = {}) {
     }
   } else if (s.kind === 'filterlist') {
     drawFilterList(ctx, W, H);
+  } else if (s.kind === 'off') {
+    return renderOff(layout);
   } else {
     const c = s.card;
     ({ lens: drawLens, crew: drawCrew, notes: drawNotes, patch: drawPatch })[c.type](ctx, W, H, c);
@@ -1463,28 +1472,193 @@ function layoutsOf(c) { return c.formats === 'land' ? ['land'] : c.formats === '
 // ============================================================================
 // Esportazione
 // ============================================================================
-// Scheda di spento: una scheda manuale che l'X3 mostra da spento. Sta con le card
-// (off.bmp, off.p.bmp) ma fuori dal giro delle pagine: il firmware la riconosce dal nome.
-const OFF_BASE = 'off';
+// Schermata di spento (off.bmp, off.p.bmp): fuori dal giro delle pagine, il firmware la
+// riconosce dal nome. È una scheda manuale con "Schermata di spento" accesa, oppure la
+// compone lo strumento da state.off (immagine di sfondo e scritta). Senza nessuna delle
+// due non si esporta: da spento l'X3 mostra il nome CAMTAG al centro.
+const OFF_BASE = 'off', SETTINGS_FILE = 'settings.ini';
 function offCard() { return state.cards.find(c => c.off) || null; }
-// La fascia e la batteria che il dispositivo disegna sopra la schermata di spento
-// (drawOff nel firmware): fascia bianca di 36 px in basso con una riga nera sopra.
-const OFF_STRIP = 36, OFF_TEXT = 'SPENTO - TIENI POWER PER ACCENDERE';
-function drawOffOverlay(ctx, W, H) {
+function offComposed() { return !offCard() && !!(state.off.img || state.off.text.trim()); }
+function hasOffBmp() { return !!offCard() || offComposed(); }
+function offLayouts() { const c = offCard(); return c ? layoutsOf(c) : ['land', 'port']; }
+// Impostazioni per il firmware (loadSettings): etichette dei tasti e nome da spento.
+function settingsIni() { return `# camtag settings v1\nkeys=${state.off.keys ? 1 : 0}\noff.logo=${state.off.logo ? 1 : 0}\n`; }
+
+// Font 5x7 del firmware (TinyFont.h): le scritte che disegna il dispositivo, uguali qui.
+const TINY_CHARS = ' 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ./:-%!_+';
+const TINY = [[0x00,0x00,0x00,0x00,0x00],[0x3E,0x51,0x49,0x45,0x3E],[0x00,0x42,0x7F,0x40,0x00],[0x42,0x61,0x51,0x49,0x46],[0x21,0x41,0x45,0x4B,0x31],[0x18,0x14,0x12,0x7F,0x10],[0x27,0x45,0x45,0x45,0x39],[0x3C,0x4A,0x49,0x49,0x30],[0x01,0x71,0x09,0x05,0x03],[0x36,0x49,0x49,0x49,0x36],[0x06,0x49,0x49,0x29,0x1E],[0x7E,0x11,0x11,0x11,0x7E],[0x7F,0x49,0x49,0x49,0x36],[0x3E,0x41,0x41,0x41,0x22],[0x7F,0x41,0x41,0x22,0x1C],[0x7F,0x49,0x49,0x49,0x41],[0x7F,0x09,0x09,0x09,0x01],[0x3E,0x41,0x49,0x49,0x7A],[0x7F,0x08,0x08,0x08,0x7F],[0x00,0x41,0x7F,0x41,0x00],[0x20,0x40,0x41,0x3F,0x01],[0x7F,0x08,0x14,0x22,0x41],[0x7F,0x40,0x40,0x40,0x40],[0x7F,0x02,0x0C,0x02,0x7F],[0x7F,0x04,0x08,0x10,0x7F],[0x3E,0x41,0x41,0x41,0x3E],[0x7F,0x09,0x09,0x09,0x06],[0x3E,0x41,0x51,0x21,0x5E],[0x7F,0x09,0x19,0x29,0x46],[0x46,0x49,0x49,0x49,0x31],[0x01,0x01,0x7F,0x01,0x01],[0x3F,0x40,0x40,0x40,0x3F],[0x1F,0x20,0x40,0x20,0x1F],[0x3F,0x40,0x38,0x40,0x3F],[0x63,0x14,0x08,0x14,0x63],[0x07,0x08,0x70,0x08,0x07],[0x61,0x51,0x49,0x45,0x43],[0x00,0x60,0x60,0x00,0x00],[0x20,0x10,0x08,0x04,0x02],[0x00,0x36,0x36,0x00,0x00],[0x08,0x08,0x08,0x08,0x08],[0x23,0x13,0x08,0x64,0x62],[0x00,0x00,0x5F,0x00,0x00],[0x40,0x40,0x40,0x40,0x40],[0x08,0x08,0x3E,0x08,0x08],[0x30,0x3C,0x3E,0x3C,0x30],[0x06,0x1E,0x3E,0x1E,0x06]];
+function tinyWidth(t, sc) { return t.length * 6 * sc - sc; }
+function tinyText(ctx, x, y, t, sc, color = '#000') {
+  ctx.fillStyle = color;
+  for (const ch of t.toUpperCase()) {
+    const g = TINY[Math.max(0, TINY_CHARS.indexOf(ch))];
+    for (let col = 0; col < 5; col++) for (let row = 0; row < 7; row++) if (g[col] & (1 << row)) ctx.fillRect(x + col * sc, y + row * sc, sc, sc);
+    x += 6 * sc;
+  }
+}
+function tinyCentered(ctx, W, y, t, sc) { tinyText(ctx, Math.floor((W - tinyWidth(t, sc)) / 2), y, t, sc); }
+
+// Etichette dei tasti (drawKeyLabels nel firmware, stesse posizioni di kKeyTabs):
+// linguette sul bordo fisico di ogni tasto, con il nome dritto per chi legge. Lungo il
+// bordo in frazioni, nella posizione naturale (verticale, power in alto a destra);
+// edge: 0 alto, 1 destra, 2 basso, 3 sinistra. q = quarti di giro in senso orario del
+// dispositivo rispetto alla posizione naturale (l'anteprima orizzontale usa q = 3,
+// tasti a destra, come ROT_0 nel firmware).
+const KEY_TABS = [
+  { edge: 0, from: 0.05, to: 0.23, labels: [['RESET', 0.14]], scale: 2 },
+  { edge: 0, from: 0.76, to: 0.94, labels: [['PWR', 0.85]], scale: 3 },
+  { edge: 3, from: 0.13, to: 0.35, labels: [['X', 0.24]], scale: 3 },
+  { edge: 1, from: 0.13, to: 0.35, labels: [['Y', 0.24]], scale: 3 },
+  { edge: 2, from: 0.10, to: 0.47, labels: [['A', 0.14], ['B', 0.44]], divider: 0.285, scale: 3 },
+  { edge: 2, from: 0.53, to: 0.90, labels: [['C', 0.57], ['D', 0.86]], divider: 0.715, scale: 3 },
+];
+const TAB_PAD = 5, TAB_RADIUS = 8;
+// Riquadro bianco con bordo nero di t px e spigoli arrotondati (roundBox nel firmware).
+function inRound(px, py, r, rad) {
+  const cx = Math.min(Math.max(px, r.x + rad), r.x + r.w - 1 - rad), cy = Math.min(Math.max(py, r.y + rad), r.y + r.h - 1 - rad);
+  const dx = px - cx, dy = py - cy;
+  return dx * dx + dy * dy <= rad * rad + rad;
+}
+function roundBox(ctx, r, rad, t) {
+  const inn = { x: r.x + t, y: r.y + t, w: r.w - 2 * t, h: r.h - 2 * t };
+  for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++)
+    if (inRound(x, y, r, rad)) { ctx.fillStyle = inRound(x, y, inn, rad - t) ? '#fff' : '#000'; ctx.fillRect(x, y, 1, 1); }
+}
+const f32 = Math.fround;
+function edgePt(edge, along, depth) {
+  const [W, H] = dims('port'), at = n => Math.trunc(f32(f32(f32(along) * n) + 0.5));
+  return edge === 0 ? [at(W), depth] : edge === 1 ? [W - 1 - depth, at(H)] : edge === 2 ? [at(W), H - 1 - depth] : [depth, at(H)];
+}
+function natToContent([x, y], q) {
+  const [W, H] = dims('port');
+  return [[x, y], [H - 1 - y, x], [W - 1 - x, H - 1 - y], [y, W - 1 - x]][q & 3];
+}
+function contentRect(a, b, q) {
+  const [ax, ay] = natToContent(a, q), [bx, by] = natToContent(b, q);
+  return { x: Math.min(ax, bx), y: Math.min(ay, by), w: Math.abs(bx - ax) + 1, h: Math.abs(by - ay) + 1 };
+}
+function tabDepth(t, q) {
+  const [ax, ay] = natToContent(edgePt(t.edge, t.from, 0), q), [bx, by] = natToContent(edgePt(t.edge, t.to, 0), q);
+  const across = Math.abs(bx - ax) > Math.abs(by - ay);
+  return (across ? 7 * t.scale : Math.max(...t.labels.map(([l]) => tinyWidth(l, t.scale)))) + 2 * TAB_PAD;
+}
+function tabRect(t, q) { return contentRect(edgePt(t.edge, t.from, -4), edgePt(t.edge, t.to, tabDepth(t, q) - 1), q); }
+function keyInsets(W, H, q, on = state.off.keys) {
+  const inn = { top: 0, right: 0, bottom: 0, left: 0 };
+  if (on) for (const t of KEY_TABS) {
+    const r = tabRect(t, q);
+    if (r.y <= 0) inn.top = Math.max(inn.top, r.y + r.h);
+    if (r.y + r.h >= H) inn.bottom = Math.max(inn.bottom, H - r.y);
+    if (r.x <= 0) inn.left = Math.max(inn.left, r.x + r.w);
+    if (r.x + r.w >= W) inn.right = Math.max(inn.right, W - r.x);
+  }
+  return inn;
+}
+const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+function drawKeyLabels(ctx, q) {
+  for (const t of KEY_TABS) {
+    const d = tabDepth(t, q), r = tabRect(t, q);
+    roundBox(ctx, r, TAB_RADIUS, 2);
+    ctx.fillStyle = '#000';
+    if (t.divider) {
+      const l = contentRect(edgePt(t.edge, t.divider, 0), edgePt(t.edge, t.divider, d - 1), q);
+      ctx.fillRect(l.x - (l.w === 1 ? 1 : 0), l.y - (l.h === 1 ? 1 : 0), Math.max(l.w, 2), Math.max(l.h, 2));
+    }
+    for (const [l, at] of t.labels) {
+      const [x, y] = natToContent(edgePt(t.edge, at, Math.trunc(d / 2)), q);
+      tinyText(ctx, x - Math.trunc(tinyWidth(l, t.scale) / 2), y - Math.trunc(7 * t.scale / 2), l, t.scale);
+    }
+  }
+}
+function strokeBox(ctx, x, y, w, h, t) { ctx.fillRect(x, y, w, t); ctx.fillRect(x, y + h - t, w, t); ctx.fillRect(x, y, t, h); ctx.fillRect(x + w - t, y, t, h); }
+function fitScale(t, scale, w) { while (scale > 1 && tinyWidth(t, scale) > w) scale--; return scale; }
+
+// Quello che il dispositivo disegna da spento (drawOff nel firmware): il nome CAMTAG,
+// la fascia in basso, la batteria (qui un valore d'esempio) e le etichette dei tasti.
+// drawn = sotto c'è off.bmp.
+const OFF_GAP = 10;  // tra la fascia e le etichette in basso
+const OFF_STRIP = 36, OFF_TEXT = 'SPENTO - TIENI POWER PER ACCENDERE', LOGO_Y = 0.25;
+function logoBox(W, H) { const sc = H > W ? 6 : 8, w = tinyWidth('CAMTAG', sc) + 48, h = 7 * sc + 36; return { x: Math.trunc((W - w) / 2), y: Math.trunc(H / 4) - Math.trunc(h / 2), w, h, sc }; }
+function drawOffOverlay(ctx, W, H, q, drawn) {
   ctx.save();
-  ctx.fillStyle = '#fff'; ctx.fillRect(0, H - OFF_STRIP, W, OFF_STRIP);
-  ctx.fillStyle = '#000'; ctx.fillRect(0, H - OFF_STRIP, W, 2);
-  ctx.font = '700 16px ui-monospace, Menlo, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(OFF_TEXT, W / 2, H - OFF_STRIP / 2 + 2);
-  // Batteria al momento dello spegnimento, in alto a destra (qui un valore d'esempio).
-  ctx.textAlign = 'right';
-  const w = ctx.measureText('80%').width;
-  ctx.fillStyle = '#fff'; ctx.fillRect(W - 64 - w, 10, w + 56, 24);
-  ctx.fillStyle = '#000'; ctx.fillText('80%', W - 58, 23);
-  ctx.fillRect(W - 52, 12, 36, 20); ctx.fillRect(W - 16, 18, 4, 8);
-  ctx.fillStyle = '#fff'; ctx.fillRect(W - 50, 14, 32, 16);
-  ctx.fillStyle = '#000'; ctx.fillRect(W - 48, 16, 22, 12);
+  if (state.off.logo) {
+    const sc = H > W ? 6 : 8;
+    if (!drawn) { ctx.fillStyle = '#000'; tinyCentered(ctx, W, Math.trunc(H / 2) - 40, 'CAMTAG', sc); }
+    else {
+      const b = logoBox(W, H);
+      ctx.fillStyle = '#fff'; ctx.fillRect(b.x, b.y, b.w, b.h); ctx.fillStyle = '#000'; strokeBox(ctx, b.x, b.y, b.w, b.h, 3);
+      tinyCentered(ctx, W, b.y + 18, 'CAMTAG', sc);
+    }
+  }
+  const inn = keyInsets(W, H, q), fy = H - inn.bottom - (inn.bottom ? OFF_GAP : 0) - OFF_STRIP;
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, fy, W, OFF_STRIP);
+  ctx.fillStyle = '#000'; ctx.fillRect(0, fy, W, 2);
+  tinyCentered(ctx, W, fy + 13, OFF_TEXT, 2);
+  const label = '80%', w = tinyWidth(label, 2), box = { x: W - 62 - w, y: 0, w: w + 56, h: 30 };
+  if (state.off.keys) {
+    box.x = Math.trunc((W - box.w) / 2);
+    if (KEY_TABS.some(t => overlaps(tabRect(t, q), box))) box.y = inn.top + 8;
+  }
+  ctx.fillStyle = '#fff'; ctx.fillRect(box.x, box.y, box.w, box.h);
+  tinyText(ctx, box.x + 4, box.y + 8, label, 2);
+  const bx = box.x + 10 + w, by = box.y + 5;
+  ctx.fillStyle = '#fff'; ctx.fillRect(bx - 2, by - 2, 44, 24);
+  ctx.fillStyle = '#000'; strokeBox(ctx, bx, by, 36, 20, 2); ctx.fillRect(bx + 36, by + 6, 4, 8); ctx.fillRect(bx + 4, by + 4, Math.trunc(28 * 80 / 100), 12);
+  if (state.off.keys) drawKeyLabels(ctx, q);
   ctx.restore();
+}
+
+// Schermata senza card (showMessage nel firmware): il nome, il messaggio in un
+// riquadro ben in vista e le etichette dei tasti.
+function drawMessageScreen(ctx, W, H, q, line1, line2) {
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#000';
+  const port = H > W, mid = Math.trunc(H / 2);
+  tinyCentered(ctx, W, mid - (port ? 150 : 120), 'CAMTAG', port ? 6 : 8);
+  const padX = 28, padY = 24, gap = 20, maxW = W - 2 * padX - 80;
+  const s1 = fitScale(line1, port ? 4 : 5, maxW), s2 = line2 ? fitScale(line2, 3, maxW) : 0;
+  const tw = Math.max(tinyWidth(line1, s1), line2 ? tinyWidth(line2, s2) : 0);
+  const bw = tw + 2 * padX, bh = 7 * s1 + (line2 ? gap + 7 * s2 : 0) + 2 * padY, bx = Math.trunc((W - bw) / 2), by = mid - (port ? 40 : 30);
+  strokeBox(ctx, bx, by, bw, bh, 4);
+  tinyCentered(ctx, W, by + padY, line1, s1);
+  if (line2) tinyCentered(ctx, W, by + padY + 7 * s1 + gap, line2, s2);
+  if (state.off.keys) drawKeyLabels(ctx, q);
+}
+
+// Composizione della schermata di spento da state.off: immagine di sfondo e scritta,
+// lasciando posto a ciò che disegna il dispositivo (nome in alto, fascia, etichette).
+function drawOffComposed(ctx, W, H) {
+  const o = state.off;
+  if (o.img && imgCache.get(o.img)) drawPatch(ctx, W, H, { ...o, caption: '' });
+  const text = o.text.trim();
+  if (!text) return;
+  const tab = o.keys ? 31 : 0, side = o.keys ? 40 : 24;
+  const lb = logoBox(W, H), top = o.logo ? lb.y + lb.h + 24 : tab + 24;
+  const bottom = H - tab - (tab ? OFF_GAP : 0) - OFF_STRIP - 16, boxed = !!o.img, pad = boxed ? 16 : 0;
+  const maxW = W - 2 * side - 2 * pad;
+  let size = Math.round(H * 0.09), lines;
+  for (; size > 16; size -= 2) {
+    ctx.font = `700 ${size}px ${FONT}`;
+    lines = wrap(ctx, text, maxW);
+    if (lines.length * size * 1.25 <= bottom - top - 2 * pad && lines.every(l => ctx.measureText(l).width <= maxW)) break;
+  }
+  ctx.font = `700 ${size}px ${FONT}`;
+  const lh = size * 1.25, th = lines.length * lh, y0 = top + (bottom - top - th) / 2;
+  if (boxed) {
+    const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 2 * pad;
+    const bx = Math.round((W - w) / 2), by = Math.round(y0 - pad), bh = Math.round(th + 2 * pad);
+    ctx.fillStyle = '#fff'; ctx.fillRect(bx, by, Math.round(w), bh);
+    ctx.fillStyle = '#000'; strokeBox(ctx, bx, by, Math.round(w), bh, 3);
+  }
+  ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  lines.forEach((l, i) => ctx.fillText(l, W / 2, y0 + lh * i + size * 1.0));
+}
+function renderOff(layout) {
+  const c = offCard();
+  if (c) return renderScreen({ kind: 'card', card: c }, layout);
+  const [W, H] = dims(layout), [, ctx] = newCanvas(W, H);
+  drawOffComposed(ctx, W, H);
+  const photo = state.off.img && state.off.dither !== 'none';
+  return { bits: toBits(ctx, W, H, photo ? state.off.dither : 'threshold', state.off.img ? state.off.threshold : TEXT_T), w: W, h: H };
 }
 
 // Lucchetto dei tasti bloccati (drawLock nel firmware): riquadro di 36 px sul bordo
@@ -1601,8 +1775,8 @@ async function buildZip() {
       }
     }
   }
-  const off = offCard();
-  if (off) for (const l of layoutsOf(off)) { const r = renderScreen({ kind: 'card', card: off }, l); dir.file(`${OFF_BASE}${l === 'port' ? '.p' : ''}.bmp`, encodeBmp(r.bits, r.w, r.h)); }
+  if (hasOffBmp()) for (const l of offLayouts()) { const r = renderOff(l); dir.file(`${OFF_BASE}${l === 'port' ? '.p' : ''}.bmp`, encodeBmp(r.bits, r.w, r.h)); }
+  dir.file(SETTINGS_FILE, settingsIni());
   // Il progetto viaggia con le card: il firmware lo ignora, lo strumento lo riprende (Importa dall'X3).
   dir.file(PROJECT_FILE, JSON.stringify(projectData()));
   return zip;
@@ -1722,9 +1896,10 @@ function selectedScreen() {
   if (sel.kind === 'lenschart') return { kind: 'lenschart', page: Math.min(page, Math.max(lensPages().length - 1, 0)) };
   if (sel.kind === 'filters') return { kind: 'filters' };
   if (sel.kind === 'filterlist') return { kind: 'filterlist' };
+  if (sel.kind === 'off') return { kind: 'off' };
   const c = state.cards[sel.i]; return c ? { kind: 'card', card: c } : null;
 }
-function availableLayouts() { const s = selectedScreen(); return s && s.kind === 'card' ? layoutsOf(s.card) : ['land', 'port']; }
+function availableLayouts() { const s = selectedScreen(); return s && s.kind === 'card' ? layoutsOf(s.card) : s && s.kind === 'off' ? offLayouts() : ['land', 'port']; }
 function currentLayout() { const l = availableLayouts(); return l.includes(view) ? view : l[0]; }
 
 function drawPreview() {
@@ -1735,8 +1910,8 @@ function drawPreview() {
   const img = ctx.createImageData(r.w, r.h);
   for (let i = 0; i < r.w * r.h; i++) { const c = r.bits[i] ? 255 : 0; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = c; img.data[i * 4 + 3] = 255; }
   ctx.putImageData(img, 0, 0);
-  const isOff = s.kind === 'card' && s.card.off;
-  if (isOff) drawOffOverlay(ctx, r.w, r.h);
+  const isOff = s.kind === 'off' || (s.kind === 'card' && s.card.off);
+  if (isOff) drawOffOverlay(ctx, r.w, r.h, layout === 'port' ? 0 : 3, s.kind === 'card' || hasOffBmp());
   const layouts = availableLayouts();
   document.querySelectorAll('[data-view]').forEach(b => {
     b.classList.toggle('on', b.dataset.view === layout); b.setAttribute('aria-pressed', String(b.dataset.view === layout)); b.disabled = !layouts.includes(b.dataset.view);
@@ -1751,7 +1926,7 @@ function drawPreview() {
   $('#fPrev').disabled = !s.page; $('#fNext').disabled = s.page >= n - 1;
   $('#previewNote').textContent = s.kind === 'filters'
     ? (layout === 'port' ? 'Anteprima: le indicazioni dei tasti in basso le disegna il dispositivo, sul bordo dei tasti.' : 'Le fasce libere ai lati ospitano le indicazioni dei tasti, disegnate dal dispositivo.')
-    : isOff ? 'Schermata di spento: la fascia in basso e la batteria le disegna il dispositivo.'
+    : isOff ? `Schermata di spento: ${state.off.logo ? 'il nome, ' : ''}la fascia in basso, la batteria${state.off.keys ? ' e le etichette dei tasti' : ''} li disegna il dispositivo.`
     : 'Anteprima a 1 bit, identica a ciò che vedrai sull\'e-paper.';
 }
 function turnPage(d) {
@@ -1773,6 +1948,8 @@ function renderList() {
   item('◆', 'Elenco filtri', 'tutti i vetri del kit', { kind: 'filterlist' }, !state.auto.filterlist);
   let n = 0;
   state.cards.forEach((c, i) => item(c.off ? '⏻' : String(++n).padStart(2, '0'), cardTitle(c), c.off ? `${TYPE_LABEL[c.type]} · da spento` : TYPE_LABEL[c.type], { kind: 'card', i }));
+  const oc = offCard();
+  item('⏻', 'Spento', oc ? `scheda «${cardTitle(oc)}»` : [state.off.img && 'immagine', state.off.text.trim() && 'scritta', state.off.keys && 'tasti'].filter(Boolean).join(', ') || 'solo il nome', { kind: 'off' });
 }
 // Sceglie una schermata; nella striscia (sotto i 1100 px) la porta in vista.
 function selectScreen(to) {
@@ -2246,7 +2423,7 @@ function cardEditor(ed, c, idx) {
     h('button', { class: 'danger', onclick: delCard }, 'Elimina')));
   ed.append(field(c, 'Formati esportati', 'formats', 'select', [['both', 'Orizzontale + verticale (rotazione automatica)'], ['land', 'Solo orizzontale'], ['port', 'Solo verticale']]));
   ed.append(toggle('Schermata di spento', !!c.off, v => { state.cards.forEach(x => delete x.off); if (v) c.off = true; changed(true); },
-    { tip: 'L\'X3 la mostra quando lo spegni (power tenuto premuto un secondo) e non entra nel giro delle pagine: utile come etichetta, con il nome di chi lo usa e un contatto. Una sola scheda può esserlo.\nIl dispositivo ci disegna sopra una fascia in basso che dice che è spento, e in alto a destra la batteria. Dopo tre giorni da spento lo schermo passa al bianco, che lo conserva meglio.\nSenza questa scheda, da spento si vede solo il nome CAMTAG.' }));
+    { tip: 'L\'X3 la mostra quando lo spegni (power tenuto premuto un secondo) e non entra nel giro delle pagine: utile come etichetta, con il nome di chi lo usa e un contatto. Una sola scheda può esserlo.\nPrende il posto dell\'immagine e della scritta scelte in "Spento", dove stanno anche le etichette dei tasti e il nome CAMTAG.' }));
   const pair = (a, b) => ed.append(h('div', { class: 'two' }, a, b));
   if (c.type === 'lens') {
     pair(field(c, 'Marca', 'brand'), field(c, 'Serie', 'series'));
@@ -2259,6 +2436,14 @@ function cardEditor(ed, c, idx) {
   } else if (c.type === 'notes') {
     ed.append(field(c, 'Titolo', 'title'), field(c, 'Testo', 'body', 'textarea'));
   } else {
+    imageControls(ed, c);
+    ed.append(field(c, 'Inverti colori', 'invert', 'checkbox'), field(c, 'Didascalia (opzionale)', 'caption'));
+  }
+}
+
+// Immagine e retinatura: schede Patch e schermata di spento.
+function imageControls(ed, c) {
+  const pair = (a, b) => ed.append(h('div', { class: 'two' }, a, b));
     const msg = h('p', { class: 'warn', hidden: true });
     const say = t => { msg.textContent = t || ''; msg.hidden = !t; };
     const useImage = blob => readDataUrl(blob).then(downscale).then(url => { c.img = url; return ensureImg(url); }).then(() => changed());
@@ -2266,7 +2451,7 @@ function cardEditor(ed, c, idx) {
       const file = inp.files[0]; if (!file) return;
       say(''); useImage(file).catch(() => say('Il file non è un\'immagine leggibile.'));
     } });
-    ed.append(h('label', { class: 'fld' }, h('span', { class: 'lab' }, 'Immagine'), inp));
+    ed.append(h('label', { class: 'fld' }, h('span', { class: 'lab' }, c === state.off ? 'Immagine di sfondo (facoltativa)' : 'Immagine'), inp));
     // Da un indirizzo web: serve che il sito permetta di leggere l'immagine da un'altra pagina (CORS).
     const urlIn = h('input', { type: 'text', inputmode: 'url', placeholder: 'https://…/immagine.jpg', 'aria-label': 'Indirizzo dell\'immagine' });
     const urlBtn = h('button', { type: 'button' }, 'Carica');
@@ -2311,8 +2496,28 @@ function cardEditor(ed, c, idx) {
     cSlider.addEventListener('input', () => { pSlider.disabled = !c.contrast; });
     cSlider.addEventListener('dblclick', () => { pSlider.disabled = true; });
     ed.append(pWrap);
-    ed.append(tWrap, field(c, 'Inverti colori', 'invert', 'checkbox'), field(c, 'Didascalia (opzionale)', 'caption'));
+    ed.append(tWrap);
+}
+
+// ---------- editor: schermata di spento ----------
+function offEditor(ed) {
+  const o = state.off, oc = offCard();
+  ed.append(editorHead('Spento', info('Quello che l\'X3 mostra da spento (power tenuto premuto un secondo). Il dispositivo ci disegna sopra la fascia in basso che dice che è spento e come si riaccende, la batteria al momento dello spegnimento, il nome CAMTAG e le etichette dei tasti, se li tieni. Dopo tre giorni da spento lo schermo passa al bianco con la sola fascia, che lo conserva meglio.')));
+  ed.append(toggle('Etichette dei tasti', o.keys, v => { o.keys = v; changed(); },
+    { tip: 'Un riquadro con il nome di ogni tasto (A B C D, X, Y, PWR, RESET) sul bordo dove sta il tasto, dritto per chi legge. Utile a chi usa l\'X3 per la prima volta. Le vedi anche sulla schermata che l\'X3 mostra quando non ha card; il tasto RESET riavvia l\'X3 se si blocca.' }));
+  ed.append(toggle('Nome CAMTAG', o.logo, v => { o.logo = v; changed(); },
+    { tip: 'Senza immagine e senza scritta sta al centro; con un\'immagine o una scritta va in alto, in un riquadro.' }));
+  if (oc) {
+    ed.append(h('p', { class: 'warn' }, `Da spento l'X3 mostra la scheda «${cardTitle(oc)}»: immagine e scritta di questa pagina non contano.`),
+      h('div', { class: 'srow' },
+        h('button', { onclick: () => selectScreen({ kind: 'card', i: state.cards.indexOf(oc) }) }, 'Vai alla scheda'),
+        h('button', { onclick: () => { delete oc.off; changed(true); } }, 'Usa questa pagina')));
+    return;
   }
+  ed.append(h('label', { class: 'fld' }, h('span', { class: 'lab' }, 'Scritta (facoltativa)'),
+    h('textarea', { placeholder: 'Es. il nome della produzione, chi lo usa, un contatto', oninput: e => { o.text = e.target.value; changed(); } }, o.text)));
+  imageControls(ed, o);
+  if (o.img) ed.append(h('button', { class: 'danger', onclick: () => { o.img = null; changed(true); } }, 'Togli l\'immagine'));
 }
 
 function renderEditor() {
@@ -2321,6 +2526,7 @@ function renderEditor() {
   if (sel.kind === 'lenschart') return lensEditor(ed);
   if (sel.kind === 'filters') return filtersEditor(ed);
   if (sel.kind === 'filterlist') return filtersEditor(ed, true);
+  if (sel.kind === 'off') return offEditor(ed);
   const c = state.cards[sel.i];
   if (!c) { ed.append(h('div', { class: 'empty' }, 'Seleziona una schermata')); return; }
   cardEditor(ed, c, sel.i);
@@ -2676,7 +2882,7 @@ async function applyProject(d) {
   if (d.lensOverrides) { Object.assign(lensOverrides, d.lensOverrides); saveOverrides(); }
   delete d.lensOverrides; delete d.savedAt;
   state = migrate(d); fitStart(); sel = { kind: 'lenschart' };
-  await Promise.all(state.cards.map(c => ensureImg(c.img)));
+  await Promise.all([...state.cards, state.off].map(c => ensureImg(c.img)));
   save(); refresh();
 }
 $('#exportJson').onclick = () => download(new Blob([JSON.stringify(projectData(), null, 2)], { type: 'application/json' }), 'camtag-progetto.json');
@@ -2848,26 +3054,25 @@ function renderSim() {
     if (!ok.length) sim.edit = null; else if (!ok.includes(sim.edit.i)) sim.edit.i = ok.findLast(i => i < sim.edit.i) ?? ok[0];
   }
   if (sim.off) {
-    // Come drawOff nel firmware: la scheda di spento nella variante adatta al verso (o
-    // il nome, se non c'è), con sopra la fascia e la batteria.
-    const card = offCard();
+    // Come drawOff nel firmware: la schermata di spento nella variante adatta al verso
+    // (se non c'è, il nome), con sopra quello che disegna il dispositivo.
     let angle = simContentRot(), layout = angle % 180 === 90 ? 'land' : 'port';
-    if (card && !layoutsOf(card).includes(layout)) { layout = layout === 'land' ? 'port' : 'land'; angle = (angle + 270) % 360; }
+    if (hasOffBmp() && !offLayouts().includes(layout)) { layout = layout === 'land' ? 'port' : 'land'; angle = (angle + 270) % 360; }
     const [W, H] = dims(layout), [tmp, tctx] = newCanvas(W, H);
-    if (card) {
-      const r = renderScreen({ kind: 'card', card }, layout), img = tctx.createImageData(W, H);
+    if (hasOffBmp()) {
+      const r = renderOff(layout), img = tctx.createImageData(W, H);
       for (let i = 0; i < W * H; i++) { const c = r.bits[i] ? 255 : 0; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = c; img.data[i * 4 + 3] = 255; }
       tctx.putImageData(img, 0, 0);
-    } else {
-      tctx.fillStyle = '#fff'; tctx.fillRect(0, 0, W, H);
-      tctx.fillStyle = '#000'; tctx.textAlign = 'center'; tctx.font = '700 64px ui-monospace, Menlo, monospace'; tctx.fillText('CAMTAG', W / 2, H / 2);
     }
-    drawOffOverlay(tctx, W, H);
+    drawOffOverlay(tctx, W, H, angle / 90, hasOffBmp());
     ctx.save(); ctx.translate(cv.width / 2, cv.height / 2); ctx.rotate(-angle * Math.PI / 180);
     ctx.drawImage(tmp, -W / 2, -H / 2); ctx.restore();
   } else if (!item) {
-    ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.font = `700 28px ${FONT}`;
-    ctx.fillText('NESSUNA CARD', cv.width / 2, cv.height / 2);
+    // Come showMessage nel firmware.
+    const angle = simContentRot(), [W, H] = dims(angle % 180 === 90 ? 'land' : 'port'), [tmp, tctx] = newCanvas(W, H);
+    drawMessageScreen(tctx, W, H, angle / 90, 'NESSUNA CARD', 'TIENI X PER RICEVERLE');
+    ctx.save(); ctx.translate(cv.width / 2, cv.height / 2); ctx.rotate(-angle * Math.PI / 180);
+    ctx.drawImage(tmp, -W / 2, -H / 2); ctx.restore();
   } else {
     // Come il firmware: variante adatta al verso; se manca, l'altra ruotata di -90°.
     let angle = simContentRot();
@@ -2957,7 +3162,7 @@ Promise.all([
   fetch('../data/lenses.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(d => { lensDb = d.lenses; lensById = new Map(lensDb.map(l => [l.id, l])); }).catch(() => { lensDbError = 'Database lenti non trovato. Avvia il server dalla radice del progetto: python3 -m http.server 8765, poi apri /companion/.'; }),
   fetch('../data/filters.json').then(r => r.json()).then(d => { filterDb = d.filters; }).catch(() => {}),
-  ...state.cards.map(c => ensureImg(c.img)),
+  ...[...state.cards, state.off].map(c => ensureImg(c.img)),
   // Il canvas non aspetta i web font: vanno caricati prima di disegnare, altrimenti
   // esce il font di riserva. Tutti i pesi usati dai disegni.
   ...[400, 600, 700, 800, 900].map(w => document.fonts.load(`${w} 40px "Inter"`).catch(() => {})),

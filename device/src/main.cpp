@@ -187,6 +187,12 @@ uint32_t pendingSinceMs = 0;
 uint32_t bannerUntilMs = 0;
 bool sdReady = false;
 
+// Impostazioni dello strumento web (/camtag/settings.ini, docs in CLAUDE.md "Formato card").
+// Senza il file: etichette dei tasti accese, nome CAMTAG solo senza scheda di spento.
+constexpr const char* kSettingsFile = "/camtag/settings.ini";
+bool keyLabels = true;  // keys=1: etichette dei tasti sulla schermata senza card e da spento
+int8_t offLogo = -1;    // off.logo: 1 sì, 0 no, -1 solo se non c'è la scheda di spento
+
 // Modalità ricezione via Bluetooth.
 bool receiving = false;
 // Una pressione lunga ha già fatto la sua azione: il rilascio che segue non conta.
@@ -210,6 +216,7 @@ Canvas canvas(Canvas::Rotation rot) {
 }
 
 // --- Elenco card --------------------------------------------------------------
+void loadSettings();
 void loadCardList() {
   cards.clear();
   for (const String& n : SdMan.listFiles(kCardDir, 400)) {
@@ -229,6 +236,38 @@ void loadCardList() {
   }
   std::sort(cards.begin(), cards.end(), [](const Card& a, const Card& b) { return a.base.compareTo(b.base) < 0; });
   LOGF("[camtag] %u card in %s\n", static_cast<unsigned>(cards.size()), kCardDir);
+  loadSettings();
+}
+
+// Legge settings.ini: righe "chiave=valore", il resto si ignora.
+void loadSettings() {
+  keyLabels = true;
+  offLogo = -1;
+  if (!sdReady) return;
+  FsFile f = SdMan.open(kSettingsFile);
+  if (!f) return;
+  char line[64];
+  int n = 0;
+  for (;;) {
+    const int ch = f.read();
+    if (ch < 0 || ch == '\n') {
+      line[n] = 0;
+      if (n && line[n - 1] == '\r') line[--n] = 0;
+      const char* eq = strchr(line, '=');
+      if (eq && line[0] != '#') {
+        const String key(line, eq - line);
+        const int v = atoi(eq + 1);
+        if (key == "keys") keyLabels = v != 0;
+        else if (key == "off.logo") offLogo = v ? 1 : 0;
+      }
+      n = 0;
+      if (ch < 0) break;
+    } else if (n < static_cast<int>(sizeof(line)) - 1) {
+      line[n++] = static_cast<char>(ch);
+    }
+  }
+  f.close();
+  LOGF("[camtag] impostazioni: tasti %d, nome %d\n", keyLabels, offLogo);
 }
 
 // Rotazione effettiva per una card: usa la variante adatta all'orientamento;
@@ -417,13 +456,178 @@ void loadFilters() {
   logFilters("caricati");
 }
 
+// --- Etichette dei tasti ----------------------------------------------------------
+// Linguette bianche con bordo nero sul bordo fisico di ogni tasto, con il nome dritto
+// per chi legge il contenuto: sulla schermata senza card e da spento, per chi non
+// conosce ancora i tasti (keys=0 in settings.ini le toglie). Posizioni lungo il bordo
+// nella posizione naturale (verticale, power in alto a destra), in frazioni: le stesse
+// di KEY_TABS nello strumento web.
+struct KeyTab {
+  uint8_t edge;          // bordo naturale: 0 alto, 1 destra, 2 basso, 3 sinistra
+  float from, to;        // estensione lungo il bordo
+  const char* label[2];  // uno o due nomi (bilanciere)
+  float at[2];           // centro di ogni nome
+  float divider;         // separatore tra i due tasti di un bilanciere; 0 = nessuno
+  uint8_t scale;
+};
+constexpr KeyTab kKeyTabs[] = {
+    {0, 0.05f, 0.23f, {"RESET", nullptr}, {0.14f, 0}, 0, 2},
+    {0, 0.76f, 0.94f, {"PWR", nullptr}, {0.85f, 0}, 0, 3},
+    {3, 0.13f, 0.35f, {"X", nullptr}, {0.24f, 0}, 0, 3},
+    {1, 0.13f, 0.35f, {"Y", nullptr}, {0.24f, 0}, 0, 3},
+    {2, 0.10f, 0.47f, {"A", "B"}, {0.14f, 0.44f}, 0.285f, 3},
+    {2, 0.53f, 0.90f, {"C", "D"}, {0.57f, 0.86f}, 0.715f, 3},
+};
+constexpr int kTabPad = 5;
+constexpr int kTabRadius = 8;  // spigoli arrotondati delle linguette
+
+struct Rect {
+  int x = 0, y = 0, w = 0, h = 0;
+  bool overlaps(const Rect& o) const { return x < o.x + o.w && o.x < x + w && y < o.y + o.h && o.y < y + h; }
+};
+struct Insets {
+  int top = 0, right = 0, bottom = 0, left = 0;
+};
+
+// Punto del bordo naturale `edge`, a `along` (frazione) e `depth` px verso l'interno.
+void edgePoint(const Canvas& n, int edge, float along, int depth, int& x, int& y) {
+  const int W = n.width(), H = n.height();
+  switch (edge) {
+    case 0: x = static_cast<int>(along * W + 0.5f); y = depth; break;
+    case 1: x = W - 1 - depth; y = static_cast<int>(along * H + 0.5f); break;
+    case 2: x = static_cast<int>(along * W + 0.5f); y = H - 1 - depth; break;
+    default: x = depth; y = static_cast<int>(along * H + 0.5f); break;
+  }
+}
+// Dal canvas naturale a quello del contenuto.
+void toContent(const Canvas& n, const Canvas& c, int x, int y, int& lx, int& ly) {
+  int px, py;
+  n.toPanel(x, y, px, py);
+  c.fromPanel(px, py, lx, ly);
+}
+// Rettangolo tra due punti del canvas naturale, nel canvas del contenuto.
+Rect contentRect(const Canvas& n, const Canvas& c, int x0, int y0, int x1, int y1) {
+  int ax, ay, bx, by;
+  toContent(n, c, x0, y0, ax, ay);
+  toContent(n, c, x1, y1, bx, by);
+  Rect r;
+  r.x = std::min(ax, bx);
+  r.y = std::min(ay, by);
+  r.w = std::abs(bx - ax) + 1;
+  r.h = std::abs(by - ay) + 1;
+  return r;
+}
+
+// Profondità della linguetta: il testo corre sempre in orizzontale per chi legge,
+// quindi su un bordo che il contenuto vede verticale conta la sua larghezza.
+int tabDepth(const Canvas& n, const Canvas& c, const KeyTab& t) {
+  int x0, y0, x1, y1, ax, ay, bx, by;
+  edgePoint(n, t.edge, t.from, 0, x0, y0);
+  edgePoint(n, t.edge, t.to, 0, x1, y1);
+  toContent(n, c, x0, y0, ax, ay);
+  toContent(n, c, x1, y1, bx, by);
+  const bool across = std::abs(bx - ax) > std::abs(by - ay);  // bordo orizzontale per chi legge
+  int w = 0;
+  for (const char* l : t.label)
+    if (l) w = std::max(w, tinyfont::textWidth(l, t.scale));
+  return (across ? 7 * t.scale : w) + 2 * kTabPad;
+}
+
+Rect tabRect(const Canvas& n, const Canvas& c, const KeyTab& t) {
+  const int d = tabDepth(n, c, t);
+  int x0, y0, x1, y1;
+  edgePoint(n, t.edge, t.from, -4, x0, y0);  // oltre il bordo: da quel lato niente riga
+  edgePoint(n, t.edge, t.to, d - 1, x1, y1);
+  return contentRect(n, c, x0, y0, x1, y1);
+}
+
+// Spazio che le etichette prendono su ogni bordo del contenuto.
+Insets keyInsets(const Canvas& c) {
+  Insets in;
+  if (!keyLabels) return in;
+  const Canvas n = canvas(kNaturalRot);
+  for (const KeyTab& t : kKeyTabs) {
+    const Rect r = tabRect(n, c, t);
+    if (r.y <= 0) in.top = std::max(in.top, r.y + r.h);
+    if (r.y + r.h >= c.height()) in.bottom = std::max(in.bottom, c.height() - r.y);
+    if (r.x <= 0) in.left = std::max(in.left, r.x + r.w);
+    if (r.x + r.w >= c.width()) in.right = std::max(in.right, c.width() - r.x);
+  }
+  return in;
+}
+
+bool hitsKeyLabel(const Canvas& c, const Rect& box) {
+  if (!keyLabels) return false;
+  const Canvas n = canvas(kNaturalRot);
+  for (const KeyTab& t : kKeyTabs)
+    if (tabRect(n, c, t).overlaps(box)) return true;
+  return false;
+}
+
+// Il pixel (px, py) sta dentro il rettangolo con gli spigoli arrotondati di raggio rad?
+bool inRound(int px, int py, const Rect& r, int rad) {
+  const int cx = std::min(std::max(px, r.x + rad), r.x + r.w - 1 - rad);
+  const int cy = std::min(std::max(py, r.y + rad), r.y + r.h - 1 - rad);
+  const int dx = px - cx, dy = py - cy;
+  return dx * dx + dy * dy <= rad * rad + rad;
+}
+// Riquadro bianco con bordo nero di `t` px e spigoli arrotondati.
+void roundBox(Canvas& c, const Rect& r, int rad, int t) {
+  const Rect in{r.x + t, r.y + t, r.w - 2 * t, r.h - 2 * t};
+  for (int y = r.y; y < r.y + r.h; y++)
+    for (int x = r.x; x < r.x + r.w; x++)
+      if (inRound(x, y, r, rad)) c.setPixel(x, y, !inRound(x, y, in, rad - t));
+}
+
+void drawKeyLabels(Canvas& c) {
+  if (!keyLabels) return;
+  const Canvas n = canvas(kNaturalRot);
+  for (const KeyTab& t : kKeyTabs) {
+    const int d = tabDepth(n, c, t);
+    const Rect r = tabRect(n, c, t);
+    roundBox(c, r, kTabRadius, 2);
+    if (t.divider > 0) {
+      int x0, y0, x1, y1;
+      edgePoint(n, t.edge, t.divider, 0, x0, y0);
+      edgePoint(n, t.edge, t.divider, d - 1, x1, y1);
+      const Rect l = contentRect(n, c, x0, y0, x1, y1);
+      c.fillRect(l.x - (l.w == 1), l.y - (l.h == 1), std::max(l.w, 2), std::max(l.h, 2), true);
+    }
+    for (int i = 0; i < 2; i++) {
+      if (!t.label[i]) continue;
+      int x, y, lx, ly;
+      edgePoint(n, t.edge, t.at[i], d / 2, x, y);
+      toContent(n, c, x, y, lx, ly);
+      c.text(lx - tinyfont::textWidth(t.label[i], t.scale) / 2, ly - 7 * t.scale / 2, t.label[i], t.scale);
+    }
+  }
+}
+
+// La misura più grande, fino a `scale`, con cui il testo sta in `w` px.
+int fitScale(const char* s, int scale, int w) {
+  while (scale > 1 && tinyfont::textWidth(s, scale) > w) scale--;
+  return scale;
+}
+
+// Schermata senza card (e gli altri avvisi): il nome, sotto un riquadro con il
+// messaggio ben in vista, e le etichette dei tasti.
 void showMessage(const char* line1, const char* line2) {
   Canvas c = canvas(rotation);
   c.clear();
-  c.strokeRect(16, 16, c.width() - 32, c.height() - 32, 4, true);
-  c.textCentered(c.height() / 2 - 60, "CAMTAG", Canvas::isPortrait(rotation) ? 6 : 8);
-  c.textCentered(c.height() / 2 + 20, line1, Canvas::isPortrait(rotation) ? 3 : 4);
-  if (line2) c.textCentered(c.height() / 2 + 70, line2, 2);
+  const bool port = Canvas::isPortrait(rotation);
+  const int W = c.width(), mid = c.height() / 2;
+  c.textCentered(mid - (port ? 150 : 120), "CAMTAG", port ? 6 : 8);
+  constexpr int kPadX = 28, kPadY = 24, kGap = 20;
+  const int maxW = W - 2 * kPadX - 80;
+  const int s1 = fitScale(line1, port ? 4 : 5, maxW);
+  const int s2 = line2 ? fitScale(line2, 3, maxW) : 0;
+  const int tw = std::max(tinyfont::textWidth(line1, s1), line2 ? tinyfont::textWidth(line2, s2) : 0);
+  const int bw = tw + 2 * kPadX, bh = 7 * s1 + (line2 ? kGap + 7 * s2 : 0) + 2 * kPadY;
+  const int bx = (W - bw) / 2, by = mid - (port ? 40 : 30);
+  c.strokeRect(bx, by, bw, bh, 4, true);
+  c.textCentered(by + kPadY, line1, s1);
+  if (line2) c.textCentered(by + kPadY + 7 * s1 + kGap, line2, s2);
+  drawKeyLabels(c);
   present(true);
   prefs.putString("shown", "");  // al prossimo avvio ridisegna
 }
@@ -824,9 +1028,12 @@ bool batteryEmpty() {
 }
 
 // --- Spento ----------------------------------------------------------------------
-// La scheda di spento, o il nome se non c'è, con una fascia in basso che dice che è
-// spento e come si riaccende. Blank: solo la fascia su bianco.
+// La scheda di spento, se c'è, e il nome CAMTAG (al centro senza scheda, in alto in
+// un riquadro sopra la scheda, se off.logo lo chiede), con una fascia in basso che
+// dice che è spento e come si riaccende, la batteria e le etichette dei tasti.
+// Blank: solo la fascia su bianco.
 void drawOff(Off why) {
+  loadSettings();  // anche prima dell'elenco card (batteria scarica all'avvio)
   Canvas::Rotation rot = rotation;
   bool drawn = false;
   if (sdReady && why != Off::Blank) {
@@ -844,27 +1051,51 @@ void drawOff(Off why) {
     }
   }
   Canvas c = canvas(rot);
-  if (!drawn) {
-    c.clear();
-    if (why != Off::Blank) c.textCentered(c.height() / 2 - 40, "CAMTAG", Canvas::isPortrait(rot) ? 6 : 8);
+  const bool port = Canvas::isPortrait(rot), labels = keyLabels && why != Off::Blank;
+  if (!drawn) c.clear();
+  if (why != Off::Blank && (drawn ? offLogo == 1 : offLogo != 0)) {
+    const int scale = port ? 6 : 8, tw = tinyfont::textWidth("CAMTAG", scale);
+    if (!drawn) {
+      c.textCentered(c.height() / 2 - 40, "CAMTAG", scale);
+    } else {
+      // In un riquadro bianco a un quarto dell'altezza, sopra l'immagine.
+      const int bw = tw + 48, bh = 7 * scale + 36, bx = (c.width() - bw) / 2, by = c.height() / 4 - bh / 2;
+      c.fillRect(bx, by, bw, bh, false);
+      c.strokeRect(bx, by, bw, bh, 3, true);
+      c.textCentered(by + 18, "CAMTAG", scale);
+    }
   }
+  const bool saved = keyLabels;
+  keyLabels = labels;
+  const Insets in = keyInsets(c);
   constexpr int kScale = 2, kH = 7 * kScale + 22;
-  c.fillRect(0, c.height() - kH, c.width(), kH, false);
-  c.fillRect(0, c.height() - kH, c.width(), 2, true);
-  c.textCentered(c.height() - kH + 13,
-                 why == Off::Empty ? "BATTERIA SCARICA - METTI IN CARICA" : "SPENTO - TIENI POWER PER ACCENDERE", kScale);
+  constexpr int kGap = 10;  // tra la fascia e le etichette in basso
+  const int fy = c.height() - in.bottom - (in.bottom ? kGap : 0) - kH;
+  c.fillRect(0, fy, c.width(), kH, false);
+  c.fillRect(0, fy, c.width(), 2, true);
+  c.textCentered(fy + 13, why == Off::Empty ? "BATTERIA SCARICA - METTI IN CARICA" : "SPENTO - TIENI POWER PER ACCENDERE",
+                 kScale);
   if (why != Off::Blank) {
-    // Quanta batteria aveva quando si è spento.
+    // Quanta batteria aveva quando si è spento: in alto a destra, o al centro in alto
+    // con le etichette dei tasti (sotto, se lì c'è un'etichetta). Il riquadro bianco
+    // tocca il bordo.
     const int pct = batteryPercent();
     if (pct >= 0) {
       char label[6];
       snprintf(label, sizeof(label), "%d%%", pct);
       const int w = tinyfont::textWidth(label, kScale);
-      c.fillRect(c.width() - 62 - w, 10, w + 10, 24, false);
-      c.text(c.width() - 58 - w, 15, label, kScale);
-      c.battery(c.width() - 52, 12, pct);
+      Rect box{c.width() - 62 - w, 0, w + 56, 30};
+      if (labels) {
+        box.x = (c.width() - box.w) / 2;
+        if (hitsKeyLabel(c, box)) box.y = in.top + 8;
+      }
+      c.fillRect(box.x, box.y, box.w, box.h, false);
+      c.text(box.x + 4, box.y + 8, label, kScale);
+      c.battery(box.x + 10 + w, box.y + 5, pct);
     }
   }
+  drawKeyLabels(c);
+  keyLabels = saved;
   present(true);
   prefs.putString("shown", "");  // alla riaccensione ridisegna la card
 }

@@ -144,9 +144,21 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   Nello strumento ha lo stesso editor dei filtri (`filtersEditor(ed, true)`).
   Per il firmware è una card qualsiasi.
 - `/camtag/off.bmp`, `off.p.bmp` (facoltativa): schermata di spento, fuori dal
-  giro delle pagine. Nello strumento è una scheda manuale con "Schermata di
-  spento" accesa (`c.off`, una sola; `offCard`). Il firmware ci disegna sopra
-  una fascia in basso e la batteria (`drawOff`; nello strumento `drawOffOverlay`).
+  giro delle pagine. Nello strumento la compone la pagina "Spento" (`state.off`:
+  immagine di sfondo e scritta, `renderOff`), o è una scheda manuale con
+  "Schermata di spento" accesa (`c.off`, una sola; `offCard`), che la sostituisce;
+  senza nessuna delle due non si esporta. Il firmware ci disegna sopra il nome,
+  una fascia in basso, la batteria e le etichette dei tasti (`drawOff`; nello
+  strumento `drawOffOverlay`, con il font 5x7 del firmware copiato in `TINY`).
+- `/camtag/settings.ini`: `keys=0|1` etichette dei tasti, `off.logo=0|1` nome
+  CAMTAG da spento (al centro senza `off.bmp`, se no in un riquadro in alto).
+  Senza il file: etichette sì, nome solo senza `off.bmp` (`loadSettings`).
+- Etichette dei tasti (`kKeyTabs`/`drawKeyLabels`, nello strumento `KEY_TABS`,
+  stesse frazioni lungo i bordi): linguette bianche con bordo nero e nome dritto
+  per chi legge (A|B e C|D, X, Y, PWR, RESET, che è un tasto vero e riavvia),
+  sulla schermata senza card e da spento (non sul bianco). La schermata senza
+  card (`showMessage`, nel simulatore `drawMessageScreen`) ha il messaggio in un
+  riquadro ben in vista al centro.
 - `/camtag/project.json`: il progetto dello strumento web, inviato con le card
   (anche nello zip) e riletto con "Importa dall'X3". Il firmware lo ignora. Il
   lavoro nel browser sta solo nel localStorage: questo file è la copia che resta.

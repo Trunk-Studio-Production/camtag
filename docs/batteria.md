@@ -71,12 +71,17 @@ una pressione più corta di così può sfuggire.
 
 - Se in `/camtag` ci sono `off.bmp` (792×528) e/o `off.p.bmp` (528×792) il
   firmware mostra quella, nella variante adatta al verso. Stesso formato delle
-  card, ma fuori dal giro delle pagine. Nello strumento web è una scheda
-  manuale qualsiasi con "Schermata di spento" accesa (`c.off`, una sola).
-- Senza, mostra il nome CAMTAG.
-- Sopra, il firmware disegna una fascia bianca in basso (36 px, riga nera da
-  2 px in cima) con "SPENTO - TIENI POWER PER ACCENDERE", e in alto a destra
-  la batteria al momento dello spegnimento.
+  card, ma fuori dal giro delle pagine. Nello strumento web la compone la pagina
+  "Spento" (immagine di sfondo e scritta, `state.off`), oppure è una scheda
+  manuale con "Schermata di spento" accesa (`c.off`, una sola), che la sostituisce.
+- Senza, mostra il nome CAMTAG al centro.
+- Sopra, il firmware disegna (`drawOff`): il nome CAMTAG in un riquadro a un
+  quarto dell'altezza se `off.logo=1` in `settings.ini` (senza il file, il nome
+  c'è solo senza `off.bmp`); una fascia bianca in basso (36 px, riga nera da 2 px
+  in cima) con "SPENTO - TIENI POWER PER ACCENDERE"; la batteria al momento dello
+  spegnimento, in alto a destra; con `keys=1` (o senza il file) le **etichette
+  dei tasti** sul bordo fisico di ogni tasto (`drawKeyLabels`), la fascia sopra
+  le etichette in basso e la batteria al centro in alto.
 - Dopo 72 h da spento (`OFF_BLANK_S`) lo schermo passa al **bianco con la sola
   fascia**: un'immagine ferma per settimane può lasciare un'ombra.
 - Lo spento ha quindi due tempi (`sleepOff`). Con la scheda di spento a schermo
