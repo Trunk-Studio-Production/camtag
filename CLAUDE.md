@@ -208,7 +208,7 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
 - Decimali sulle schermate: sempre il punto (0.9), senza opzione.
 - Lens chart: focale, T, CF (close focus), Ø frontale (più piccolo, dato secondario, si può
   nascondere: `state.lensFront`). Attacco (`state.lensMount`, spento di
-  partenza): come le sigle, quello principale in basso ("Attacco LPL", subito dopo la prima serie che lo usa), gli
+  partenza): come le sigle, quello principale in basso (solo la sigla, "LPL", subito dopo la prima serie che lo usa), gli
   altri accanto alla focale. L'attacco è della lente nel progetto (`l.mount`,
   `lensMount`): se la serie ne offre più d'uno lo si chiede quando la lente
   entra nel kit (`addDbLenses`), salvo che il kit abbia già una lente della

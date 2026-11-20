@@ -886,7 +886,7 @@ function drawLensChart(ctx, W, H, { rows, group, mount }, pageIdx, pageCount) {
   const leg = seriesLegend(group), mnt = showMount ? mountLegend(group) : { main: null, text: '' };
   const tag = l => [leg.main && seriesKey(l) === leg.main ? '' : (l.seriesCode || ''),
                     showMount && l.mount && l.mount !== mnt.main ? l.mount : ''].filter(Boolean).join(' ');
-  // "Attacco X" subito dopo la prima serie che lo usa, così non sembra di quella accanto.
+  // La sigla dell'attacco (es. "LPL") subito dopo la prima serie che lo usa, così non sembra di quella accanto.
   const legParts = [...leg.parts];
   if (mnt.text) {
     const at = leg.keys.findIndex(k => group.some(l => seriesKey(l) === k && l.mount === mnt.main));
@@ -1026,7 +1026,7 @@ function seriesLegend(L = state.lenses.map(effective)) {
 function mountLegend(L) {
   const ms = L.map(l => l.mount).filter(Boolean);
   const main = new Set(ms).size === 1 ? ms[0] : plurality(ms);
-  return { main, text: main ? `Attacco ${main}` : '' };
+  return { main, text: main || '' };
 }
 
 // ============================================================================
