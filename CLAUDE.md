@@ -103,6 +103,10 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 - `/camtag/NN_nome.bmp` orizzontale 792×528, `/camtag/NN_nome.p.bmp` verticale
   528×792. BMP 1 bit non compresso, palette 0 = nero, 1 = bianco. Ordine = nome.
 - Nomi riservati: `NN_lenschart[-2…]` (pagine da 11 lenti al massimo) e `NN_filters`.
+- `NN_filterlist` (facoltativa, `state.auto.filterlist`, spenta di partenza):
+  elenco di tutti i vetri a disposizione (ND del kit, diottrie intere e split,
+  famiglie con le gradazioni; le coppie di ND no), generato da `filterListRows`.
+  Per il firmware è una card qualsiasi.
 - `/camtag/project.json`: il progetto dello strumento web, inviato con le card
   (anche nello zip) e riletto con "Importa dall'X3". Il firmware lo ignora. Il
   lavoro nel browser sta solo nel localStorage: questo file è la copia che resta.

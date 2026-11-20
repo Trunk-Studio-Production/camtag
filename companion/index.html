@@ -1681,8 +1681,7 @@ function changed(redrawEditor = false) { save(); renderList(); drawPreview(); if
 function filterListEditor(ed) {
   const rows = filterListRows();
   ed.append(editorHead('Elenco filtri', includeSwitch('filterlist')),
-    rows.length ? h('p', { class: 'hint' }, `${plural(rows.length, 'riga', 'righe')}: ${rows.map(r => r.name).join(', ')}.`)
-                : h('p', { class: 'warn' }, 'Il kit è vuoto: aggiungi ND, diottrie o vetri nella schermata Filtri.'),
+    ...(rows.length ? [] : [h('p', { class: 'warn' }, 'Il kit è vuoto: aggiungi ND, diottrie o vetri nella schermata Filtri.')]),
     h('div', { class: 'srow' }, lab('Contenuto', 'Una pagina facoltativa con tutti i filtri a disposizione: gli ND del kit, le diottrie e i vetri con le loro gradazioni. Si compila da sola con quello che scegli nella schermata Filtri; il titolo della lens chart compare anche qui.'),
       h('button', { class: 'small', onclick: () => selectScreen({ kind: 'filters' }) }, 'Modifica il kit')));
 }
