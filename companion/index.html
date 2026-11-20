@@ -1677,15 +1677,6 @@ function selectScreen(to) {
 
 function changed(redrawEditor = false) { save(); renderList(); drawPreview(); if (simOn) renderSim(); if (redrawEditor) renderEditor(); }
 
-// ---------- editor: elenco filtri ----------
-function filterListEditor(ed) {
-  const rows = filterListRows();
-  ed.append(editorHead('Elenco filtri', includeSwitch('filterlist')),
-    ...(rows.length ? [] : [h('p', { class: 'warn' }, 'Il kit è vuoto: aggiungi ND, diottrie o vetri nella schermata Filtri.')]),
-    h('div', { class: 'srow' }, lab('Contenuto', 'Una pagina facoltativa con tutti i filtri a disposizione: gli ND del kit, le diottrie e i vetri con le loro gradazioni. Si compila da sola con quello che scegli nella schermata Filtri; il titolo della lens chart compare anche qui.'),
-      h('button', { class: 'small', onclick: () => selectScreen({ kind: 'filters' }) }, 'Modifica il kit')));
-}
-
 // ---------- editor: lens chart ----------
 function lensEditor(ed) {
   ed.append(editorHead('Lens chart', includeSwitch('lenschart')),
@@ -1954,7 +1945,9 @@ function renderFilterResults(box, searching = false) {
       have.has(st) ? h('button', { class: 'small', disabled: true }, '✓') : h('button', { class: 'small', onclick: () => add(x, [st]) }, '+')));
   }
 }
-function filtersEditor(ed) {
+// Anche l'elenco filtri usa questo editor (list = true): cambia solo l'intestazione,
+// così il kit si modifica da tutte e due le schermate.
+function filtersEditor(ed, list = false) {
   const f = state.filters;
   // Dopo ogni cambio che sposta ND o diottria, o gli stadi occupati da un vetro: i
   // vetri tornano al loro posto (fitStages) e, se qualcuno esce, resta un avviso.
@@ -1973,7 +1966,7 @@ function filtersEditor(ed) {
     const i = ndSteps().indexOf(v); if (i >= 0) f.previewNd = i;
     clampPreview(was); changed(true);
   };
-  ed.append(editorHead('Filtri', includeSwitch('filters')));
+  ed.append(list ? editorHead('Elenco filtri', includeSwitch('filterlist')) : editorHead('Filtri', includeSwitch('filters')));
 
   // ND: tipo, formato, vetri del kit e totali fatti con due vetri (entrano nella scala solo quelli spuntati).
   const combos = ndComboList(), nCombos = combos.filter(c => f.ndCombos.includes(c.total)).length;
@@ -2209,7 +2202,7 @@ function renderEditor() {
   const ed = $('#editor'); ed.innerHTML = '';
   if (sel.kind === 'lenschart') return lensEditor(ed);
   if (sel.kind === 'filters') return filtersEditor(ed);
-  if (sel.kind === 'filterlist') return filterListEditor(ed);
+  if (sel.kind === 'filterlist') return filtersEditor(ed, true);
   const c = state.cards[sel.i];
   if (!c) { ed.append(h('div', { class: 'empty' }, 'Seleziona una schermata')); return; }
   cardEditor(ed, c, sel.i);

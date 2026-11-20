@@ -106,6 +106,7 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 - `NN_filterlist` (facoltativa, `state.auto.filterlist`, spenta di partenza):
   elenco di tutti i vetri a disposizione (ND del kit, diottrie intere e split,
   famiglie con le gradazioni; le coppie di ND no), generato da `filterListRows`.
+  Nello strumento ha lo stesso editor dei filtri (`filtersEditor(ed, true)`).
   Per il firmware è una card qualsiasi.
 - `/camtag/project.json`: il progetto dello strumento web, inviato con le card
   (anche nello zip) e riletto con "Importa dall'X3". Il firmware lo ignora. Il
