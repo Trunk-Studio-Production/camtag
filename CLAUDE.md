@@ -15,6 +15,10 @@ costruttori di lenti e filtri nei dati vanno bene.
 - `device/` — firmware PlatformIO (C++/Arduino, ESP32-C3). È il nostro codice.
   `BleUpload.cpp` riceve le card via Bluetooth (NimBLE-Arduino, acceso solo in
   ricezione) e rimanda al telefono `project.json` (`GET`); `UploadProto.h` ha le parti provabili sull'host (`device/test/`).
+  `Version.h` ha la versione del firmware (`CAMTAG_FW_VERSION`), scritta sulla
+  schermata Bluetooth con i credits e mandata nella risposta a `HELLO`: lo
+  strumento web la mostra accanto a `FW_VERSION`; si ferma solo se il protocollo è diverso. Si cambiano
+  insieme, a ogni nuovo firmware.
   `Filters.cpp` è la schermata filtri provabile sull'host (lettura di
   `screen.ini`, regole degli stadi portate dal simulatore con gli stessi nomi,
   composizione dei pezzi, indicazioni); tasti, tempi e refresh sono in `main.cpp`,
@@ -278,6 +282,13 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   batteria si stacca; `taratura.py batteria --bianco N` accorcia l'attesa per provarlo). Power tenuto 1 s spegne e accende. Si spegne da
   solo dopo 24 h senza tasti e a batteria scarica (sotto 3,3 V, con l'avviso).
   Niente segni di "pausa" sulle card: se mostra una card, risponde.
+- Stato del cavo sulle card (`drawStatus`, in alto a destra nel verso del
+  contenuto, sotto il lucchetto se lo toccherebbe): batteria (sotto il 20% o in
+  carica), fulmine in carica (corrente del gauge > `CHARGE_MIN_MA`), linguetta
+  "USB" se un computer la riconosce (`usbHost`). L'X3 non ha un pin del cavo: su
+  un caricatore a batteria piena non si vede nulla. Si ridisegna (`pollUsb`)
+  dopo due letture uguali a 1 s; a riposo sveglia la carica che comincia o
+  finisce. Non nel simulatore, che non mostra la batteria.
 - **Power breve = tasti bloccati** (`keysLocked`, `toggleKeyLock`; nel
   simulatore `sim.keyLock`): la pagina resta, A–D, X e Y non fanno nulla, la rotazione
   continua. Il segno è un lucchetto sul bordo fisico sotto il power

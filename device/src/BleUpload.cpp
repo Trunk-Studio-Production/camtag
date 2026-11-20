@@ -8,6 +8,7 @@
 #include <freertos/stream_buffer.h>
 
 #include "UploadProto.h"
+#include "Version.h"
 
 // Con CAMTAG_DEBUG: collegamento negoziato e tempi dei trasferimenti sulla seriale.
 #ifdef CAMTAG_DEBUG
@@ -77,6 +78,7 @@ uint32_t lastAck = 0;
 uint16_t files = 0;
 uint32_t sent = 0;   // GET: byte inviati
 uint32_t acked = 0;  // GET: byte confermati dal client
+uint32_t notifyFails = 0;  // GET: pacchetti che NimBLE non ha preso (solo per il registro)
 uint32_t sessionStartMs = 0;  // BEGIN
 uint32_t sessionBytes = 0;
 uint32_t fileStartMs = 0;
@@ -198,7 +200,8 @@ Event handle(const char* line) {
   char msg[48];
   switch (c.cmd) {
     case upload::Cmd::Hello:
-      snprintf(msg, sizeof(msg), "OK CAMTAG %d MTU %u", upload::kProtocolVersion, static_cast<unsigned>(mtu));
+      snprintf(msg, sizeof(msg), "OK CAMTAG %d MTU %u FW %s", upload::kProtocolVersion, static_cast<unsigned>(mtu),
+               CAMTAG_FW_VERSION);
       reply(msg);
       return Event::None;
 
@@ -267,6 +270,7 @@ Event handle(const char* line) {
       snprintf(head, sizeof(head), "FILE %lu %lx %s", static_cast<unsigned long>(fileSize),
                static_cast<unsigned long>(fileCrc), c.path);
       sent = acked = 0;
+      notifyFails = 0;
       pendingLen = 0;
       phase = Phase::Sending;
       reply(head);
@@ -278,15 +282,21 @@ Event handle(const char* line) {
       return Event::Sending;
     }
 
-    case upload::Cmd::Ack:
+    case upload::Cmd::Ack: {
       if (phase != Phase::Sending) return Event::None;  // conferma in ritardo: si ignora
+      const uint32_t before = acked;
       if (c.size > acked) acked = std::min(c.size, sent);
+      if (acked / 16384 != before / 16384 || acked == fileSize)
+        BLOG("[ble] GET: confermati %lu, inviati %lu, pool libero %d, pacchetti rifiutati %lu\n",
+             static_cast<unsigned long>(acked), static_cast<unsigned long>(sent), os_msys_num_free(),
+             static_cast<unsigned long>(notifyFails));
       if (acked == fileSize) {
         file.close();
         phase = Phase::Idle;
         return Event::Sent;
       }
       return Event::None;
+    }
 
     case upload::Cmd::Abort:
       cleanup();
@@ -310,7 +320,10 @@ Event pumpSend() {
       if (file.read(pending, want) != static_cast<int>(want)) return fail("SD", "MICROSD ILLEGGIBILE");
       pendingLen = want;
     }
-    if (!dataChr->notify(pending, pendingLen, connHandle)) break;
+    if (!dataChr->notify(pending, pendingLen, connHandle)) {
+      notifyFails++;
+      break;
+    }
     sent += pendingLen;
     pendingLen = 0;
   }
@@ -374,7 +387,9 @@ bool start(const char* deviceName) {
   NimBLEServer* server = NimBLEDevice::createServer();
   server->setCallbacks(&serverCallbacks, false);
   NimBLEService* service = server->createService(kServiceUuid);
-  ctrlChr = service->createCharacteristic(kCtrlUuid, NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY);
+  // WRITE_NR: gli ACK di un GET arrivano senza risposta (docs/bluetooth.md).
+  ctrlChr = service->createCharacteristic(kCtrlUuid,
+                                         NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR | NIMBLE_PROPERTY::NOTIFY);
   ctrlChr->setCallbacks(&ctrlCallbacks);
   dataChr = service->createCharacteristic(kDataUuid,
                                          NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR | NIMBLE_PROPERTY::NOTIFY);

@@ -59,6 +59,7 @@
 #include "Canvas.h"
 #include "Filters.h"
 #include "TinyFont.h"
+#include "Version.h"
 
 namespace {
 
@@ -90,6 +91,9 @@ constexpr uint32_t RECEIVE_IDLE_MS = 180000;
 // aggiornamento ferma la scrittura sulla microSD.
 constexpr uint32_t RECEIVE_REDRAW_MS = 4000;
 constexpr int LOW_BATTERY_PERCENT = 20;
+// Sopra questa corrente in entrata è "in carica" (sotto è rumore del gauge).
+constexpr int16_t CHARGE_MIN_MA = 5;
+constexpr uint32_t USB_POLL_MS = 1000;  // da sveglio: ogni quanto guarda USB e carica
 // Ogni N cambi di card usa un refresh completo per togliere il ghosting.
 constexpr uint8_t FULL_REFRESH_EVERY = 6;
 constexpr uint32_t LONG_PRESS_MS = 800;
@@ -322,6 +326,48 @@ int batteryPercent() {
   uint16_t pct = 0;
   return battery.readPercentageChecked(pct) ? static_cast<int>(pct) : -1;
 }
+
+// --- Cavo USB ---------------------------------------------------------------------
+// L'X3 non ha un pin che dica se c'è il cavo: "dati" vuol dire che un computer ha
+// riconosciuto la USB, "in carica" che il gauge vede entrare corrente. Su un
+// caricatore senza dati, a batteria piena la carica si ferma e non si vede nulla.
+bool usbHost() { return HWCDC::isPlugged(); }
+
+bool chargingNow() {
+  int16_t ma = 0;
+  return battery::current(ma) && ma > CHARGE_MIN_MA;
+}
+
+struct UsbState {
+  bool data = false;
+  bool charging = false;
+  bool operator==(const UsbState& o) const { return data == o.data && charging == o.charging; }
+  bool operator!=(const UsbState& o) const { return !(*this == o); }
+};
+UsbState usbShown;         // com'è sulla card a schermo
+UsbState usbSeen;          // lettura diversa, da confermare al giro dopo
+bool usbPending = false;
+uint32_t usbPollMs = 0;
+
+UsbState readUsb() { return {usbHost(), chargingNow()}; }
+
+// Fulmine 14x24 per la carica, riempito pixel per pixel dentro il poligono.
+void drawBolt(Canvas& c, int x, int y) {
+  static constexpr int8_t kPx[] = {9, 1, 6, 4, 13, 8, 11};
+  static constexpr int8_t kPy[] = {0, 13, 13, 24, 10, 10, 0};
+  constexpr int n = sizeof(kPx);
+  for (int py = 0; py < 24; py++)
+    for (int px = 0; px < 14; px++) {
+      const float fx = px + 0.5f, fy = py + 0.5f;
+      bool in = false;
+      for (int i = 0, j = n - 1; i < n; j = i++)
+        if ((kPy[i] > fy) != (kPy[j] > fy) &&
+            fx < (kPx[j] - kPx[i]) * (fy - kPy[i]) / static_cast<float>(kPy[j] - kPy[i]) + kPx[i])
+          in = !in;
+      if (in) c.fillRect(x + px, y + py, 1, 1, true);
+    }
+}
+
 
 // --- Tasti -------------------------------------------------------------------
 // Un aggiornamento dello schermo ferma il loop per 0,6–2,6 s: leggendo i tasti solo
@@ -643,14 +689,23 @@ void drawHints() {
 // Lucchetto dei tasti bloccati. Come le indicazioni dei tasti sta sul bordo fisico,
 // sotto il power che sblocca (in alto a destra nella posizione naturale), e segue la
 // rotazione del dispositivo restando dritto per chi legge il contenuto.
-void drawLock(Canvas& c) {
+constexpr int kLockBox = 36;
+
+// Angolo in alto a sinistra del lucchetto, nelle coordinate di c.
+void lockOrigin(const Canvas& c, int& x, int& y) {
   constexpr float kPowerPos = 0.85f;  // centro del power lungo il bordo in alto
-  constexpr int kBox = 36;
   const Canvas natural = canvas(kNaturalRot);
   int px, py, lx, ly;
-  natural.toPanel(static_cast<int>(kPowerPos * natural.width() + 0.5f), kBox / 2 + 4, px, py);
+  natural.toPanel(static_cast<int>(kPowerPos * natural.width() + 0.5f), kLockBox / 2 + 4, px, py);
   c.fromPanel(px, py, lx, ly);
-  const int x = lx - kBox / 2, y = ly - kBox / 2;
+  x = lx - kLockBox / 2;
+  y = ly - kLockBox / 2;
+}
+
+void drawLock(Canvas& c) {
+  constexpr int kBox = kLockBox;
+  int x, y;
+  lockOrigin(c, x, y);
   c.fillRect(x, y, kBox, kBox, false);
   c.strokeRect(x, y, kBox, kBox, 2, true);
   c.fillRect(x + 12, y + 7, 12, 3, true);  // arco
@@ -658,6 +713,39 @@ void drawLock(Canvas& c) {
   c.fillRect(x + 21, y + 7, 3, 10, true);
   c.fillRect(x + 9, y + 16, 18, 13, true);  // corpo
   c.fillRect(x + 17, y + 20, 2, 5, false);  // serratura
+}
+
+// In alto a destra nel verso del contenuto, da destra: batteria (scarica o in carica),
+// fulmine se è in carica, linguetta USB se un computer la vede.
+// Con i tasti bloccati scende sotto il lucchetto se gli finirebbe sopra.
+void drawStatus(Canvas& c, const UsbState& s) {
+  const int pct = batteryPercent();
+  const bool showBattery = s.charging || (pct >= 0 && pct < LOW_BATTERY_PERCENT);
+  const int usbW = tinyfont::textWidth("USB", 2) + 14;
+  const int width = (showBattery ? 48 : 0) + (s.charging ? 22 : 0) + (s.data ? usbW + 4 : 0);
+  if (!width) return;
+  int right = c.width() - 10;  // bordo destro libero del prossimo segno, aloni compresi
+  int y = 12;
+  if (keysLocked) {
+    int lx, ly;
+    lockOrigin(c, lx, ly);
+    if (lx < right && lx + kLockBox > right - width && ly < y + 22 && ly + kLockBox > y - 2) y = ly + kLockBox + 8;
+  }
+  if (showBattery) {
+    c.battery(right - 42, y, pct < 0 ? 0 : pct);
+    right -= 44 + 4;
+  }
+  if (s.charging) {
+    c.fillRect(right - 18, y - 2, 18, 24, false);
+    drawBolt(c, right - 16, y - 2);
+    right -= 18 + 4;
+  }
+  if (s.data) {
+    const int w = usbW, h = 24;
+    c.fillRect(right - w, y - 2, w, h, false);
+    c.strokeRect(right - w, y - 2, w, h, 2, true);
+    c.text(right - w + 7, y + 3, "USB", 2);
+  }
 }
 
 enum class Refresh { Fast, Half, Full };
@@ -687,8 +775,9 @@ void showCard(int index, Refresh mode, const char* banner = nullptr) {
     drawHints();
   }
 
-  const int pct = batteryPercent();
-  if (pct >= 0 && pct < LOW_BATTERY_PERCENT) c.battery(c.width() - 52, 12, pct);
+  usbShown = readUsb();
+  usbPending = false;
+  drawStatus(c, usbShown);
   if (keysLocked) drawLock(c);
   if (banner) c.banner(banner);
 
@@ -882,7 +971,12 @@ void drawReceive(const char* status, const char* detail, bool full) {
   c.textCentered(mid - 60, bleName, port ? 3 : 4);
   c.textCentered(mid + 20, status, port ? 3 : 4);
   if (detail) c.textCentered(mid + 80, detail, 2);
-  c.textCentered(c.height() - 64, "X O Y PER USCIRE", 2);
+  c.textCentered(mid + 130, "X O Y PER USCIRE", 2);
+  // In piccolo in fondo: versione del firmware e credits.
+  const int h = c.height();
+  c.textCentered(h - 100, "FIRMWARE " CAMTAG_FW_VERSION, 2);
+  c.textCentered(h - 76, "SVILUPPATO DA IACOPO BOCCALARI", 2);
+  c.textCentered(h - 52, "TRUNK STUDIO - TRUNKSTUDIO.IT", 2);
   present(full);
   lastReceiveDrawMs = millis();
   LOGF("[camtag] schermo ricezione: %lu ms\n", static_cast<unsigned long>(lastReceiveDrawMs - t0));
@@ -1164,12 +1258,11 @@ void holdPin(int8_t pin, int level) {
 }
 
 // --- Riposo ----------------------------------------------------------------------
-bool usbHost() { return HWCDC::isPlugged(); }
 
 bool canRest() {
   const uint32_t now = millis();
   return !receiving && fltSel < 0 && !fltSettleAt && !bannerUntilMs && !pendingSinceMs && !gaugePending &&
-         !powerDownAt && uxQueueMessagesWaiting(keyQueue) == 0 && now - lastActivityMs > AWAKE_MS &&
+         !powerDownAt && !usbPending && uxQueueMessagesWaiting(keyQueue) == 0 && now - lastActivityMs > AWAKE_MS &&
          static_cast<int32_t>(now - bootAwakeUntilMs) >= 0 && !usbHost();
 }
 
@@ -1234,14 +1327,18 @@ void rest() {
     if (now - usbAt >= REST_USB_MS) {
       usbAt = now;
       // In carica c'è un cavo: sveglio per un po', così la USB si fa riconoscere.
-      int16_t ma = 0;
-      const bool charging = battery::current(ma) && ma > 0;
+      const bool charging = chargingNow();
       if (charging && !chargeSeen) {
         chargeSeen = true;
         why = "carica";
         break;
       }
       if (!charging) chargeSeen = false;
+      // Carica finita: il fulmine sulla card va tolto.
+      if (!charging && usbShown.charging) {
+        why = "carica finita";
+        break;
+      }
     }
     if (battery::nowS() - lastBatteryLogS >= BATTERY_LOG_S) {
       logBattery(battery::kSample, 0);
@@ -1266,6 +1363,25 @@ void rest() {
   xSemaphoreGive(adcLock);
   lastActivityMs = millis();
   LOGF("[riposo] fine: %s\n", why);
+}
+
+// Cavo attaccato o staccato, carica cominciata o finita: ridisegna la card quando
+// due letture di fila, a un secondo, sono d'accordo.
+void pollUsb() {
+  if (cards.empty() || fltSel >= 0 || bannerUntilMs || millis() - usbPollMs < USB_POLL_MS) return;
+  usbPollMs = millis();
+  const UsbState s = readUsb();
+  if (s == usbShown) {
+    usbPending = false;
+    return;
+  }
+  if (!usbPending || s != usbSeen) {
+    usbSeen = s;
+    usbPending = true;
+    return;
+  }
+  LOGF("[usb] dati %d, carica %d\n", s.data, s.charging);
+  showCard(current, Refresh::Half);  // aggiorna usbShown e usbPending
 }
 
 void pollOrientation() {
@@ -1350,6 +1466,7 @@ void setup() {
 
   const bool isX3 = freeink::selectXteinkDevice();
   if (!isX3) freeink::applyXteinkDisplayController();
+  LOGF("[camtag] firmware " CAMTAG_FW_VERSION "\n");
   LOGF("[camtag] device: %s riavvio=%d risveglio=%d\n", BoardConfig::ACTIVE.name, static_cast<int>(reset),
        static_cast<int>(wake));
 
@@ -1612,6 +1729,7 @@ void loop() {
     showCard(current, false);
   }
   pollOrientation();
+  pollUsb();
 
   if (battery::nowS() - lastBatteryLogS >= BATTERY_LOG_S) logBattery(battery::kSample, 0);
   if (batteryFresh) {

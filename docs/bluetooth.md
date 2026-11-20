@@ -9,7 +9,7 @@ alza la versione.
 | | UUID | Proprietà |
 |---|---|---|
 | Servizio | `c4a70001-1b2e-4f3a-9d6e-3a7c5e0b2f10` | |
-| CTRL | `c4a70002-1b2e-4f3a-9d6e-3a7c5e0b2f10` | write, notify |
+| CTRL | `c4a70002-1b2e-4f3a-9d6e-3a7c5e0b2f10` | write, write without response, notify |
 | DATA | `c4a70003-1b2e-4f3a-9d6e-3a7c5e0b2f10` | write without response, write, notify |
 
 L'X3 fa advertising solo in modalità ricezione (X tenuto premuto): l'UUID del
@@ -23,7 +23,7 @@ client scrive, il dispositivo risponde con una notify.
 
 | Client → X3 | Risposta | Note |
 |---|---|---|
-| `HELLO` | `OK CAMTAG <versione> MTU <mtu>` | il client usa pacchetti di MTU − 3 byte (da 20 a 512) |
+| `HELLO` | `OK CAMTAG <versione> MTU <mtu> FW <firmware>` | il client usa pacchetti di MTU − 3 byte (da 20 a 512); `FW` (es. `0.1.0`, `CAMTAG_FW_VERSION` in `device/src/Version.h`) manca nei firmware precedenti alla 0.1.0 |
 | `BEGIN` | `OK` | svuota e crea `/camtag.new` |
 | `FILE <byte> <crc32 hex> <percorso>` | `OK`, o subito `DONE 0` per un file vuoto | apre il file in `/camtag.new` |
 | *(dati su DATA)* | `ACK <byte>` ogni 2 KB, `DONE <byte>` alla fine | `DONE` solo se il CRC torna |
@@ -31,6 +31,12 @@ client scrive, il dispositivo risponde con una notify.
 | `ABORT` | `OK` | cancella `/camtag.new`; `/camtag` resta com'era |
 | `GET <percorso>` | `FILE <byte> <crc32 hex> <percorso>`, poi i dati con notify su DATA | solo fuori da una sessione; `ERR ASSENTE` se il file non c'è |
 | `ACK <byte>` | — | durante un `GET`: byte ricevuti dal client |
+
+La versione del firmware non cambia il protocollo: con la stessa versione del
+protocollo firmware e strumento sono compatibili, e lo strumento mostra la
+versione dell'X3 senza avvisi (con un firmware più vecchio dice anche qual è
+la più recente). Solo un protocollo diverso è un conflitto: l'invio si ferma
+e chiede di aggiornarli insieme.
 
 Errori: `ERR <motivo>`, con motivo `CRC`, `SD`, `OVERFLOW`, `STATO`, `DATI`,
 `COMANDO` o `ASSENTE` (solo per `GET`, non interrompe nulla). Dopo un errore il dispositivo cancella `/camtag.new` e torna in
@@ -75,6 +81,14 @@ Con `GET` i ruoli si scambiano: il dispositivo manda pacchetti di MTU − 3 byte
 `ACK <byte ricevuti>` ogni 2 KB e alla fine, poi controlla il CRC. Quando l'ACK
 arriva al totale il dispositivo chiude il file. Le card non cambiano e il
 dispositivo resta in ricezione.
+
+Gli `ACK` del client durante un `GET` vanno scritti **senza risposta**: con la
+scrittura con risposta, mentre il dispositivo invia, la risposta può mancare e
+il browser dà "GATT operation failed for unknown reason" (Chrome sul Mac, con un
+`project.json` da 100 KB). Il client ripete comunque un `ACK` fallito (fino a 3
+volte): dice il totale ricevuto, quindi ripeterlo non cambia nulla. Con un
+firmware senza "write without response" su CTRL il client torna alla scrittura
+con risposta.
 
 ## Sostituzione delle card
 
