@@ -73,7 +73,14 @@ Nel browser integrato usa un server avviato da Bash: `preview_start` legge
 ancora un `launch.json` vecchio e serve la cartella sbagliata.
 
 Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
-è troppo vecchio per la piattaforma pioarduino.
+è troppo vecchio per la piattaforma pioarduino. `esptool` è
+`~/.platformio/penv/bin/python -m esptool` (nel `.venv` non c'è).
+
+L'X3 compare su USB (`/dev/cu.usbmodem*`) solo da sveglio, e dopo 20 s senza
+tocchi va in sonno: prima di caricare o leggere la seriale fai premere il power.
+Aprire la seriale lo riavvia. Per le prove con l'utente usa
+`scripts/taratura.py` (`tasti`, `versi`, `--carica`) nel suo terminale: guida
+passo per passo e mostra dal vivo tasti e accelerometro, senza limiti di tempo.
 
 ## Hardware X3 (dal profilo `XTEINK_X3` in BoardConfig.h)
 
@@ -255,8 +262,9 @@ non è più vero invece di aggiungere note.
 
 ## Da tarare sull'hardware (aperto)
 
-- Assi IMU: `kImuSwapXY`, `kImuSignX`, `kImuSignY` in `device/src/main.cpp`.
-- Tasti: A–D sono BACK/CONFIRM/LEFT/RIGHT (ingresso analogico 1), E/F sono
-  UP/DOWN (ingresso 2); da verificare quale è quale (`kKeyA`…`kKeyF`).
-- Verso fisico di ogni `Canvas::Rotation` (`kQuarterTurns`), insieme agli assi IMU.
+Tasti, assi IMU e verso dello schermo sono tarati sull'X3 (`kKeyA`…`kKeyF`,
+`kImuSwapXY`, `kImuSignX`, `kImuSignY`, `kQuarterTurns` in `device/src/main.cpp`:
+la posizione naturale è `Canvas::ROT_270`).
+
+- Soglie della rotazione (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) su camera vera.
 - Ghosting (`FULL_REFRESH_EVERY`) e consumo da spento.

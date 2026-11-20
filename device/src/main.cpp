@@ -53,30 +53,32 @@ constexpr uint32_t BANNER_MS = 1500;
 // --- Tasti fisici -> tasti logici dell'SDK ------------------------------------
 // I quattro tasti in basso (A|B, C|D) stanno sull'ingresso analogico 1, che
 // l'SDK chiama BACK/CONFIRM/LEFT/RIGHT; i due laterali (E, F) sull'ingresso 2,
-// UP/DOWN. Quale dei due laterali è E è DA TARARE sull'X3: con CAMTAG_DEBUG il
-// monitor seriale stampa il tasto logico di ogni pressione.
+// UP/DOWN. Verificato sull'X3 (con CAMTAG_DEBUG il monitor seriale stampa il
+// tasto logico di ogni pressione): F, sul lato sinistro, è UP; E è DOWN.
 constexpr uint8_t kKeyE = InputManager::BTN_DOWN;
 constexpr uint8_t kKeyF = InputManager::BTN_UP;
 // Bilancieri in basso: A|B a sinistra, C|D a destra (dispositivo verticale).
-// Quale tasto logico è quale è DA TARARE come E/F; qui conta solo il bilanciere.
+// Verificato sull'X3: da sinistra a destra sono BACK, CONFIRM, LEFT, RIGHT.
 constexpr uint8_t kKeyA = InputManager::BTN_BACK;
 constexpr uint8_t kKeyB = InputManager::BTN_CONFIRM;
 constexpr uint8_t kKeyC = InputManager::BTN_LEFT;
 constexpr uint8_t kKeyD = InputManager::BTN_RIGHT;
 
 // --- Orientamento -----------------------------------------------------------
-// Mappatura assi IMU -> pannello. DA TARARE sull'X3: con CAMTAG_DEBUG il monitor
-// seriale stampa ax/ay/az; tieni il dispositivo dritto in orizzontale (testo
-// leggibile) e regola finché risulta ROT_0, poi verifica gli altri tre lati.
-constexpr bool kImuSwapXY = false;
-constexpr float kImuSignX = 1.0f;
+// Mappatura assi IMU -> pannello, tarata sull'X3 con scripts/taratura.py: in
+// verticale con i tasti in basso l'IMU dà ax = -1 g, con i tasti a sinistra
+// ay = +1 g (con CAMTAG_DEBUG il monitor seriale stampa ax/ay/az).
+constexpr bool kImuSwapXY = true;
+constexpr float kImuSignX = -1.0f;
 constexpr float kImuSignY = 1.0f;
 constexpr float kMinTiltG = 0.5f;     // sotto questa inclinazione non decide
 constexpr float kMarginG = 0.25f;     // isteresi tra i due assi
 constexpr float kFlatG = 0.85f;       // appoggiato piatto: tiene l'orientamento
 // Rotazione fisica, in quarti di giro in senso orario dalla posizione naturale
-// (verticale, tasti in basso), per ogni Canvas::Rotation. DA TARARE insieme agli assi IMU.
-constexpr uint8_t kQuarterTurns[4] = {3, 0, 1, 2};  // ROT_0, ROT_90, ROT_180, ROT_270
+// (verticale, tasti in basso), per ogni Canvas::Rotation. Verificato sull'X3:
+// la posizione naturale è ROT_270, e ROT_0 è con i tasti a destra.
+constexpr uint8_t kQuarterTurns[4] = {3, 2, 1, 0};  // ROT_0, ROT_90, ROT_180, ROT_270
+constexpr Canvas::Rotation kNaturalRot = Canvas::ROT_270;
 constexpr uint32_t IMU_POLL_MS = 150;
 constexpr uint32_t ROTATE_STABLE_MS = 600;
 
@@ -170,7 +172,7 @@ Canvas::Rotation readOrientation(Canvas::Rotation fallback) {
   y *= kImuSignY;
 #ifdef CAMTAG_DEBUG
   static uint32_t lastLog = 0;
-  if (millis() - lastLog > 1000) {
+  if (millis() - lastLog > 250) {  // abbastanza fitto per scripts/taratura.py
     lastLog = millis();
     LOGF("[imu] ax=%.2f ay=%.2f az=%.2f\n", s.ax, s.ay, s.az);
   }
@@ -448,7 +450,11 @@ void pollOrientation() {
   pendingSinceMs = 0;
   rotation = seen;
   lastActivityMs = millis();
-  if (cards.empty()) return;
+  LOGF("[camtag] verso %u\n", rotation);
+  if (cards.empty()) {
+    showCurrentOrEmpty();  // anche i messaggi seguono il verso
+    return;
+  }
   if (rotationFor(cards[current], rotation) != drawnRot) showCard(current, false);
 }
 
@@ -476,7 +482,7 @@ void setup() {
 
   prefs.begin("camtag", false);
   rotationLocked = prefs.getBool("lock", false);
-  rotation = static_cast<Canvas::Rotation>(prefs.getUChar("rot", Canvas::ROT_0) & 3);
+  rotation = static_cast<Canvas::Rotation>(prefs.getUChar("rot", kNaturalRot) & 3);
   if (imu.begin()) {
     if (!rotationLocked) rotation = settleOrientation(rotation);
   } else {
@@ -484,6 +490,7 @@ void setup() {
   }
   pendingRot = rotation;
   lastActivityMs = millis();
+  LOGF("[camtag] verso %u\n", rotation);
 
   sdReady = SdMan.begin();
   if (!sdReady) {

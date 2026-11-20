@@ -178,16 +178,22 @@ ripristino restano compatibili.
 
 ## Da verificare sull'hardware
 
-- [ ] Rilevamento X3 e controller del display (UC8253 o UC8279)
-- [ ] Mappatura dei tasti: E ed F sono i tasti logici UP/DOWN dell'SDK, ma
-      quale sia quale va verificato (`kKeyE`, `kKeyF` in `device/src/main.cpp`;
-      con il monitor seriale aperto ogni pressione stampa il tasto logico)
-- [ ] **Taratura assi IMU**: con il monitor seriale aperto stampa `ax/ay/az`
-      ogni secondo. Regola `kImuSwapXY`, `kImuSignX` e `kImuSignY` in
-      `device/src/main.cpp` finché i 4 versi corrispondono
+Tasti e versi si provano dal terminale con `scripts/taratura.py`, che mostra
+subito ogni tasto premuto e i valori dell'accelerometro:
+
+```bash
+.venv/bin/python scripts/taratura.py tasti
+.venv/bin/python scripts/taratura.py versi --carica   # compila e carica prima
+```
+
+- [x] Rilevamento dell'X3, display e microSD
+- [x] Mappatura dei tasti (`kKeyA`…`kKeyF` in `device/src/main.cpp`)
+- [x] Assi IMU e verso dello schermo (`kImuSwapXY`, `kImuSignX`, `kImuSignY`,
+      `kQuarterTurns`): la scritta resta dritta nei 4 versi
+- [x] Riaccensione con il power
 - [ ] Soglie della rotazione (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) su camera vera
 - [ ] Ghosting: ogni quanto serve un refresh completo (ora ogni 6 cambi)
-- [ ] Riaccensione con il power e consumo da spento
+- [ ] Consumo da spento
 - [ ] Lettura batteria (fuel gauge BQ27220): l'icona appare sotto il 20%
 - [ ] Ricezione via Bluetooth: velocità reale, Android (Chrome) e iPhone
       (BLE Link), consumo con il Bluetooth acceso
