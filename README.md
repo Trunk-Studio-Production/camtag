@@ -324,19 +324,20 @@ schermo, e aspetta l'X3 se si spegne:
 
 ## Prossimi passi
 
-1. **Database lenti** nello strumento web.
-2. **Invio solo delle card cambiate**: l'X3 dice cosa ha già (percorso e CRC),
-   lo strumento manda solo i file nuovi o cambiati e il dispositivo copia gli
-   altri dalla cartella attuale. Un invio tipico passerebbe da quasi un minuto
-   a pochi secondi.
-3. **Consumi misurati** con il registro sulla microSD (`docs/batteria.md`), e
-   da lì le scelte ancora aperte: microSD spenta a riposo, tempi del riposo e
-   dello spegnimento da dimenticato. Serve anche una configurazione di
-   compilazione senza `CAMTAG_DEBUG`: oggi `x3` lo ha sempre acceso.
-4. **Cura dello schermo**: tarare ogni quanto serve il refresh completo
-   (`FULL_REFRESH_EVERY`). Caldo oltre i 50 °C circa e sole diretto per mesi
-   rovinano il pannello: conta il supporto.
-5. **Supporto** stampato in 3D per il montaggio sulla camera.
+1. **Consumi misurati** con il registro sulla microSD (`docs/batteria.md`), e
+   da lì le scelte ancora aperte: quanto pesa la microSD alimentata a riposo,
+   tempi del riposo, del bianco da spento
+   (`OFF_BLANK_S`) e dello spegnimento da dimenticato. Serve anche una
+   configurazione di compilazione senza `CAMTAG_DEBUG`: oggi `x3` lo ha sempre
+   acceso.
+2. **Cura dello schermo** (`docs/schermo.md`): confermare con ore d'uso che il
+   negativo a schermo fermo non torna, capire il riavvio da solo dopo il riposo
+   e il riposo che scatta con la USB, tarare ogni quanto serve il refresh
+   completo (`FULL_REFRESH_EVERY`). Caldo oltre i 50 °C circa e sole diretto
+   per mesi rovinano il pannello: conta il supporto.
+3. **Catalogo dei filtri** (`data/filters.json`) verificato sulle schede dei
+   costruttori: oggi è provvisorio.
+4. **Supporto** stampato in 3D per il montaggio sulla camera.
 
 ## Licenza
 
