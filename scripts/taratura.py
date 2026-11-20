@@ -3,7 +3,8 @@
 
 Legge la seriale di un firmware compilato con CAMTAG_DEBUG e mostra subito ogni
 tasto premuto e i valori dell'accelerometro, un passo alla volta e senza limiti
-di tempo. Se l'X3 va in sonno aspetta che torni.
+di tempo. Con la USB collegata a un computer l'X3 resta sveglio; se lo spegni
+aspetta che torni.
 
     .venv/bin/python scripts/taratura.py tasti
     .venv/bin/python scripts/taratura.py versi [--carica] [--out risultato.json]
@@ -12,6 +13,7 @@ di tempo. Se l'X3 va in sonno aspetta che torni.
     .venv/bin/python scripts/taratura.py blocco
     .venv/bin/python scripts/taratura.py reattivita
     .venv/bin/python scripts/taratura.py log [--file x3.log]
+    .venv/bin/python scripts/taratura.py batteria [--azzera] [--leggi registro.csv] [--bianco N]
 
 `card` prova con le card vere sopra: verso della card e direzione dei bilancieri
 sulla lens chart nelle quattro posizioni, poi il blocco della rotazione.
@@ -26,6 +28,14 @@ firmware, una persa a schermo fermo va cercata nell'hardware.
 
 `log` mostra dal vivo quello che l'X3 scrive (tasti, versi, card, ricezione) e
 con `--file` lo salva anche, accelerometro compreso.
+
+`batteria` scarica il registro dei consumi che l'X3 tiene sulla microSD
+(docs/batteria.md), lo salva in misure/ e fa i conti: corrente media da sveglio,
+a riposo e da spento, e quanto durerebbe la batteria. La misura vale solo per i
+tratti a batteria: con la USB collegata si carica. `--azzera` cancella il registro
+sull'X3 dopo averlo salvato; `--leggi` rifà i conti su un file già salvato;
+`--bianco N` porta a N secondi l'attesa prima del bianco da spento, per provarla
+(0 rimette i tre giorni).
 
 `--carica` compila e carica il firmware prima di cominciare.
 """
@@ -96,7 +106,7 @@ class X3:
             if found and Path(found[0]).exists():
                 return found[0]
             if not told:
-                print(f'\r\033[K{WARN}X3 non visibile su USB: premi il power.{X}')
+                print(f'\r\033[K{WARN}X3 non visibile su USB: premi un tasto; se è spento tieni premuto il power.{X}')
                 told = True
             time.sleep(0.2)
 
@@ -125,12 +135,12 @@ class X3:
             self.ser = None
 
     def pump(self):
-        """Legge quello che è arrivato. La porta sparisce quando l'X3 va in sonno."""
+        """Legge quello che è arrivato. La porta sparisce quando l'X3 si spegne o va a riposo."""
         try:
             self.buf += self.ser.read(4096)
         except (serial.SerialException, OSError):
             self.close()
-            print(f'\r\033[K{WARN}X3 in sonno o scollegato.{X}')
+            print(f'\r\033[K{WARN}X3 spento o scollegato.{X}')
             self.connect()
             return
         while b'\n' in self.buf:
@@ -264,11 +274,11 @@ def test_positions(x3, out):
 
 
 class Restart(Exception):
-    """L'X3 si è riavviato (sonno o porta riaperta): si rifà il passo."""
+    """L'X3 si è riavviato (spento o porta riaperta): si rifà il passo."""
 
 
 def ask_live(x3, question, answers):
-    """Come ask, ma intanto legge la seriale: se l'X3 va in sonno lo si vede subito."""
+    """Come ask, ma intanto legge la seriale: se l'X3 si spegne lo si vede subito."""
     boots = x3.boots
     while True:
         sys.stdout.write(question)
@@ -754,15 +764,193 @@ ctrl-C per finire e vedere il riepilogo.
         print(f'   {n:3d}  {k}')
 
 
+# --- Batteria -----------------------------------------------------------------------
+# Il firmware scrive sulla microSD una riga ogni 5 minuti, una all'avvio (A) e una allo
+# spegnimento (S), con i contatori di tempo sveglio e a riposo. Qui si scarica il file
+# (comando "batt?" sulla seriale) e si ricava la corrente media di ogni stato dal calo
+# dei mAh contati dal fuel gauge. Formato: docs/batteria.md.
+BATT_COLS = ('t', 'ev', 'info', 'mv', 'ma', 'mah', 'full', 'pct', 'awake', 'rest', 'screen', 'keys')
+RESETS = {1: 'alimentazione tornata', 3: 'riavvio del firmware', 4: 'errore del firmware', 8: 'sonno profondo',
+          9: 'tensione troppo bassa', 11: 'USB'}
+WAKES = {0: '', 4: 'timer', 7: 'power'}
+OFF_WHY = {0: 'power', 1: 'dimenticato acceso', 2: 'batteria scarica'}
+CELL_MAH = 650
+
+
+def parse_battery(text):
+    rows = []
+    for line in text.splitlines():
+        f = line.strip().split(',')
+        if len(f) != len(BATT_COLS) or not f[0].isdigit():
+            continue
+        row = dict(zip(BATT_COLS, f))
+        rows.append({k: (v if k == 'ev' else int(v)) for k, v in row.items()})
+    return rows
+
+
+def fetch_battery(x3, erase, blank=None):
+    """Chiede il registro all'X3. Restituisce (testo del CSV, ultima lettura del gauge)."""
+    lines, state, gauge = [], {'on': False, 'done': False, 'booted': False}, {}
+    prev = x3.on_line
+
+    def on_line(line):
+        if prev:
+            prev(line)
+        m = re.match(r'\[batt\] ok=(\d) mV=(\d+) mA=(-?\d+) mAh=(\d+) pieno=(\d+) progetto=(\d+) pct=(\d+)', line)
+        if m:
+            gauge.update(zip(('ok', 'mv', 'ma', 'mah', 'full', 'design', 'pct'), map(int, m.groups())))
+            state['booted'] = True
+        elif line == '[b] inizio':
+            state['on'] = True
+        elif line == '[b] fine':
+            state['done'] = True
+        elif state['on'] and line.startswith('[b] '):
+            lines.append(line[4:])
+
+    x3.on_line = on_line
+    try:
+        # Aprire la seriale riavvia l'X3: il comando va mandato quando è ripartito.
+        t0 = time.time()
+        while not state['booted'] and time.time() - t0 < 20:
+            x3.pump()
+            time.sleep(0.02)
+        # Nei primi secondi il firmware controlla la capacità scritta nel gauge.
+        t0 = time.time()
+        while time.time() - t0 < 9:
+            x3.pump()
+            time.sleep(0.02)
+        for attempt in range(3):
+            x3.ser.write(b'batt?\n')
+            t0 = time.time()
+            while not state['done'] and time.time() - t0 < 30:
+                x3.pump()
+                time.sleep(0.02)
+            if state['done']:
+                break
+        if not state['done']:
+            sys.exit(f'{BAD}L\'X3 non ha mandato il registro: firmware senza il registro dei consumi?{X}')
+        for cmd in ([b'batt!\n'] if erase else []) + ([b'blank=%d\n' % blank] if blank is not None else []):
+            x3.ser.write(cmd)
+            for _ in range(50):
+                x3.pump()
+                time.sleep(0.02)
+    finally:
+        x3.on_line = prev
+    return '\n'.join(lines) + '\n', gauge
+
+
+def fmt_hours(h):
+    return f'{h * 60:.0f} min' if h < 1.5 else f'{h:.1f} h' if h < 72 else f'{h / 24:.1f} giorni'
+
+
+def battery_report(rows, gauge=None):
+    if gauge:
+        if not gauge.get('ok'):
+            print(f'{WARN}Il fuel gauge non risponde: niente misura.{X}')
+        else:
+            print(f'{B}Adesso{X}: {gauge["mv"]} mV, {gauge["ma"]:+d} mA, {gauge["mah"]} di {gauge["full"]} mAh ({gauge["pct"]}%)')
+            if gauge['design'] > CELL_MAH * 1.25:
+                print(f'   {WARN}Nel gauge la capacità di progetto è {gauge["design"]} mAh (la batteria è da {CELL_MAH}): percentuale '
+                      f'e mAh non sono affidabili. Il firmware la corregge da solo nei primi secondi: riprova tra poco.{X}')
+            elif gauge['full'] > CELL_MAH * 1.25:
+                print(f'   {WARN}Il gauge crede che la batteria piena valga {gauge["full"]} mAh: i mAh vanno presi con cautela '
+                      f'finché non ha fatto un ciclo completo di scarica e carica.{X}')
+    if len(rows) < 2:
+        print(f'\n{WARN}Il registro ha {len(rows)} righe: serve più tempo a batteria (una riga ogni 5 minuti).{X}')
+        return
+    # Tratti tra due righe di fila: tempo, mAh scesi, e in che stato è passato quel tempo.
+    kinds = ('sveglio', 'riposo', 'misto', 'spento')
+    tot = {k: {'s': 0, 'mah': 0, 'mv': 0, 'screen': 0, 'n': 0, 'ma': []} for k in kinds}
+    notes, charged = [], 0
+    for a, b in zip(rows, rows[1:]):
+        dt = b['t'] - a['t']
+        if b['ev'] == 'A':
+            reset, wake = divmod(b['info'], 100)
+            if a['ev'] != 'S':
+                notes.append(f'riavvio da acceso ({RESETS.get(reset, reset)})')
+                continue
+            how = f'{RESETS.get(reset, reset)}{" · " + WAKES.get(wake, str(wake)) if WAKES.get(wake, str(wake)) else ""}'
+            if dt <= 0:
+                notes.append(f'spento ({OFF_WHY.get(a["info"], "?")}) e riacceso ({how}): l\'orologio è ripartito, '
+                             'quindi da spento il chip è rimasto senza alimentazione')
+                continue
+            notes.append(f'spento {fmt_hours(dt / 3600)} ({OFF_WHY.get(a["info"], "?")}), riacceso: {how}')
+            kind = 'spento'
+        else:
+            awake, rest = b['awake'] - a['awake'], b['rest'] - a['rest']
+            if dt <= 0 or awake < 0 or rest < 0:
+                continue
+            share = rest / max(1, awake + rest)
+            kind = 'riposo' if share >= 0.95 else 'sveglio' if share <= 0.05 else 'misto'
+        if a['ma'] > 0 or b['ma'] > 0 or b['mah'] > a['mah']:
+            charged += dt
+            continue
+        t = tot[kind]
+        t['s'] += dt; t['mah'] += a['mah'] - b['mah']; t['mv'] += a['mv'] - b['mv']; t['n'] += 1
+        t['screen'] += max(0, b['screen'] - a['screen']) if b['ev'] != 'A' else 0
+        t['ma'].append(-b['ma'])
+    full = next((r['full'] for r in reversed(rows) if 0 < r['full'] <= CELL_MAH * 1.25), CELL_MAH)
+    print(f'\n{B}Consumi a batteria{X} ({len(rows)} righe; {fmt_hours(charged / 3600)} in carica non contate)')
+    print(f'   {DIM}stato      tempo        mAh    media mA   istantanea mA   aggiornamenti   durata con {full} mAh{X}')
+    for k in kinds:
+        t = tot[k]
+        if t['s'] < 120:  # pochi secondi non dicono nulla
+            continue
+        h = t['s'] / 3600
+        inst = f'{statistics.median(t["ma"]):.0f}' if k != 'spento' and t['ma'] else '—'
+        if t['mah'] > 0:
+            ma = t['mah'] / h
+            mean, life = f'{ma:8.2f}', fmt_hours(full / ma)
+        else:
+            # Meno di 1 mAh in tutto il tratto: si sa solo che la media sta sotto 1 mAh / ore.
+            mean, life = f'  < {1 / h:.2f}', f'più di {fmt_hours(full * h)}'
+        print(f'   {k:9s} {fmt_hours(h):>9s} {t["mah"]:8d} {mean}   {inst:>12s} {t["screen"]:14d}   {life}')
+    low = [k for k in ('riposo', 'spento') if tot[k]['s'] >= 120 and tot[k]['mah'] <= 1]
+    if low:
+        print(f'\n   {WARN}{" e ".join(low)}: il gauge ha contato 1 mAh o meno. Conta a passi di 1 mAh e sotto 1 mA può '
+              f'sottostimare: per un numero buono servono più ore.{X}')
+        for k in low:
+            t = tot[k]
+            print(f'   {DIM}{k}: tensione scesa di {t["mv"]} mV in {fmt_hours(t["s"] / 3600)}{X}')
+    for n in notes:
+        print(f'   {DIM}· {n}{X}')
+
+
+def test_battery(x3, erase, read_path, blank=None):
+    if read_path:
+        battery_report(parse_battery(Path(read_path).read_text()))
+        return
+    print(f'\n{B}Registro dei consumi{X}: lo chiedo all\'X3…')
+    text, gauge = fetch_battery(x3, erase, blank)
+    out = REPO / 'misure'
+    out.mkdir(exist_ok=True)
+    path = out / f'batteria-{time.strftime("%Y%m%d-%H%M")}.csv'
+    path.write_text(text)
+    print(f'{DIM}salvato in {path.relative_to(REPO)}{", cancellato sull\'X3" if erase else ""}{X}\n')
+    battery_report(parse_battery(text), gauge)
+    if blank is not None:
+        print(f'\n{B}Bianco da spento{X}: ' + (f'dopo {blank} s. Stacca la USB, spegni e aspetta; poi rimetti i tre giorni con --bianco 0.'
+                                               if blank else 'di nuovo dopo tre giorni.'))
+    print(f"""
+{B}Per misurare{X}: stacca la USB e lascia l'X3 a batteria nello stato che ti interessa
+(acceso e fermo = riposo; spento con il power tenuto), almeno qualche ora per riposo
+e spento. Poi ricollega la USB e rilancia questo comando.""")
+
+
 def main():
     ap = argparse.ArgumentParser(description='Prova guidata dell\'X3 con riscontro dal vivo.')
-    ap.add_argument('prova', choices=['tasti', 'versi', 'card', 'filtri', 'blocco', 'reattivita', 'log'])
+    ap.add_argument('prova', choices=['tasti', 'versi', 'card', 'filtri', 'blocco', 'reattivita', 'log', 'batteria'])
     ap.add_argument('--carica', action='store_true', help='compila e carica il firmware prima di cominciare')
     ap.add_argument('--out', help='salva il risultato della prova dei versi in questo file JSON')
     ap.add_argument('--da', type=int, default=1, help='prove card e filtri: riparti da questa posizione (1-4)')
     ap.add_argument('--file', help='salva anche il registro della seriale in questo file')
     ap.add_argument('--porta', help='porta seriale (di solito si trova da sola)')
+    ap.add_argument('--azzera', action='store_true', help='batteria: cancella il registro sull\'X3 dopo averlo salvato')
+    ap.add_argument('--leggi', help='batteria: rifà i conti su un registro già salvato, senza X3')
+    ap.add_argument('--bianco', type=int, help='batteria: secondi da spento prima del bianco, per provarlo (0 = tre giorni)')
     args = ap.parse_args()
+    if args.prova == 'batteria' and args.leggi:
+        return test_battery(None, False, args.leggi)
 
     x3 = X3(args.porta)
     if args.file and args.prova != 'log':
@@ -784,6 +972,8 @@ def main():
             test_filters(x3, only='blocco')
         elif args.prova == 'log':
             show_log(x3, args.file)
+        elif args.prova == 'batteria':
+            test_battery(x3, args.azzera, None, args.bianco)
         else:
             test_positions(x3, args.out)
     except KeyboardInterrupt:

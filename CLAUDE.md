@@ -17,7 +17,9 @@ costruttori di lenti e filtri nei dati vanno bene.
   ricezione) e rimanda al telefono `project.json` (`GET`); `UploadProto.h` ha le parti provabili sull'host (`device/test/`).
   `Filters.cpp` è la schermata filtri provabile sull'host (lettura di
   `screen.ini`, regole degli stadi portate dal simulatore con gli stessi nomi,
-  composizione dei pezzi, indicazioni); tasti, tempi e refresh sono in `main.cpp`.
+  composizione dei pezzi, indicazioni); tasti, tempi e refresh sono in `main.cpp`,
+  con riposo e spento (`rest`, `powerOff`). `Battery.cpp` legge il fuel gauge e
+  scrive il registro dei consumi (`/camtag-batteria.csv`, specifica in `docs/batteria.md`).
 - `companion/index.html` — strumento web a file singolo: lens chart e filtri
   generati in automatico più schede manuali (crew, note, lente singola, patch);
   esporta uno zip di BMP 1 bit o manda gli stessi file all'X3 via Web Bluetooth
@@ -79,16 +81,18 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 è troppo vecchio per la piattaforma pioarduino. `esptool` è
 `~/.platformio/penv/bin/python -m esptool` (nel `.venv` non c'è).
 
-L'X3 compare su USB (`/dev/cu.usbmodem*`) solo da sveglio, e dopo 20 s senza
-tocchi va in sonno (10 minuti con `CAMTAG_DEBUG`, che oggi `x3` ha sempre): se
-la porta non c'è, prima di caricare o leggere la seriale fai premere il power.
-Aprire la seriale lo riavvia. Per le prove con l'utente usa
+L'X3 compare su USB (`/dev/cu.usbmodem*`) solo da acceso e sveglio. Collegato a
+un computer resta sveglio (`usbHost`); se la porta non c'è fai premere un tasto,
+o tenere il power se è spento, e se serve staccare e riattaccare il cavo.
+`CAMTAG_DEBUG` (che oggi `x3` ha sempre) accende i messaggi e i comandi sulla
+seriale. Aprire la seriale lo riavvia. Per le prove con l'utente usa
 `scripts/taratura.py` nel suo terminale (`tasti`, `versi`, `card` con le card
 sopra, `filtri` con la schermata filtri, `blocco` solo il blocco della rotazione,
 `reattivita` pressioni sentite da `keyScan` (`[adc]`) contro quelle eseguite, con
-gli aggiornamenti dello schermo (`[epd]`), `log` registro dal vivo; `--carica`):
+gli aggiornamenti dello schermo (`[epd]`), `log` registro dal vivo, `batteria`
+scarica il registro dei consumi in `misure/` e fa i conti; `--carica`):
 guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
-(righe `[filtri]` della seriale), e se l'X3 va in sonno lo aspetta e rifà il passo.
+(righe `[filtri]` della seriale), e se l'X3 si spegne lo aspetta e rifà il passo.
 
 ## Hardware X3 (dal profilo `XTEINK_X3` in BoardConfig.h)
 
@@ -110,8 +114,18 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
 - Niente touch. Posizione naturale **verticale**: in basso due bilancieri,
   A|B a sinistra e C|D a destra; F sul lato sinistro, E sul destro, power in
   alto a destra. I 4 in basso sono su un solo ingresso analogico (uno alla
-  volta). **Solo il power risveglia** dal sonno.
+  volta): dal sonno profondo li sveglierebbe solo in parte, quindi da spento
+  **accende solo il power**, e da acceso i tasti si leggono a intervalli nel
+  sonno leggero.
 - Lo spegnimento porta GPIO13 basso come fa CrossPoint; l'e-paper resta visibile.
+  Sull'X3 GPIO13 basso **stacca la batteria** (misurato: dopo lo spento il
+  chip riparte da alimentazione tornata, con l'orologio a zero), al contrario
+  di quanto dice il profilo dell'SDK. Con la batteria staccata non consuma,
+  ma nessun timer può svegliarlo: per questo lo spento tiene GPIO13 alto fino
+  al passaggio al bianco e lo abbassa solo dopo (`sleepOff`, che non usa
+  `powerDownRailsForSleep` finché serve il timer). A riposo GPIO13 non si tocca.
+- Nel sonno leggero il framework isola i pin: le uscite che devono restare
+  ferme vanno escluse (`keepOutputsInRest`).
 - Dopo ogni aggiornamento il pannello va spento (`displayBuffer(…, true)`, o
   `turnOffScreen` nelle altre chiamate): lasciato alimentato, in pochi minuti
   l'immagine scivola verso quella precedente (fantasma).
@@ -129,6 +143,10 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   a capo solo se il testo cresce di oltre il 25%, in parti uguali (3 + 2).
   Nello strumento ha lo stesso editor dei filtri (`filtersEditor(ed, true)`).
   Per il firmware è una card qualsiasi.
+- `/camtag/off.bmp`, `off.p.bmp` (facoltativa): schermata di spento, fuori dal
+  giro delle pagine. Nello strumento è una scheda manuale con "Schermata di
+  spento" accesa (`c.off`, una sola; `offCard`). Il firmware ci disegna sopra
+  una fascia in basso e la batteria (`drawOff`; nello strumento `drawOffOverlay`).
 - `/camtag/project.json`: il progetto dello strumento web, inviato con le card
   (anche nello zip) e riletto con "Importa dall'X3". Il firmware lo ignora. Il
   lavoro nel browser sta solo nel localStorage: questo file è la copia che resta.
@@ -238,6 +256,21 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   scorrono vuoto + i vetri liberi del kit, ricominciando in fondo. Selezione =
   riga in negativo, niente cursore lampeggiante; aggiornamenti parziali,
   completo all'uscita. Diottrie e ND restano su A|B e C|D fuori dalla modifica.
+- Energia (`docs/batteria.md`): per chi lo usa gli stati sono due. **Acceso**
+  mostra le card e sente i tasti in ogni momento: dopo 5 s senza tocchi va a
+  riposo (sonno leggero, tasti letti ogni 25 ms, verso ogni secondo) senza che
+  da fuori cambi nulla. **Spento** (sonno profondo) mostra la schermata di
+  spento con la fascia "SPENTO - TIENI POWER PER ACCENDERE", e dopo 72 h il
+  bianco con la sola fascia (fino ad allora il chip resta alimentato, poi la
+  batteria si stacca; `taratura.py batteria --bianco N` accorcia l'attesa per provarlo). Power tenuto 1 s spegne e accende. Si spegne da
+  solo dopo 24 h senza tasti e a batteria scarica (sotto 3,3 V, con l'avviso).
+  Niente segni di "pausa" sulle card: se mostra una card, risponde.
+- **Power breve = tasti bloccati** (`keysLocked`, `toggleKeyLock`; nel
+  simulatore `sim.keyLock`): la pagina resta, A–F non fanno nulla, la rotazione
+  continua. Il segno è un lucchetto sul bordo fisico sotto il power
+  (`drawLock`), come le indicazioni dei tasti: segue la rotazione del
+  dispositivo, dritto per chi legge. A riposo da bloccato il chip dorme un
+  secondo alla volta. Spegnendo il blocco si toglie.
 - Tasti: E (successiva) e F (precedente) cambiano pagina in ciclo su tutte.
   Schermata filtri A/B = diottria −/+, C/D = ND −/+. Lens chart di più pagine:
   A–D sfogliano solo le sue pagine, in ciclo; i due tasti di un bilanciere fanno
@@ -300,6 +333,14 @@ blocco, bilancieri della lens chart nei 4 versi. Tasti, assi IMU e verso dello s
 la posizione naturale è `Canvas::ROT_270`).
 
 - Soglie della rotazione (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) su camera vera.
-- Ghosting (`FULL_REFRESH_EVERY`) e consumo da spento.
+- Ghosting (`FULL_REFRESH_EVERY`).
+- Energia, provato sull'X3 (20/11/2026): riposo con tasti e rotazione, blocco
+  dei tasti, spento e riaccensione con il power tenuto (prima e dopo il
+  bianco), passaggio al bianco, registro. Il gauge ha già 642 mAh; la batteria
+  si carica fino a circa 4,35 V e la ricarica si ferma da sola a piena.
+  **I consumi non sono ancora misurati**: prime letture circa 25 mA da sveglio
+  e 2 mA a riposo. Servono ore a batteria con `taratura.py batteria`: riposo,
+  riposo con i tasti bloccati, primi tre giorni da spento. Le domande aperte
+  sono in fondo a `docs/batteria.md`.
 - Schermata filtri: provata sull'X3 (bilancieri, indicazioni, riordino,
   modifica, ombra tolta dal mezzo refresh, blocco che ferma tutto).

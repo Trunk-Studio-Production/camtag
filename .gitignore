@@ -13,5 +13,8 @@ reference/
 # Backup della flash del dispositivo (contengono dati di fabbrica)
 *.bin
 
+# Registri dei consumi scaricati dall'X3 (scripts/taratura.py batteria)
+misure/
+
 # Impostazioni locali di Claude Code
 .claude/settings.local.json

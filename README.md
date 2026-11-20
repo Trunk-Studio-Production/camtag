@@ -49,10 +49,17 @@ git clone --depth 1 https://github.com/crosspoint-reader/crosspoint-reader refer
    - **schermata filtri**: tieni **A** o **B** per modificare gli stadi del
      mattebox (A/B scelgono lo stadio, C/D il vetro); si esce con E o F, tenendo
      di nuovo A o B, o da soli dopo 5 s senza tocchi (`docs/filtri.md`)
-   - **power**: spegne subito
-   - dopo 20 s senza tasti si spegne da solo; l'e-paper continua a mostrare la card
-   - il power lo riaccende sull'ultima card; ridisegna solo se nel frattempo
-     l'hai girato
+   - **power**: blocca e sblocca i tasti. La pagina resta com'è, con un
+     lucchetto accanto al power
+   - **power tenuto premuto (1 s)**: spegne; da spento, accende sull'ultima
+     card
+   - da acceso sente i tasti in ogni momento: tra una pressione e l'altra
+     riposa, ma da fuori non si vede. Dimenticato acceso, si spegne dopo 24 ore
+     senza tasti
+   - da spento mostra la **schermata di spento** (una scheda scelta nello
+     strumento web, o il solo nome) con una fascia che dice che è spento; dopo
+     tre giorni lo schermo passa al bianco. Dettagli e consumi in
+     [`docs/batteria.md`](docs/batteria.md)
 
 ### Invio via Bluetooth
 
@@ -105,9 +112,8 @@ Ogni card è esportata in due file, accoppiati per nome:
 Il firmware sceglie la variante adatta e la ruota di 0° o 180°. Se una card ha
 solo una delle due varianti, la usa anche nell'altro orientamento, ruotata.
 
-La rotazione funziona mentre il dispositivo è acceso. Da spento l'immagine
-resta quella dell'ultimo verso: girandolo da spento, si aggiorna alla prossima
-pressione del power.
+La rotazione funziona mentre il dispositivo è acceso, anche a riposo. Da spento
+resta la schermata di spento nell'ultimo verso.
 
 Il blocco è salvato e sopravvive allo spegnimento. L'X4 non ha IMU: lì la
 rotazione resta fissa.
@@ -144,8 +150,8 @@ radice della microSD.
 **Simulatore** (pulsante sopra l'anteprima): l'X3 disegnato con tutti i tasti
 cliccabili (anche da tastiera: A–F, P = power). Le pagine si sfogliano
 in ciclo con E (successiva) e F (precedente); A e B non cambiano mai pagina. Si può ruotare, bloccare la
-rotazione (E tenuto premuto) e spegnere, e si comporta come è previsto per il
-firmware. Le schermate sono a risoluzione piena (792×528 e 528×792); il
+rotazione (E tenuto premuto) e spegnere (power tenuto premuto), e si comporta
+come è previsto per il firmware. Le schermate sono a risoluzione piena (792×528 e 528×792); il
 simulatore le mostra a circa metà scala, vicino alla dimensione reale.
 
 ## Firmware
@@ -194,7 +200,7 @@ intero prima di collegare il cavo.
 
 #### Controlli: se anche uno solo non passa, non caricare
 
-Servono un cavo USB-C dati e l'X3 **acceso e sveglio**: in sonno non compare
+Servono un cavo USB-C dati e l'X3 **acceso**: da spento non compare
 sulla USB. `esptool` è quello che PlatformIO installa alla prima compilazione
 (se manca: `.venv/bin/pip install esptool`, poi `.venv/bin/python -m esptool`).
 Qui sotto `esptool` sta per `~/.platformio/penv/bin/python -m esptool --chip esp32c3`.
@@ -254,8 +260,8 @@ Tieni l'X3 sveglio e collegato finché il caricamento non ha finito.
 - Firmware originale Xteink o CrossPoint: dal flasher web su crosspointreader.com.
   La tabella partizioni di CamTag è la stessa di CrossPoint.
 
-Entrambe le strade passano dalla USB, con l'X3 sveglio (con CamTag: premi il
-power, hai 20 secondi prima che torni in sonno). Se la USB non risponde più,
+Entrambe le strade passano dalla USB, con l'X3 acceso (con CamTag: se è spento
+tieni premuto il power; collegato a un computer resta sveglio). Se la USB non risponde più,
 resta solo riscrivere la memoria con un programmatore esterno aprendo il
 dispositivo, come descrive
 [CrossPoint](https://github.com/crosspoint-reader/crosspoint-reader/blob/HEAD/docs/fix-bricked-xteink.md):
@@ -265,7 +271,7 @@ un'operazione delicata, che può finire di romperlo.
 
 Le prove si fanno dal terminale con `scripts/taratura.py` (firmware compilato
 con `CAMTAG_DEBUG`), che mostra subito ogni tasto premuto, il verso e la card a
-schermo, e aspetta l'X3 se va in sonno:
+schermo, e aspetta l'X3 se si spegne:
 
 ```bash
 .venv/bin/python scripts/taratura.py tasti
@@ -273,6 +279,7 @@ schermo, e aspetta l'X3 se va in sonno:
 .venv/bin/python scripts/taratura.py card             # con le card sopra
 .venv/bin/python scripts/taratura.py filtri           # con la schermata filtri sopra
 .venv/bin/python scripts/taratura.py log              # registro dal vivo
+.venv/bin/python scripts/taratura.py batteria         # consumi misurati (docs/batteria.md)
 ```
 
 - [x] Rilevamento dell'X3, display e microSD
@@ -280,6 +287,12 @@ schermo, e aspetta l'X3 se va in sonno:
 - [x] Assi IMU e verso dello schermo (`kImuSwapXY`, `kImuSignX`, `kImuSignY`,
       `kQuarterTurns`): la scritta resta dritta nei 4 versi
 - [x] Riaccensione con il power
+- [x] Acceso sempre in ascolto (riposo in sonno leggero), tasti bloccati con
+      il power breve, spento e riaccensione con il power tenuto, schermata di
+      spento e passaggio al bianco
+- [ ] Consumi misurati con `taratura.py batteria`: a riposo, a riposo con i
+      tasti bloccati, nei primi tre giorni da spento (prime letture: circa
+      25 mA da sveglio, 2 mA a riposo)
 - [x] Ricezione via Bluetooth da Brave sul Mac: crea `/camtag` anche la prima
       volta e mostra quanti file ha ricevuto; "Importa dall'X3" riporta il
       progetto nel browser e lascia le card come sono
@@ -316,21 +329,14 @@ schermo, e aspetta l'X3 se va in sonno:
    lo strumento manda solo i file nuovi o cambiati e il dispositivo copia gli
    altri dalla cartella attuale. Un invio tipico passerebbe da quasi un minuto
    a pochi secondi.
-3. **Tempo prima del sonno** scelto dall'utente nello strumento web, dopo aver
-   misurato i consumi reali (oggi 20 s; 10 minuti nel firmware di debug).
-   Serve anche una configurazione di compilazione senza `CAMTAG_DEBUG`: oggi
-   `x3` lo ha sempre acceso.
-4. **Cura dello schermo**: la card resta a schermo da spento (l'e-paper non
-   consuma e non si rovina così). In più: una *modalità deposito* che a
-   batteria quasi scarica, o a comando, pulisce lo schermo con un refresh
-   completo e lo lascia bianco con una scritta, per i periodi lunghi senza uso;
-   tarare ogni quanto serve il refresh completo (`FULL_REFRESH_EVERY`). Caldo
-   oltre i 50 °C circa e sole diretto per mesi rovinano il pannello: conta il
-   supporto.
-5. **Rotazione anche da spento**: risveglio a timer (es. ogni 10 s) per leggere
-   l'IMU e ridisegnare solo se è cambiato il verso. Da valutare dopo aver
-   misurato i consumi reali.
-6. **Supporto** stampato in 3D per il montaggio sulla camera.
+3. **Consumi misurati** con il registro sulla microSD (`docs/batteria.md`), e
+   da lì le scelte ancora aperte: microSD spenta a riposo, tempi del riposo e
+   dello spegnimento da dimenticato. Serve anche una configurazione di
+   compilazione senza `CAMTAG_DEBUG`: oggi `x3` lo ha sempre acceso.
+4. **Cura dello schermo**: tarare ogni quanto serve il refresh completo
+   (`FULL_REFRESH_EVERY`). Caldo oltre i 50 °C circa e sole diretto per mesi
+   rovinano il pannello: conta il supporto.
+5. **Supporto** stampato in 3D per il montaggio sulla camera.
 
 ## Licenza
 
