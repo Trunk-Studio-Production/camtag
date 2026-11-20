@@ -1845,11 +1845,15 @@ function lensDataEditor(l, e) {
   return box;
 }
 
-// Re-rendering the editor resets the results list; keep its scroll position.
+// Ridisegnare l'editor azzera l'elenco dei risultati: ne tiene lo scorrimento
+// interno e anche il posto sullo schermo, così una riga aggiunta più in alto
+// (es. in "Lenti selezionate") non sposta l'elenco sotto il dito.
 function keepScroll(fn) {
-  const box = document.querySelector('.db'), top = box ? box.scrollTop : 0;
+  const box = document.querySelector('.db'), top = box ? box.scrollTop : 0, y = box?.getBoundingClientRect().top;
   fn();
-  const nb = document.querySelector('.db'); if (nb) nb.scrollTop = top;
+  const nb = document.querySelector('.db'); if (!nb) return;
+  nb.scrollTop = top;
+  if (y != null) window.scrollBy(0, nb.getBoundingClientRect().top - y);
 }
 
 function addDbLens(l, mount) {
