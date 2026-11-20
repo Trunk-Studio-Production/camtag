@@ -514,6 +514,14 @@ function kitGlasses(f = state.filters) {
   return f.effects.flatMap(e => e.strengths.map(x => ({ key: glassKey(e, x.s), label: `${e.name}${x.s ? ' ' + x.s : ''}`, slots: e.slots === 2 ? 2 : 1 })));
 }
 // Una diottria occupa due stadi, uno solo se segnata così (d.slots === 1).
+// La casella "2 stadi" c'è solo per i vetri che possono occuparne due: quelli
+// segnati nel catalogo (`twoSlots`, o `slots: 2` se lo sono di partenza) e quelli
+// personalizzati. Resta anche dove è già accesa (progetti vecchi), per spegnerla.
+function canTwoSlots(e) {
+  if (!e.id || e.slots === 2) return true;
+  const x = filterDb.find(y => y.id === e.id);
+  return !!x && (x.twoSlots || x.slots === 2);
+}
 function dioSlots(d) { return d ? (d.slots === 1 ? 1 : 2) : 0; }
 // Nella riga dello stadio la diottria porta il suo nome: "+1" da solo non si capirebbe.
 function dioStageLabel(d) { return `Diottria ${dioLabel(d)}`; }
@@ -2075,8 +2083,8 @@ function filtersEditor(ed, list = false) {
     const extra = h('input', { type: 'text', placeholder: '+', size: 4, title: 'Aggiungi una gradazione', 'aria-label': 'Aggiungi una gradazione', onchange: ev => {
       const v = ev.target.value.trim(); if (v) { addToKit(f, e.id, e.name, [v]); changed(true); }
     } });
-    const two = pill('2 stadi', e.slots === 2, on => { if (on) e.slots = 2; else delete e.slots; refit(); changed(true); });
-    two.title = 'Questo vetro occupa due stadi del mattebox';
+    const two = canTwoSlots(e) ? pill('2 stadi', e.slots === 2, on => { if (on) e.slots = 2; else delete e.slots; refit(); changed(true); }) : null;
+    if (two) two.title = 'Questo vetro occupa due stadi del mattebox';
     kitBody.push(h('div', { class: 'kit' },
       h('div', { class: 'kit-head' }, h('strong', {}, e.name), two,
         h('button', { class: 'small danger', title: 'Togli la famiglia dal kit', 'aria-label': 'Togli la famiglia dal kit', onclick: () => { f.effects = f.effects.filter(x => x !== e); normalizeStages(f); changed(true); } }, '✕')),

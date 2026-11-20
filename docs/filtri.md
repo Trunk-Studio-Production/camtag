@@ -13,8 +13,9 @@ il simulatore e per il firmware (`device/`), che devono restare allineati.
   (per esempio una +1/2 a lastra) si segnano nello strumento web.
 - **Kit dei vetri**: i vetri che ci sono nella valigetta, esclusi gli ND pieni.
   Ogni voce è una famiglia con una gradazione (es. "Black Pro-Mist 1/4"), o un
-  vetro senza gradazione. Uno per tipo: non ci sono doppioni. Una famiglia può
-  essere segnata "2 stadi" nel kit (nel catalogo nessuna lo è).
+  vetro senza gradazione. Uno per tipo: non ci sono doppioni. Il Rota Pola e i
+  vetri personalizzati possono essere segnati "2 stadi" nel kit; gli altri
+  occupano sempre uno stadio.
 - **Stadi**: i cassetti del mattebox, di solito da 1 a 3, numerati da
   **1 = lato lente** verso il fronte. Ogni stadio contiene un vetro del kit
   oppure è vuoto. Si arriva fino a 6, per mattebox più grandi o per un vetro
@@ -146,7 +147,9 @@ Una regola sola, ogni volta che ND o diottria cambiano gli stadi che occupano
 - **Vetri nel kit**: famiglie dal catalogo (`data/filters.json`) o
   personalizzate, con le loro gradazioni. Ogni gradazione e ogni famiglia ha
   una ✕ per toglierla. Togliere un vetro che sta in uno stadio svuota lo stadio.
-  Ogni famiglia ha la casella "2 stadi" (nel catalogo: `"slots": 2`).
+  La casella "2 stadi" c'è solo per i vetri personalizzati e per le famiglie
+  del catalogo con `"twoSlots": true` (spenta di partenza) o `"slots": 2`
+  (accesa di partenza); oggi solo il Rota Pola, con `twoSlots`.
 - **Mattebox**: numero di stadi e, per ogni stadio, il vetro di partenza scelto
   da un menu (i vetri già in un altro stadio non sono selezionabili). Il
   selettore mostra 1–3 e un `+`: il `+` non cambia il numero, apre anche 4, 5

@@ -211,7 +211,8 @@ vivo tasti, versi e card, e se l'X3 va in sonno lo aspetta e rifà il passo.
   numerati da 1 = lato lente; ogni stadio ha un vetro o è vuoto (`—`), e un
   vetro sta in un posto solo. Non esiste "montato": la schermata mostra sempre
   tutti gli stadi sotto ND e diottria. Un vetro occupa uno stadio, o due se la
-  famiglia è segnata così nel kit (`e.slots`, `glassSlots`): sulla schermata è una casella alta due righe. **L'ND, quando c'è,
+  famiglia è segnata così nel kit (`e.slots`; la casella c'è solo per i vetri
+  personalizzati e per quelli con `twoSlots` nel catalogo, oggi il Rota Pola: `canTwoSlots`): sulla schermata è una casella alta due righe. **L'ND, quando c'è,
   occupa i primi stadi** (uno, o due per una coppia) **e la diottria sta subito
   davanti all'ultimo vetro** (o all'ND; da sola negli stadi 1 e 2), davanti a
   tutto ma non per forza negli ultimi stadi (`dioStart`; due, o uno se segnata:
