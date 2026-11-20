@@ -91,7 +91,8 @@ Requisiti:
 - **Android, Mac, Windows, Linux**: Chrome, Edge o Brave (provato su Mac; in
   Brave il Bluetooth va acceso in `brave://flags`, voce "Web Bluetooth API");
 - **iPhone e iPad**: Safari non ha Web Bluetooth; serve un browser che lo
-  aggiunga, come **BLE Link** (provato) o Bluefy.
+  aggiunga, come **[BLE Link](https://apps.apple.com/app/id6468414672)** (provato)
+  o [Bluefy](https://apps.apple.com/app/id1492822055).
 
 Il protocollo è descritto in [`docs/bluetooth.md`](docs/bluetooth.md).
 

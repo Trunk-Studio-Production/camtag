@@ -118,12 +118,12 @@
   .card dt { color: var(--muted); white-space: nowrap; }
   .card dd { margin: 0; }
 
-  /* Breve o tenuto: la linea del tempo */
+  /* Breve o lunga: la linea del tempo */
   .timeline { position: relative; margin: 22px 0 12px; padding: 34px 0 30px; }
   .timeline .bar { position: relative; height: 10px; border-radius: 5px;
                    background: linear-gradient(90deg, #3a3a36 0 61.5%, var(--accent-soft) 61.5% 76.9%, var(--accent) 76.9% 100%); }
   .timeline .tick { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px solid var(--ink); }
-  .timeline .tick span { position: absolute; top: 2px; transform: translateX(-50%); font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .timeline .tick span { position: absolute; top: -24px; transform: translateX(-50%); font-size: 12px; color: var(--muted); white-space: nowrap; }
   .timeline .lab { position: absolute; bottom: 0; font-size: 13px; transform: translateX(-50%); white-space: nowrap; }
   .timeline .lab.l { transform: none; }
 
@@ -194,15 +194,15 @@
       <div class="cards">
         <div class="card"><h3><kbd>X</kbd><kbd>Y</kbd> Lati</h3>
           <dl><dt>X</dt><dd>schermata precedente</dd><dt>Y</dt><dd>schermata successiva</dd>
-              <dt>X <span class="hold">tieni</span></dt><dd>ricevi le card via Bluetooth</dd>
-              <dt>Y <span class="hold">tieni</span></dt><dd>blocca / sblocca la rotazione</dd></dl></div>
+              <dt>X <span class="hold">lungo</span></dt><dd>ricevi le card via Bluetooth</dd>
+              <dt>Y <span class="hold">lungo</span></dt><dd>blocca / sblocca la rotazione</dd></dl></div>
         <div class="card"><h3><kbd>PWR</kbd> Power</h3>
           <dl><dt>breve</dt><dd>blocca / sblocca i tasti</dd>
-              <dt><span class="hold">tieni 1 s</span></dt><dd>spegne e accende</dd></dl></div>
+              <dt><span class="hold">lungo 1 s</span></dt><dd>spegne e accende</dd></dl></div>
         <div class="card"><h3><kbd>A|B</kbd><kbd>C|D</kbd> In basso</h3>
-          <dl><dt>lens chart</dt><dd>pagine della lens chart</dd>
+          <dl><dt>lens chart</dt><dd>A|B pagina indietro, C|D avanti</dd>
               <dt>filtri</dt><dd>A|B diottria, C|D ND</dd>
-              <dt>A o B <span class="hold">tieni</span></dt><dd>modifica gli stadi del mattebox</dd></dl></div>
+              <dt>A o B <span class="hold">lungo</span></dt><dd>modifica gli stadi del mattebox</dd></dl></div>
         <div class="card"><h3><kbd>RESET</kbd> Riavvio</h3>
           <dl><dt>breve</dt><dd>riavvia l'X3, se non risponde</dd></dl>
           <p style="margin:10px 0 0;font-size:13px;color:var(--muted)">Le card e le impostazioni restano.</p></div>
@@ -219,7 +219,7 @@
         </figure>
         <div>
           <ul>
-            <li><strong>Power</strong>, in alto a destra: blocca i tasti, e tenuto spegne e accende.</li>
+            <li><strong>Power</strong>, in alto a destra: blocca i tasti, e con la pressione lunga spegne e accende.</li>
             <li><strong>Reset</strong>, in alto a sinistra: riavvia.</li>
             <li><strong>X</strong> sul lato sinistro e <strong>Y</strong> sul destro: cambiano schermata.</li>
             <li><strong>Due bilancieri</strong> in basso, <kbd>A</kbd>|<kbd>B</kbd> a sinistra e <kbd>C</kbd>|<kbd>D</kbd> a destra: lavorano sulla schermata che hai davanti (pagine della lens chart, ND e diottria).</li>
@@ -228,8 +228,8 @@
         </div>
       </div>
 
-      <h3>Breve o tenuto</h3>
-      <p>Ogni tasto ha due gesti. La <strong>pressione breve</strong> conta quando rilasci. Quella <strong>tenuta</strong> scatta da sola dopo 0,8 secondi (1 secondo per il power), con il dito ancora sul tasto: vedi subito l'effetto, e il rilascio dopo non fa altro.</p>
+      <h3>Pressione breve o lunga</h3>
+      <p>Ogni tasto ha due gesti. La <strong>pressione breve</strong> conta quando rilasci. Quella <strong>lunga</strong> scatta da sola dopo 0,8 secondi (1 secondo per il power), con il dito ancora sul tasto: vedi subito l'effetto, e il rilascio dopo non fa altro.</p>
       <div class="timeline" aria-hidden="true">
         <div class="bar">
           <div class="tick" style="left:0"><span style="transform:none">0 s</span></div>
@@ -237,16 +237,16 @@
           <div class="tick" style="left:76.9%"><span>1 s</span></div>
         </div>
         <div class="lab l" style="left:0">rilasci prima: <strong>breve</strong></div>
-        <div class="lab" style="left:69%"><strong>tenuto</strong></div>
-        <div class="lab" style="left:89%">power <strong>tenuto</strong></div>
+        <div class="lab" style="left:69%"><strong>lunga</strong></div>
+        <div class="lab" style="left:89%">power <strong>lunga</strong></div>
       </div>
       <div class="table"><table>
-        <thead><tr><th>Tasto</th><th>Breve</th><th>Tenuto</th></tr></thead>
+        <thead><tr><th>Tasto</th><th>Breve</th><th>Lunga</th></tr></thead>
         <tbody>
           <tr><td><kbd>X</kbd></td><td>Schermata precedente</td><td>Ricezione via Bluetooth</td></tr>
           <tr><td><kbd>Y</kbd></td><td>Schermata successiva</td><td>Blocca / sblocca la rotazione</td></tr>
-          <tr><td><kbd>A</kbd> <kbd>B</kbd></td><td>Lens chart: pagina. Filtri: diottria − / +</td><td>Filtri: modifica gli stadi</td></tr>
-          <tr><td><kbd>C</kbd> <kbd>D</kbd></td><td>Lens chart: pagina. Filtri: ND − / +</td><td>—</td></tr>
+          <tr><td><kbd>A</kbd> <kbd>B</kbd></td><td>Lens chart: pagina indietro. Filtri: diottria − / +</td><td>Filtri: modifica gli stadi</td></tr>
+          <tr><td><kbd>C</kbd> <kbd>D</kbd></td><td>Lens chart: pagina avanti. Filtri: ND − / +</td><td>—</td></tr>
           <tr><td><kbd>PWR</kbd></td><td>Blocca / sblocca i tasti</td><td>Spegne / accende (1 s)</td></tr>
           <tr><td><kbd>RESET</kbd></td><td>Riavvia</td><td>—</td></tr>
         </tbody>
@@ -258,11 +258,11 @@
       <header><div class="num">03</div><h2>Accendere e spegnere</h2>
         <p class="intro">Per chi lo usa ci sono due stati: <strong>acceso</strong>, che mostra le card e risponde ai tasti, e <strong>spento</strong>, che mostra la schermata di spento.</p></header>
       <div class="row">
-        <figure class="fig" data-dev='{"screen":"off","k":0.85,"hi":[{"keys":"P","text":"tieni 1 s"}]}'>
+        <figure class="fig" data-dev='{"screen":"off","k":0.85,"hi":[{"keys":"P","text":"lungo 1 s"}]}'>
           <figcaption>Spento: la tua schermata di spento, con la fascia in basso e la batteria rimasta.</figcaption>
         </figure>
         <div>
-          <p><strong>Tieni premuto il power per 1 secondo</strong> per spegnere. Per riaccendere, tienilo di nuovo: riparte dall'ultima card. Da spento gli altri tasti non fanno nulla.</p>
+          <p><strong>Pressione lunga sul power (1 secondo)</strong> per spegnere. Per riaccendere, di nuovo una pressione lunga: riparte dall'ultima card. Da spento gli altri tasti non fanno nulla.</p>
           <p>La schermata di spento la scegli nello strumento web, nella pagina <em>Spento</em> (un'immagine e una scritta, come "CAMERA A"), o con una scheda qualsiasi. Senza, l'X3 mostra solo il nome CAMTAG.</p>
           <div class="note"><b class="t">Si spegne da solo</b>
             <ul>
@@ -273,7 +273,7 @@
       </div>
       <h3>Acceso consuma poco anche senza spegnerlo</h3>
       <p>Dopo 5 secondi senza tocchi l'X3 va a riposo, ma da fuori non cambia nulla: la card resta e il primo tasto risponde come sempre. Non serve spegnerlo tra un'inquadratura e l'altra.</p>
-      <p>Da spento, dopo <strong>tre giorni</strong> lo schermo passa al bianco con la sola fascia, e da lì l'X3 non consuma più nulla. Si riaccende sempre con il power tenuto.</p>
+      <p>Da spento, dopo <strong>tre giorni</strong> lo schermo passa al bianco con la sola fascia, e da lì l'X3 non consuma più nulla. Si riaccende sempre con una pressione lunga sul power.</p>
     </section>
 
     <!-- 4 -->
@@ -289,10 +289,14 @@
       </div>
       <h3>Lens chart di più pagine</h3>
       <div class="row flip">
-        <figure class="fig" data-dev='{"screen":"lens-port","k":0.85,"hi":[{"keys":"AB","text":"‹ indietro · avanti ›"},{"keys":"CD","text":"‹ indietro · avanti ›"}]}'></figure>
+        <figure class="fig" data-dev='{"screen":"lens-port","k":0.85,"hi":[{"keys":"AB","text":"‹ indietro"},{"keys":"CD","text":"avanti ›"}]}'></figure>
         <div>
-          <p>Una lens chart con molte lenti si divide in pagine. Sulla lens chart i bilancieri sfogliano <strong>solo le sue pagine</strong>, in giro: il capo a destra (<kbd>B</kbd> o <kbd>D</kbd>) avanza, quello a sinistra (<kbd>A</kbd> o <kbd>C</kbd>) torna indietro.</p>
-          <p>I due bilancieri fanno la stessa cosa: usa quello più comodo. Con l'X3 ruotato vale la stessa regola per chi guarda: avanza il capo a destra o in basso.</p>
+          <p>Una lens chart con molte lenti si divide in pagine. Sulla lens chart i bilancieri sfogliano <strong>solo le sue pagine</strong>, in giro, e ognuno vale come un tasto solo: premi un capo o l'altro, è uguale.</p>
+          <ul>
+            <li><kbd>A</kbd>|<kbd>B</kbd>, a sinistra: <strong>pagina indietro</strong>;</li>
+            <li><kbd>C</kbd>|<kbd>D</kbd>, a destra: <strong>pagina avanti</strong>.</li>
+          </ul>
+          <p>Con l'X3 ruotato conta quello che vedi: avanza il bilanciere a destra o in basso, torna indietro quello a sinistra o in alto.</p>
           <p>Con una sola pagina A–D non fanno nulla.</p>
         </div>
       </div>
@@ -303,12 +307,12 @@
       <header><div class="num">05</div><h2>Rotazione</h2>
         <p class="intro">L'X3 sente come lo tieni e gira la schermata nei quattro versi, sempre dritta per chi la guarda.</p></header>
       <div class="row wide">
-        <figure class="fig" data-dev='{"screen":"lens-land","rot":90,"k":0.8,"hi":[{"keys":"Y","text":"tieni: blocca"}]}'>
+        <figure class="fig" data-dev='{"screen":"lens-land","rot":90,"k":0.8,"hi":[{"keys":"Y","text":"lungo: blocca"}]}'>
           <figcaption>Ruotato di un quarto di giro: la lens chart passa in orizzontale.</figcaption>
         </figure>
         <div>
           <p>Il cambio avviene dopo circa mezzo secondo di posizione ferma. Appoggiato in piano, l'X3 tiene il verso che aveva.</p>
-          <p><strong>Tieni premuto <kbd>Y</kbd></strong> per bloccare la rotazione nel verso attuale; tienilo di nuovo per sbloccarla. Per un momento compare <span class="msg">ROTAZIONE BLOCCATA</span> o <span class="msg">ROTAZIONE AUTOMATICA</span>. Il blocco resta anche dopo lo spegnimento.</p>
+          <p><strong>Pressione lunga su <kbd>Y</kbd></strong> per bloccare la rotazione nel verso attuale; un'altra pressione lunga la sblocca. Per un momento compare <span class="msg">ROTAZIONE BLOCCATA</span> o <span class="msg">ROTAZIONE AUTOMATICA</span>. Il blocco resta anche dopo lo spegnimento.</p>
           <div class="note"><b class="t">Montato a testa in giù</b>
             <p>Con la rotazione bloccata resta fermo tutto: la schermata, le indicazioni dei tasti e la funzione dei bilancieri sono quelle del verso bloccato. Sbloccando, la schermata raggiunge subito la posizione vera.</p></div>
         </div>
@@ -325,7 +329,7 @@
         </figure>
         <div>
           <p><strong>Premi il power</strong> (breve) per bloccare: compare il lucchetto in alto, sotto il power. <kbd>A</kbd>–<kbd>D</kbd>, <kbd>X</kbd> e <kbd>Y</kbd> non fanno più nulla. Premi di nuovo il power per sbloccare.</p>
-          <p>La rotazione continua a funzionare anche con i tasti bloccati, e il power tenuto spegne come sempre. Spegnendo, il blocco si toglie.</p>
+          <p>La rotazione continua a funzionare anche con i tasti bloccati, e la pressione lunga sul power spegne come sempre. Spegnendo, il blocco si toglie.</p>
           <div class="note"><b class="t">Non risponde?</b><p>Guarda se c'è il lucchetto: è quasi sempre il blocco dei tasti.</p></div>
         </div>
       </div>
@@ -370,10 +374,10 @@
           <figcaption>In modifica lo stadio scelto è in negativo.</figcaption>
         </figure>
         <ol class="steps">
-          <li><strong>Tieni premuto <kbd>A</kbd> o <kbd>B</kbd></strong> sulla schermata filtri. La riga del primo stadio libero va in negativo.</li>
+          <li><strong>Pressione lunga su <kbd>A</kbd> o <kbd>B</kbd></strong> sulla schermata filtri. La riga del primo stadio libero va in negativo.</li>
           <li><strong><kbd>A</kbd> e <kbd>B</kbd></strong> spostano la selezione fra gli stadi. Le righe dell'ND non si scelgono.</li>
           <li><strong><kbd>C</kbd> e <kbd>D</kbd></strong> cambiano il vetro dello stadio: vuoto (—), poi i vetri del kit che non sono già montati. Arrivato in fondo ricomincia.</li>
-          <li><strong>Fatto.</strong> Dopo 5 secondi senza tocchi la modifica è accettata e si esce da soli. Per uscire subito premi <kbd>X</kbd> o <kbd>Y</kbd>, o tieni di nuovo A o B.</li>
+          <li><strong>Fatto.</strong> Dopo 5 secondi senza tocchi la modifica è accettata e si esce da soli. Per uscire subito premi <kbd>X</kbd> o <kbd>Y</kbd>, o di nuovo una pressione lunga su A o B.</li>
         </ol>
       </div>
       <div class="note"><b class="t">Buono a sapersi</b>
@@ -389,11 +393,11 @@
       <header><div class="num">09</div><h2>Mandare le card via Bluetooth</h2>
         <p class="intro">Le card si preparano nello strumento web e arrivano all'X3 dal telefono o dal computer, senza togliere la microSD.</p></header>
       <div class="row top">
-        <figure class="fig" data-dev='{"screen":"bluetooth","k":0.85,"hi":[{"keys":"X","text":"tieni: ricevi"}]}'>
+        <figure class="fig" data-dev='{"screen":"bluetooth","k":0.85,"hi":[{"keys":"X","text":"lungo: ricevi"}]}'>
           <figcaption>In ricezione l'X3 mostra il suo nome: è quello da scegliere.</figcaption>
         </figure>
         <ol class="steps">
-          <li>Sull'X3 <strong>tieni premuto <kbd>X</kbd></strong>: compare <span class="msg">BLUETOOTH</span> con il nome del dispositivo (per esempio CAMTAG-1A2B).</li>
+          <li>Sull'X3 fai una <strong>pressione lunga su <kbd>X</kbd></strong>: compare <span class="msg">BLUETOOTH</span> con il nome del dispositivo (per esempio CAMTAG-1A2B).</li>
           <li>Nello strumento web tocca <strong>Bluetooth</strong>, poi <strong>Invia le card</strong>, e scegli quel nome.</li>
           <li>A fine invio l'X3 mostra la prima card con <span class="msg">CARD AGGIORNATE</span>.</li>
         </ol>
@@ -404,7 +408,7 @@
       <div class="note warn"><b class="t">Quale browser</b>
         <ul>
           <li><strong>Android, Mac, Windows, Linux</strong>: Chrome o Edge. In Brave il Bluetooth va acceso in <code>brave://flags</code>.</li>
-          <li><strong>iPhone e iPad</strong>: Safari non ha il Bluetooth per le pagine web. Serve un browser che lo aggiunga, come BLE Link o Bluefy.</li>
+          <li><strong>iPhone e iPad</strong>: Safari non ha il Bluetooth per le pagine web. Serve un browser che lo aggiunga, come <a href="https://apps.apple.com/app/id6468414672" target="_blank" rel="noopener">BLE Link</a> o <a href="https://apps.apple.com/app/id1492822055" target="_blank" rel="noopener">Bluefy</a> (App Store).</li>
           <li>La pagina va aperta dall'indirizzo <strong>https://</strong> dello strumento.</li>
         </ul></div>
       <h3>Con la microSD</h3>
@@ -422,7 +426,7 @@
         <div class="table" style="margin-top:0"><table>
           <thead><tr><th>Messaggio</th><th>Cosa fare</th></tr></thead>
           <tbody>
-            <tr><td><span class="msg">NESSUNA CARD</span></td><td>Tieni premuto X e mandale via Bluetooth.</td></tr>
+            <tr><td><span class="msg">NESSUNA CARD</span></td><td>Fai una pressione lunga su X e mandale via Bluetooth.</td></tr>
             <tr><td><span class="msg">NESSUNA MICROSD</span></td><td>Inserisci la microSD e premi Reset.</td></tr>
             <tr><td><span class="msg">BMP NON VALIDO</span></td><td>Una card è rovinata: rimandale dallo strumento web.</td></tr>
             <tr><td><span class="msg">CARD AGGIORNATE</span></td><td>Invio riuscito, nulla da fare.</td></tr>
@@ -446,10 +450,10 @@
       <div class="table"><table>
         <thead><tr><th>Succede che…</th><th>Prova così</th></tr></thead>
         <tbody>
-          <tr><td>I tasti non fanno nulla</td><td>C'è il lucchetto? Premi il power. Se mostra la schermata di spento, tieni il power per 1 s.</td></tr>
-          <tr><td>La schermata non ruota</td><td>La rotazione è bloccata: tieni premuto Y.</td></tr>
+          <tr><td>I tasti non fanno nulla</td><td>C'è il lucchetto? Premi il power. Se mostra la schermata di spento, accendilo con una pressione lunga sul power (1 s).</td></tr>
+          <tr><td>La schermata non ruota</td><td>La rotazione è bloccata: sbloccala con una pressione lunga su Y.</td></tr>
           <tr><td>A–D non fanno nulla</td><td>È normale fuori dalla lens chart e dai filtri, e su una lens chart di una sola pagina.</td></tr>
-          <tr><td>Il telefono non trova l'X3</td><td>Metti l'X3 in ricezione (X tenuto) prima di toccare "Invia le card", e usa un browser con il Bluetooth.</td></tr>
+          <tr><td>Il telefono non trova l'X3</td><td>Metti l'X3 in ricezione (pressione lunga su X) prima di toccare "Invia le card", e usa un browser con il Bluetooth.</td></tr>
           <tr><td>Non risponde per niente</td><td>Premi Reset, in alto a sinistra. Le card restano.</td></tr>
         </tbody>
       </table></div>
