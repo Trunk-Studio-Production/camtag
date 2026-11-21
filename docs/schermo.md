@@ -1,6 +1,6 @@
 # Schermo: problemi aperti
 
-## Negativo delle schermate precedenti a schermo fermo (corretto, da confermare)
+## Negativo delle schermate precedenti a schermo fermo (risolto)
 
 **Sintomo.** Sulla schermata filtri, qualche minuto dopo l'ultimo aggiornamento,
 sul bianco affiora piano una grana grigia uniforme ("retinatura") che diventa
@@ -76,9 +76,9 @@ il negativo non è più comparso. Risvegliarlo vuol dire `begin` +
 non può essere veloce: i cambi dei filtri diventavano lenti. Nella 0.2.4 il
 sonno arriva `DISPLAY_SLEEP_MS` (4 s, scelti provando) dopo l'ultimo
 aggiornamento, non durante la modifica né prima del riordino degli stadi, e
-all'inizio del riposo (`wakeDisplay`/`sleepDisplay` in `main.cpp`). Da
-confermare con qualche ora d'uso: che il negativo non torni anche con i 4 s
-di pannello solo spento.
+all'inizio del riposo (`wakeDisplay`/`sleepDisplay` in `main.cpp`).
+Confermato sull'X3 il 21/11/2026, dopo ore d'uso: il negativo non torna, anche
+con i 4 s di pannello solo spento.
 
 **Riavvio da solo (da capire).** Alle 20:19:23 l'X3 è andato a riposo con il
 cavo attaccato; poco dopo la porta USB ha cambiato nome e lo schermo ha fatto

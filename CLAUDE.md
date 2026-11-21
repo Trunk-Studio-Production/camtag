@@ -161,7 +161,7 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   4 s dopo l'ultimo (`DISPLAY_SLEEP_MS`), il controller va in sonno profondo
   (`sleepDisplay`; `wakeDisplay` in `canvas()` lo risveglia e svuota il
   framebuffer): solo spento, in un paio di minuti affiora il negativo delle
-  schermate precedenti (`docs/schermo.md`).
+  schermate precedenti (`docs/schermo.md`; risolto così dalla 0.2.4, confermato).
 
 ## Formato card
 
@@ -401,9 +401,8 @@ la posizione naturale è `Canvas::ROT_270`).
 
 - Soglie della rotazione (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) su camera vera.
 - Ghosting (`FULL_REFRESH_EVERY`).
-- Negativo a schermo fermo: corretto con il sonno profondo del controller
-  (firmware 0.2.4), da confermare con ore d'uso. Aperto in `docs/schermo.md`:
-  il riavvio da solo dopo il riposo e il riposo che scatta con la USB.
+- Aperti in `docs/schermo.md`: il riavvio da solo dopo il riposo e il riposo
+  che scatta con la USB.
 - Energia, provato sull'X3 (20/11/2026): riposo con tasti e rotazione, blocco
   dei tasti, spento e riaccensione con il power tenuto (prima e dopo il
   bianco), passaggio al bianco, registro. Il gauge ha già 642 mAh; la batteria
