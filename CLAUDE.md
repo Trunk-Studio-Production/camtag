@@ -16,7 +16,7 @@ costruttori di lenti e filtri nei dati vanno bene.
 - `device/` — firmware PlatformIO (C++/Arduino, ESP32-C3). È il nostro codice.
   `BleUpload.cpp` riceve le card via Bluetooth (NimBLE-Arduino, acceso solo in
   ricezione; i file uguali non viaggiano, li copia lui dalle card attuali: `KEEP`)
-  e rimanda al telefono `project.json` (`GET`); `UploadProto.h` ha le parti provabili sull'host (`device/test/`).
+  e rimanda al telefono `project.json` (`GET`) e il registro della batteria (nome riservato `camtag-batteria.csv`, pulsante "Registro batteria"); `UploadProto.h` ha le parti provabili sull'host (`device/test/`).
   `Version.h` ha la versione del firmware (`CAMTAG_FW_VERSION`), scritta sulla
   schermata Bluetooth con i credits e mandata nella risposta a `HELLO`: lo
   configuratore web la mostra accanto a `FW_VERSION`; si ferma solo se il protocollo è diverso. Si cambiano
@@ -399,9 +399,9 @@ la posizione naturale è `Canvas::ROT_270`).
   dei tasti, spento e riaccensione con il power tenuto (prima e dopo il
   bianco), passaggio al bianco, registro. Il gauge ha già 642 mAh; la batteria
   si carica fino a circa 4,35 V e la ricarica si ferma da sola a piena.
-  **I consumi non sono ancora misurati**: prime letture circa 25 mA da sveglio
-  e 2 mA a riposo. Servono ore a batteria con `taratura.py batteria`: riposo,
-  riposo con i tasti bloccati, primi tre giorni da spento. Le domande aperte
+  Misurati (21/11/2026, 12 h a batteria): 25 mA da sveglio, 2,26 mA a riposo
+  (11,8 giorni). Mancano riposo con i tasti bloccati e i primi tre giorni da
+  spento. Le domande aperte
   sono in fondo a `docs/batteria.md`.
 - Schermata filtri: provata sull'X3 (bilancieri, indicazioni, riordino,
   modifica, ombra tolta dal mezzo refresh, blocco che ferma tutto).

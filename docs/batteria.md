@@ -131,6 +131,12 @@ Sull'X3 di prova non è servito: il gauge aveva già 642 mAh.
    lo spento. Qualche ora almeno: il gauge conta a passi di 1 mAh.
 3. Ricollega la USB e lancia `batteria`. La seriale riavvia l'X3: è normale.
 
+Senza cavo, via Bluetooth: sull'X3 tieni premuto X, nel configuratore web apri
+la finestra Bluetooth e scegli "Registro batteria"; il CSV si scarica nel
+browser e i conti li fa `taratura.py batteria --leggi <file>`. Così si legge a
+metà prova senza metterlo in carica. La ricezione lo tiene sveglio per quei
+secondi: finisce nella colonna `sveglio_s` della riga dopo, come un uso normale.
+
 Lo script divide il tempo tra una riga e l'altra in *sveglio*, *riposo*, *misto*
 e *spento*, e per ognuno dà mAh scesi, corrente media e durata con una batteria
 piena. Sotto 1 mA il gauge può sottostimare: accanto dà anche il calo di
@@ -146,15 +152,16 @@ tensione, come controllo.
 - **Consumo nei tre giorni prima del bianco**: mai misurato. Con il chip
   alimentato l'orologio continua, quindi il registro lo dà (riga `S`, poi `A`
   con riavvio 8). Se è troppo, si accorcia `OFF_BLANK_S`.
-- **Consumo vero a riposo.** Prime letture singole, non una misura: circa
-  28 mA da sveglio, circa 2 mA a riposo (il gauge ha la risoluzione di 1 mA).
-  Servono ore a batteria. Da capire quanto pesa la microSD alimentata.
+- **Consumo a riposo: misurato** (notte del 20-21/11/2026, registro letto via
+  Bluetooth): 2,26 mA di media su 11,9 h (27 mAh), 11,8 giorni con la batteria
+  piena; da sveglio 25 mA. Basta così: non si ottimizza a scapito d'altro
+  (prontezza dei tasti, microSD), si continua solo a guardare il registro.
 - **Ricarica**: si ferma da sola a batteria piena (da +70 mA a zero, a circa
   4,35 V). Da collegato l'X3 continua a prendere corrente dalla batteria, e la
   ricarica riparte ricollegando il cavo; se riparta anche da sola quando la
   tensione scende non si è ancora visto.
-- **Risvegli inutili dal riposo** (letture sbagliate dell'ADC, verso instabile):
-  si vedono da `sveglio_s` che cresce senza tasti.
+- **Risvegli inutili dal riposo**: nessuno nella notte di prova (`sveglio_s`
+  fermo per 10 h); si vedono da `sveglio_s` che cresce senza tasti.
 - **Pin nel sonno leggero**: il framework isola i pin; le uscite che devono
   restare ferme sono escluse in `keepOutputsInRest`. Riavvii inattesi a riposo
   comparirebbero come righe `A` senza una `S` prima.

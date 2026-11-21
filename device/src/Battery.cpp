@@ -10,10 +10,9 @@
 namespace battery {
 namespace {
 
-// Fuori da /camtag: la ricezione via Bluetooth sostituisce tutta quella cartella.
-constexpr const char* kLogPath = "/camtag-batteria.csv";
 constexpr const char* kHeader = "t_s,evento,info,mV,mA,mAh,pieno_mAh,pct,sveglio_s,riposo_s,schermo,tasti\n";
-constexpr uint32_t kMaxLogBytes = 2UL * 1024 * 1024;  // mesi di righe: poi smette
+// Mesi di righe: poi smette. Un po' sotto i 2 MB, il massimo di un file via Bluetooth.
+constexpr uint32_t kMaxLogBytes = 2UL * 1024 * 1024 - 1024;
 
 // Comandi standard del BQ27220 (16 bit, prima il byte basso).
 constexpr uint8_t kVoltage = 0x08, kCurrent = 0x0C, kRemaining = 0x10, kFull = 0x12, kSoc = 0x2C, kDesign = 0x3C;

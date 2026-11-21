@@ -360,6 +360,7 @@
   <p class="hint" id="bleDetail"></p>
   <p class="hint" id="bleFw" hidden></p>
   <div class="acts">
+    <button id="bleBatt" title="Scarica il registro dei consumi che l'X3 tiene sulla microSD">Registro batteria</button>
     <button id="bleGet" title="Riprende il progetto salvato sull'X3 insieme alle card">Importa dall'X3</button>
     <button id="bleStart" class="primary">Invia le card</button>
     <button id="bleClose">Chiudi</button>
@@ -2727,7 +2728,7 @@ new ResizeObserver(fitStage).observe($('.pbar'));  // i comandi vanno a capo: ca
 const PROJECT_FILE = 'project.json';  // in /camtag, accanto alle card
 // Firmware che questo configuratore web si aspetta sull'X3: lo stesso di CAMTAG_FW_VERSION
 // in device/src/Version.h. L'X3 lo dice nella risposta a HELLO (docs/bluetooth.md).
-const FW_VERSION = '0.3.0';
+const FW_VERSION = '0.3.1';
 const BLE = {
   service: 'c4a70001-1b2e-4f3a-9d6e-3a7c5e0b2f10',
   ctrl: 'c4a70002-1b2e-4f3a-9d6e-3a7c5e0b2f10',
@@ -2800,7 +2801,7 @@ function bleUi(msg, { detail = '', progress = null, error = false, busy = false 
   $('#bleDetail').textContent = detail;
   $('#bleBar').hidden = progress === null;
   if (progress !== null) $('#bleBar').value = progress;
-  $('#bleStart').hidden = $('#bleGet').hidden = busy;
+  $('#bleStart').hidden = $('#bleGet').hidden = $('#bleBatt').hidden = busy;
   $('#bleClose').textContent = t(busy ? 'Annulla' : 'Chiudi');
 }
 
@@ -2953,33 +2954,39 @@ async function bleSend() {
   });
 }
 
-// Importazione: GET del project.json salvato con le card. Il client conferma
-// con ACK ogni 2 KB (come fa l'X3 quando riceve) e controlla il CRC.
+// Un file dall'X3 con GET: il client conferma con ACK ogni 2 KB (come fa l'X3
+// quando riceve) e controlla il CRC. `what` è la scritta dell'avanzamento.
+async function linkGet(link, path, what) {
+  await link.dataNotify();
+  await link.cmd(`GET ${path}`);
+  const head = (await link.next()).split(' ');
+  if (head[0] !== 'FILE') throw new Error(t('Risposta inattesa: {}', head.join(' ')));
+  const size = +head[1], crc = parseInt(head[2], 16);
+  let acked = 0;
+  while (acked < size) {
+    await link.waitFor(() => link.rxBytes - acked >= BLE.ackEvery || link.rxBytes >= size);
+    if (link.rxBytes > size) throw new Error(t('Il dispositivo ha mandato più dati del previsto. Riprova.'));
+    acked = link.rxBytes;
+    // L'ACK dice il totale ricevuto, quindi si può ripetere se la scrittura fallisce.
+    for (let i = 0; ; i++) {
+      try { await link.ack(`ACK ${acked}`); break; }
+      catch (e) { if (i >= 3 || !link.connected()) throw e; await new Promise(r => setTimeout(r, 150)); }
+    }
+    bleUi(what, { busy: true, progress: acked / size, detail: t('{} di {} KB', Math.round(acked / 1024), Math.round(size / 1024)) });
+  }
+  const bytes = new Uint8Array(size);
+  let off = 0;
+  for (const r of link.rx) { bytes.set(r, off); off += r.length; }
+  if (crc32(bytes) !== crc) throw new Error(t('I dati sono arrivati rovinati. Riprova.'));
+  return bytes;
+}
+
+// Importazione: GET del project.json salvato con le card.
 async function bleGet() {
   let project = null;
   await bleSession(async link => {
     await link.open();
-    await link.dataNotify();
-    await link.cmd(`GET ${PROJECT_FILE}`);
-    const head = (await link.next()).split(' ');
-    if (head[0] !== 'FILE') throw new Error(t('Risposta inattesa: {}', head.join(' ')));
-    const size = +head[1], crc = parseInt(head[2], 16);
-    let acked = 0;
-    while (acked < size) {
-      await link.waitFor(() => link.rxBytes - acked >= BLE.ackEvery || link.rxBytes >= size);
-      if (link.rxBytes > size) throw new Error(t('Il dispositivo ha mandato più dati del previsto. Riprova.'));
-      acked = link.rxBytes;
-      // L'ACK dice il totale ricevuto, quindi si può ripetere se la scrittura fallisce.
-      for (let i = 0; ; i++) {
-        try { await link.ack(`ACK ${acked}`); break; }
-        catch (e) { if (i >= 3 || !link.connected()) throw e; await new Promise(r => setTimeout(r, 150)); }
-      }
-      bleUi(t('Ricevo il progetto…'), { busy: true, progress: acked / size, detail: t('{} di {} KB', Math.round(acked / 1024), Math.round(size / 1024)) });
-    }
-    const bytes = new Uint8Array(size);
-    let off = 0;
-    for (const r of link.rx) { bytes.set(r, off); off += r.length; }
-    if (crc32(bytes) !== crc) throw new Error(t('I dati sono arrivati rovinati. Riprova.'));
+    const bytes = await linkGet(link, PROJECT_FILE, t('Ricevo il progetto…'));
     try { project = JSON.parse(new TextDecoder().decode(bytes)); } catch { throw new Error(t('Il progetto sull\'X3 non è leggibile.')); }
     if (!project || !Array.isArray(project.cards)) throw new Error(t('Il progetto sull\'X3 non è leggibile.'));
   }, (e, link) => {
@@ -3000,6 +3007,28 @@ async function bleGet() {
   bleUi(t('Fatto: il progetto dell\'X3 è nel configuratore web.'), { detail: t('{} schede manuali, {} lenti.', project.cards.length, project.lenses?.length || 0) });
 }
 
+// Registro dei consumi (docs/batteria.md): l'X3 lo manda con il nome riservato
+// camtag-batteria.csv e lo si salva così com'è; i conti li fa
+// scripts/taratura.py batteria --leggi. Leggerlo non lo cancella.
+const BATTERY_LOG = 'camtag-batteria.csv';
+async function bleBattery() {
+  let bytes = null;
+  await bleSession(async link => {
+    await link.open();
+    bytes = await linkGet(link, BATTERY_LOG, t('Ricevo il registro della batteria…'));
+  }, (e, link) => {
+    const c = link.cancelled();
+    if (!c) console.error('Registro batteria:', e, `ricevuti ${link.rxBytes} B`);
+    bleUi(c ? t('Annullato.') : e.code === 'ASSENTE' ? t("Sull'X3 non c'è un registro della batteria, o il firmware è precedente alla 0.3.1.") : e.message || String(e), { error: !c });
+  });
+  if (!bytes) return;
+  const d = new Date(), p2 = n => String(n).padStart(2, '0');
+  const name = `batteria-${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}.csv`;
+  download(new Blob([bytes], { type: 'text/csv' }), name);
+  const rows = new TextDecoder().decode(bytes).split('\n').filter(l => /^\d/.test(l)).length;
+  bleUi(t('Fatto: registro della batteria salvato ({} righe).', rows), { detail: t('I conti: scripts/taratura.py batteria --leggi {}', name) });
+}
+
 $('#fwWanted').textContent = FW_VERSION;
 $('#bleBtn').onclick = () => {
   $('#bleFw').hidden = true;
@@ -3009,11 +3038,12 @@ $('#bleBtn').onclick = () => {
     if (IOS && window.isSecureContext && !navigator.bluetooth)
       $('#bleDetail').replaceChildren(t('Su App Store: '), ...IOS_BLE_APPS.flatMap(([n, u], i) => [i ? ' · ' : '', h('a', { href: u, target: '_blank', rel: 'noopener' }, n)]));
   } else bleUi(t('Sull\'X3 tieni premuto X finché compare BLUETOOTH, poi scegli cosa fare.'), { detail: t('Con le card arriva sull\'X3 anche il progetto, che puoi riprendere da qui con "Importa dall\'X3".') });
-  $('#bleStart').hidden = $('#bleGet').hidden = !!note;
+  $('#bleStart').hidden = $('#bleGet').hidden = $('#bleBatt').hidden = !!note;
   $('#bleDlg').showModal();
 };
 $('#bleStart').onclick = () => { bleSend(); };
 $('#bleGet').onclick = () => { bleGet(); };
+$('#bleBatt').onclick = () => { bleBattery(); };
 $('#bleClose').onclick = () => { if (bleRun) bleRun.cancel(); else $('#bleDlg').close(); };
 $('#bleDlg').addEventListener('cancel', e => { if (bleRun) { e.preventDefault(); bleRun.cancel(); } });
 // Il file di progetto porta con sé le modifiche delle sue lenti, per essere completo su un altro computer.

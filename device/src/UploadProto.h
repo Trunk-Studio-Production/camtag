@@ -12,6 +12,9 @@ namespace upload {
 constexpr int kProtocolVersion = 3;
 constexpr size_t kMaxPath = 96;
 constexpr uint32_t kMaxFileBytes = 2u * 1024u * 1024u;
+// Nome riservato per GET: il registro dei consumi (/camtag-batteria.csv nella radice
+// della microSD, docs/batteria.md) invece di un file di /camtag.
+constexpr const char* kBatteryLogName = "camtag-batteria.csv";
 
 // CRC-32 standard (zlib, polinomio 0xEDB88320). Si concatena: crc32(crc32(0, a), b).
 inline uint32_t crc32(uint32_t crc, const uint8_t* data, size_t len) {

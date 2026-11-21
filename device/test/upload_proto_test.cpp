@@ -52,6 +52,8 @@ int main() {
   Command g = parse("GET project.json");
   assert(g.cmd == Cmd::Get && std::string(g.path) == "project.json");
   assert(parse("GET ../segreto").cmd == Cmd::Unknown);
+  Command b = parse((std::string("GET ") + upload::kBatteryLogName).c_str());  // nome riservato
+  assert(b.cmd == Cmd::Get && std::string(b.path) == upload::kBatteryLogName);
   assert(parse("GET ").cmd == Cmd::Unknown);
   Command a = parse("ACK 4096");
   assert(a.cmd == Cmd::Ack && a.size == 4096);

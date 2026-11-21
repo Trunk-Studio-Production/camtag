@@ -33,7 +33,8 @@ con `--file` lo salva anche, accelerometro compreso.
 (docs/batteria.md), lo salva in misure/ e fa i conti: corrente media da sveglio,
 a riposo e da spento, e quanto durerebbe la batteria. La misura vale solo per i
 tratti a batteria: con la USB collegata si carica. `--azzera` cancella il registro
-sull'X3 dopo averlo salvato; `--leggi` rifà i conti su un file già salvato;
+sull'X3 dopo averlo salvato; `--leggi` rifà i conti su un file già salvato
+(anche quello scaricato via Bluetooth con "Registro batteria" nel configuratore web);
 `--bianco N` porta a N secondi l'attesa prima del bianco da spento, per provarla
 (0 rimette i tre giorni).
 
@@ -946,7 +947,7 @@ def main():
     ap.add_argument('--file', help='salva anche il registro della seriale in questo file')
     ap.add_argument('--porta', help='porta seriale (di solito si trova da sola)')
     ap.add_argument('--azzera', action='store_true', help='batteria: cancella il registro sull\'X3 dopo averlo salvato')
-    ap.add_argument('--leggi', help='batteria: rifà i conti su un registro già salvato, senza X3')
+    ap.add_argument('--leggi', help='batteria: rifà i conti su un registro già salvato (anche via Bluetooth), senza X3')
     ap.add_argument('--bianco', type=int, help='batteria: secondi da spento prima del bianco, per provarlo (0 = tre giorni)')
     args = ap.parse_args()
     if args.prova == 'batteria' and args.leggi:

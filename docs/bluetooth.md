@@ -30,7 +30,7 @@ client scrive, il dispositivo risponde con una notify.
 | *(dati su DATA)* | `ACK <byte>` ogni 2 KB, `DONE <byte>` alla fine | `DONE` solo se il CRC torna |
 | `COMMIT` | `OK` | `/camtag.new` prende il posto di `/camtag` |
 | `ABORT` | `OK` | cancella `/camtag.new`; `/camtag` resta com'era |
-| `GET <percorso>` | `FILE <byte> <crc32 hex> <percorso>`, poi i dati con notify su DATA | solo fuori da una sessione; `ERR ASSENTE` se il file non c'è |
+| `GET <percorso>` | `FILE <byte> <crc32 hex> <percorso>`, poi i dati con notify su DATA | solo fuori da una sessione; `ERR ASSENTE` se il file non c'è. Il nome riservato `camtag-batteria.csv` (dal firmware 0.3.1) dà il registro dei consumi, che sta fuori da `/camtag` |
 | `ACK <byte>` | — | durante un `GET`: byte ricevuti dal client |
 
 La versione del firmware non cambia il protocollo: con la stessa versione del
@@ -58,6 +58,13 @@ più `savedAt`, la data dell'invio. Sta in `/camtag` e quindi cambia solo al
 `.bmp`); "Importa dall'X3" lo rilegge con `GET project.json` e, dopo una
 conferma, sostituisce il progetto del browser. È anche nello zip: dalla microSD
 si apre con "Importa progetto".
+
+## Registro della batteria
+
+"Registro batteria" nella finestra Bluetooth del configuratore web chiede
+`GET camtag-batteria.csv`: l'X3 manda `/camtag-batteria.csv` dalla radice della
+microSD (docs/batteria.md) e il browser lo salva così com'è. Non lo cancella.
+Un firmware precedente alla 0.3.1 risponde `ERR ASSENTE`, come un X3 senza registro.
 
 ## Controllo di flusso
 

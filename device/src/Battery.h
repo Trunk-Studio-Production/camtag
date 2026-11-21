@@ -7,6 +7,11 @@
 
 namespace battery {
 
+// Nella radice della microSD, fuori da /camtag: la ricezione via Bluetooth sostituisce
+// tutta quella cartella. Si legge dalla seriale ("batt?") o via Bluetooth
+// (GET di upload::kBatteryLogName).
+constexpr const char* kLogPath = "/camtag-batteria.csv";
+
 struct Reading {
   bool ok = false;       // false: nessun gauge (X4) o lettura fallita
   uint16_t mv = 0;

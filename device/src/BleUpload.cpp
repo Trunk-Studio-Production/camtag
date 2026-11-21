@@ -7,6 +7,7 @@
 #include <freertos/queue.h>
 #include <freertos/stream_buffer.h>
 
+#include "Battery.h"
 #include "Lang.h"
 #include "UploadProto.h"
 #include "Version.h"
@@ -312,11 +313,13 @@ Event handle(const char* line) {
       reply("OK");
       return Event::Done;
 
-    // Manda al telefono un file di /camtag (es. project.json). Fuori da una
-    // sessione di caricamento: le card non cambiano.
+    // Manda al telefono un file di /camtag (es. project.json), o il registro dei
+    // consumi con il suo nome riservato. Fuori da una sessione di caricamento: le
+    // card non cambiano.
     case upload::Cmd::Get: {
       if (phase != Phase::Idle) return fail("STATO", lang::tr(lang::ErrProtocol));
-      const String path = String(kCardDir) + "/" + c.path;
+      const String path = strcmp(c.path, upload::kBatteryLogName) == 0 ? String(battery::kLogPath)
+                                                                       : String(kCardDir) + "/" + c.path;
       file = SdMan.open(path.c_str(), O_RDONLY);
       if (!file || file.isDirectory() || file.size() > upload::kMaxFileBytes) {
         if (file) file.close();
