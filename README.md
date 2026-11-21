@@ -212,9 +212,11 @@ plugging in the cable.
 - CamTag is unofficial firmware, with no connection to Xteink. Flashing
   replaces the original firmware, the bootloader and the partition table, and
   may void the device's warranty.
-- **CamTag does not update over the network.** The only way to flash anything
-  else, or to go back, is USB. If USB doesn't work on your X3, you are stuck
-  with whatever is on it.
+- **The first flash always goes through USB.** From firmware 0.4.0 CamTag
+  also updates over Bluetooth ("Update firmware" in the web configurator,
+  confirmed on the X3's buttons), but only to other CamTag versions: going
+  back to the original firmware or to CrossPoint needs USB. If USB doesn't
+  work on your X3, don't flash CamTag on it.
 - **Some units leave the factory with USB flashing locked**, in particular
   those sold by third-party shops rather than xteink.com (documented by
   [CrossPoint](https://github.com/crosspoint-reader/crosspoint-reader#usb-locked-devices-xteink-unlocker)).

@@ -360,6 +360,8 @@
   <p class="hint" id="bleDetail"></p>
   <p class="hint" id="bleFw" hidden></p>
   <div class="acts">
+    <button id="bleFwBtn" title="Installa sull'X3 il firmware di questo configuratore web. Con Maiusc premuto scegli un file .bin">Aggiorna firmware</button>
+    <input type="file" id="bleFwFile" accept=".bin" hidden>
     <button id="bleBatt" title="Scarica il registro dei consumi che l'X3 tiene sulla microSD">Registro batteria</button>
     <button id="bleGet" title="Riprende il progetto salvato sull'X3 insieme alle card">Importa dall'X3</button>
     <button id="bleStart" class="primary">Invia le card</button>
@@ -2728,13 +2730,18 @@ new ResizeObserver(fitStage).observe($('.pbar'));  // i comandi vanno a capo: ca
 const PROJECT_FILE = 'project.json';  // in /camtag, accanto alle card
 // Firmware che questo configuratore web si aspetta sull'X3: lo stesso di CAMTAG_FW_VERSION
 // in device/src/Version.h. L'X3 lo dice nella risposta a HELLO (docs/bluetooth.md).
-const FW_VERSION = '0.3.1';
+const FW_VERSION = '0.4.0';
 const BLE = {
   service: 'c4a70001-1b2e-4f3a-9d6e-3a7c5e0b2f10',
   ctrl: 'c4a70002-1b2e-4f3a-9d6e-3a7c5e0b2f10',
   data: 'c4a70003-1b2e-4f3a-9d6e-3a7c5e0b2f10',
-  version: 3,        // protocollo: docs/bluetooth.md
-  oldVersions: [2],  // ancora accettati: senza KEEP, si manda tutto
+  version: 4,           // protocollo: docs/bluetooth.md
+  oldVersions: [2, 3],  // ancora accettati: la 2 senza KEEP (si manda tutto), la 3 senza FIRMWARE
+  firmwareFrom: 4,      // da qui l'X3 si aggiorna via Bluetooth (FIRMWARE), anche con un protocollo diverso
+  // Il firmware compilato da GitHub Actions con questo configuratore web (stesso commit,
+  // .github/workflows/pages.yml). In locale non c'è: si sceglie un .bin con Maiusc.
+  firmwareUrl: 'firmware/camtag.bin',
+  confirmMs: 65000,     // FIRMWARE: tempo per la conferma sui tasti dell'X3 (lui rifiuta dopo 60 s)
   // Byte in volo non ancora confermati (il dispositivo ne tiene 16 KB). Non alzarla:
   // con 24 KB il browser sul Mac intasa la sua coda di scritture e l'invio rallenta o si blocca.
   window: 8192,
@@ -2749,6 +2756,10 @@ const BLE_ERRORS = {
   DATI: t('Errore di protocollo. Riprova.'),
   COMANDO: t('Il dispositivo non capisce il comando: aggiorna il firmware.'),
   ASSENTE: t('Sull\'X3 non c\'è un progetto. Ci arriva la prossima volta che gli invii le card da questo configuratore web.'),
+  RIFIUTATO: t("Aggiornamento annullato sull'X3: il firmware non è cambiato."),
+  BATTERIA: t("Batteria dell'X3 sotto il 30%: mettilo in carica e riprova."),
+  FLASH: t("L'X3 non è riuscito a scrivere il firmware: tiene quello di prima. Riprova."),
+  IMMAGINE: t("L'X3 ha rifiutato il file: non è un firmware per lui. Tiene quello di prima."),
 };
 
 function crc32(bytes, crc = 0) {
@@ -2786,12 +2797,13 @@ function fwCompare(a, b) {
 // Versione del firmware dell'X3 collegato (null = troppo vecchio per dirla).
 // Con lo stesso protocollo è compatibile: si informa e basta, niente avvisi.
 // Il conflitto (protocollo diverso) è un errore a parte, in link.open.
-function bleShowFw(fw) {
+function bleShowFw(fw, version) {
   const el = $('#bleFw');
   el.hidden = false;
   const cmp = fw ? fwCompare(fw, FW_VERSION) : -1;
   el.textContent = cmp === 0 ? t("Firmware dell'X3: {}.", fw)
-    : cmp < 0 ? t("Firmware dell'X3: {}, compatibile. La più recente è la {}.", fw || t('precedente alla 0.1.0'), FW_VERSION)
+    : cmp < 0 ? `${t("Firmware dell'X3: {}, compatibile. La più recente è la {}.", fw || t('precedente alla 0.1.0'), FW_VERSION)} ${
+      t(version >= BLE.firmwareFrom ? 'Per installarla: "Aggiorna firmware".' : 'Per arrivarci serve una volta il cavo USB (README); poi si aggiorna da qui.')}`
     : t("Firmware dell'X3: {}, compatibile.", fw);
 }
 
@@ -2801,7 +2813,7 @@ function bleUi(msg, { detail = '', progress = null, error = false, busy = false 
   $('#bleDetail').textContent = detail;
   $('#bleBar').hidden = progress === null;
   if (progress !== null) $('#bleBar').value = progress;
-  $('#bleStart').hidden = $('#bleGet').hidden = $('#bleBatt').hidden = busy;
+  $('#bleStart').hidden = $('#bleGet').hidden = $('#bleBatt').hidden = $('#bleFwBtn').hidden = busy;
   $('#bleClose').textContent = t(busy ? 'Annulla' : 'Chiudi');
 }
 
@@ -2816,18 +2828,18 @@ async function bleSession(work, onFail) {
   let cancelled = false, disconnected = false, waiter = null;
   const link = { acked: 0, inbox: [], rx: [], rxBytes: 0, device };
   const wake = () => { if (waiter) { const w = waiter; waiter = null; w(); } };
-  link.waitFor = async cond => {
+  link.waitFor = async (cond, ms = BLE.timeoutMs) => {
     const t0 = Date.now();
     while (!cond()) {
       if (cancelled) throw new Error(t('Annullato.'));
       if (disconnected) throw new Error(t('Collegamento interrotto. Avvicina il telefono all\'X3 e riprova.'));
-      const left = BLE.timeoutMs - (Date.now() - t0);
+      const left = ms - (Date.now() - t0);
       if (left <= 0) throw new Error(t('Il dispositivo non risponde. Riprova.'));
       await new Promise(res => { waiter = res; setTimeout(res, Math.min(left, 500)); });
     }
   };
-  link.next = async () => {
-    await link.waitFor(() => link.inbox.length);
+  link.next = async ms => {
+    await link.waitFor(() => link.inbox.length, ms);
     const m = link.inbox.shift();
     if (m.startsWith('ERR')) { const e = new Error(BLE_ERRORS[m.slice(4)] || t('Errore del dispositivo: {}', m)); e.code = m.slice(4); throw e; }
     return m;
@@ -2852,7 +2864,9 @@ async function bleSession(work, onFail) {
   device.addEventListener('gattserverdisconnected', () => { disconnected = true; wake(); });
 
   try {
-    link.open = async () => {
+    // `firmware`: si apre per aggiornarlo, quindi un protocollo diverso va bene se
+    // l'X3 conosce FIRMWARE (contratto fisso, docs/bluetooth.md).
+    link.open = async ({ firmware = false } = {}) => {
       bleUi(t('Mi collego a {}…', device.name || 'CamTag'), { busy: true, progress: 0 });
       const server = await device.gatt.connect();
       const svc = await server.getPrimaryService(BLE.service);
@@ -2882,8 +2896,16 @@ async function bleSession(work, onFail) {
         if (h[1] !== 'CAMTAG') throw new Error(t('Il dispositivo non è un CamTag.'));
         const fw = h[5] === 'FW' ? h[6] : null;
         link.version = +h[2];
-        if (link.version !== BLE.version && !BLE.oldVersions.includes(link.version)) throw new Error(t("Il firmware dell'X3 ({}) non parla con questo configuratore web, fatto per la {}: aggiornali insieme.", fw || t('precedente alla 0.1.0'), FW_VERSION));
-        bleShowFw(fw);
+        link.fw = fw;
+        const ota = link.version >= BLE.firmwareFrom;
+        if (link.version !== BLE.version && !BLE.oldVersions.includes(link.version) && !(firmware && ota)) {
+          const fwName = fw || t('precedente alla 0.1.0');
+          throw new Error(link.version > BLE.version
+            ? t("Il firmware dell'X3 ({}) è più recente di questo configuratore web, fatto per la {}: ricarica la pagina.", fwName, FW_VERSION)
+            : ota ? t("Il firmware dell'X3 ({}) non parla con questo configuratore web, fatto per la {}: premi \"Aggiorna firmware\".", fwName, FW_VERSION)
+            : t("Il firmware dell'X3 ({}) non parla con questo configuratore web, fatto per la {}: aggiornalo una volta con il cavo USB (README).", fwName, FW_VERSION));
+        }
+        bleShowFw(fw, link.version);
         mtu = +h[4] || 23;
       }
       link.chunkSize = Math.max(20, Math.min(512, mtu - 3));
@@ -2929,13 +2951,7 @@ async function bleSend() {
       await link.cmd(`FILE ${spec}`);
       const r = await link.next();
       if (r.startsWith('DONE')) continue;  // file vuoto
-      link.acked = 0;
-      for (let off = 0; off < f.bytes.length; off += link.chunkSize) {
-        await link.waitFor(() => off - link.acked < BLE.window || link.inbox.length);
-        if (link.inbox.length) await link.next();  // un ERR interrompe qui
-        await link.write(f.bytes.subarray(off, off + link.chunkSize));
-        $('#bleBar').value = (sent + off) / total;
-      }
+      await linkPush(link, f.bytes, off => { $('#bleBar').value = (sent + off) / total; });
       const done = await link.next();
       if (!done.startsWith('DONE')) throw new Error(t('Risposta inattesa: {}', done));
       sent += f.bytes.length;
@@ -2952,6 +2968,18 @@ async function bleSend() {
     const c = link.cancelled();
     bleUi(c ? t('Invio annullato: sul dispositivo restano le card di prima.') : e.message || String(e), { error: !c, detail: c ? '' : t('Sul dispositivo restano le card di prima.') });
   });
+}
+
+// Dati di un file su DATA, dopo l'OK a FILE o FIRMWARE: al massimo BLE.window
+// byte non confermati dagli ACK dell'X3. `progress(byte inviati)`.
+async function linkPush(link, bytes, progress) {
+  link.acked = 0;
+  for (let off = 0; off < bytes.length; off += link.chunkSize) {
+    await link.waitFor(() => off - link.acked < BLE.window || link.inbox.length);
+    if (link.inbox.length) await link.next();  // un ERR interrompe qui
+    await link.write(bytes.subarray(off, off + link.chunkSize));
+    progress(off);
+  }
 }
 
 // Un file dall'X3 con GET: il client conferma con ACK ogni 2 KB (come fa l'X3
@@ -3007,6 +3035,62 @@ async function bleGet() {
   bleUi(t('Fatto: il progetto dell\'X3 è nel configuratore web.'), { detail: t('{} schede manuali, {} lenti.', project.cards.length, project.lenses?.length || 0) });
 }
 
+// Aggiornamento del firmware (FIRMWARE, docs/bluetooth.md). Il .bin è quello
+// pubblicato con questo configuratore web, o un file scelto (Maiusc + clic).
+// Prima di mandarlo controlla che sia un'immagine ESP32-C3 con il marchio
+// CAMTAG_FW=<versione> (device/src/Version.h); l'X3 chiede conferma sui tasti.
+function firmwareVersionOf(bytes) {
+  if (bytes.length < 24 || bytes[0] !== 0xE9 || (bytes[12] | bytes[13] << 8) !== 5) return null;
+  const m = /CAMTAG_FW=([0-9A-Za-z.-]{1,15})\0/.exec(new TextDecoder('latin1').decode(bytes));
+  return m ? m[1] : null;
+}
+
+async function bleFirmware(file) {
+  let installed = null, started = false;
+  await bleSession(async link => {
+    let bytes;
+    if (file) bytes = new Uint8Array(await file.arrayBuffer());
+    else {
+      bleUi(t('Scarico il firmware {}…', FW_VERSION), { busy: true, progress: 0 });
+      const r = await fetch(BLE.firmwareUrl, { cache: 'no-cache' }).catch(() => null);
+      if (!r || !r.ok) throw new Error(t('Il firmware non è in questa copia del configuratore web: c\'è solo in quella pubblicata su GitHub Pages. Per un file .bin tieni premuto Maiusc mentre premi "Aggiorna firmware".'));
+      bytes = new Uint8Array(await r.arrayBuffer());
+    }
+    const version = firmwareVersionOf(bytes);
+    if (!version) throw new Error(t('Il file non è un firmware CamTag per l\'X3.'));
+    if (!file && version !== FW_VERSION) console.warn('[ble] firmware pubblicato', version, 'invece di', FW_VERSION);
+    await link.open({ firmware: true });
+    if (link.version < BLE.firmwareFrom) throw new Error(t("Il firmware dell'X3 ({}) non si aggiorna via Bluetooth: la prima volta serve il cavo USB (README).", link.fw || t('precedente alla 0.1.0')));
+    if (link.fw && fwCompare(link.fw, version) >= 0 && !confirm(t("L'X3 ha già il firmware {}. Installare comunque la {}?", link.fw, version))) {
+      bleUi(t("Il firmware dell'X3 non è cambiato."));
+      return;
+    }
+    started = true;
+    await link.cmd(`FIRMWARE ${bytes.length} ${crc32(bytes).toString(16)} ${version}`);
+    const ask = await link.next();
+    if (ask !== 'ASK') throw new Error(t('Risposta inattesa: {}', ask));
+    bleUi(t("Conferma sull'X3: premi A, B, C o D per installare la {}.", version), { busy: true, detail: t('X o Y annullano.') });
+    const ok = await link.next(BLE.confirmMs);
+    if (ok !== 'OK') throw new Error(t('Risposta inattesa: {}', ok));
+    const t0 = Date.now(), kb = Math.round(bytes.length / 1024);
+    await linkPush(link, bytes, off => bleUi(t('Installo il firmware {}…', version), { busy: true, progress: off / bytes.length,
+      detail: t('{} di {} KB. Tieni il telefono vicino all\'X3.', Math.round(off / 1024), kb) }));
+    bleUi(t('L\'X3 controlla il firmware…'), { busy: true, progress: 1 });
+    const done = await link.next();
+    if (!done.startsWith('DONE')) throw new Error(t('Risposta inattesa: {}', done));
+    installed = { version, secs: Math.max(1, Math.round((Date.now() - t0) / 1000)), kb };
+  }, async (e, link) => {
+    if (link.connected()) { try { await link.cmd('ABORT'); } catch {} }
+    const c = link.cancelled();
+    if (!c) console.error('Aggiorna firmware:', e);
+    bleUi(c ? t("Aggiornamento annullato: il firmware dell'X3 non è cambiato.") : e.message || String(e), { error: !c,
+      detail: c || e.code || !started ? '' : t("Se l'aggiornamento era cominciato, l'X3 tiene il firmware di prima.") });
+  });
+  if (installed) $('#bleFw').hidden = true;  // la versione detta prima non vale più
+  if (installed) bleUi(t('Fatto: firmware {} installato, l\'X3 si riavvia.', installed.version), { progress: 1,
+    detail: t('{} KB in {} s. Se il nuovo firmware non partisse, l\'X3 torna da solo a quello di prima.', installed.kb, installed.secs) });
+}
+
 // Registro dei consumi (docs/batteria.md): l'X3 lo manda con il nome riservato
 // camtag-batteria.csv e lo si salva così com'è; i conti li fa
 // scripts/taratura.py batteria --leggi. Leggerlo non lo cancella.
@@ -3038,12 +3122,26 @@ $('#bleBtn').onclick = () => {
     if (IOS && window.isSecureContext && !navigator.bluetooth)
       $('#bleDetail').replaceChildren(t('Su App Store: '), ...IOS_BLE_APPS.flatMap(([n, u], i) => [i ? ' · ' : '', h('a', { href: u, target: '_blank', rel: 'noopener' }, n)]));
   } else bleUi(t('Sull\'X3 tieni premuto X finché compare BLUETOOTH, poi scegli cosa fare.'), { detail: t('Con le card arriva sull\'X3 anche il progetto, che puoi riprendere da qui con "Importa dall\'X3".') });
-  $('#bleStart').hidden = $('#bleGet').hidden = $('#bleBatt').hidden = !!note;
+  $('#bleStart').hidden = $('#bleGet').hidden = $('#bleBatt').hidden = $('#bleFwBtn').hidden = !!note;
   $('#bleDlg').showModal();
 };
 $('#bleStart').onclick = () => { bleSend(); };
 $('#bleGet').onclick = () => { bleGet(); };
 $('#bleBatt').onclick = () => { bleBattery(); };
+// Con Maiusc si sceglie un .bin (prove in sviluppo). Lo si manda con il clic dopo:
+// il browser chiede il dispositivo solo subito dopo un clic, e la scelta del file
+// può durare di più.
+let bleFwChosen = null;
+$('#bleFwBtn').onclick = e => { if (e.shiftKey) $('#bleFwFile').click(); else bleFirmware(bleFwChosen); };
+$('#bleFwFile').onchange = async e => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  const v = firmwareVersionOf(new Uint8Array(await f.arrayBuffer()));
+  bleFwChosen = v ? f : null;
+  bleUi(v ? t('Firmware scelto: {} ({}). Premi "Aggiorna firmware" per installarlo.', f.name, v) : t('Il file non è un firmware CamTag per l\'X3.'), { error: !v,
+    detail: v ? t('Ricarica la pagina per tornare al firmware pubblicato.') : '' });
+};
 $('#bleClose').onclick = () => { if (bleRun) bleRun.cancel(); else $('#bleDlg').close(); };
 $('#bleDlg').addEventListener('cancel', e => { if (bleRun) { e.preventDefault(); bleRun.cancel(); } });
 // Il file di progetto porta con sé le modifiche delle sue lenti, per essere completo su un altro computer.

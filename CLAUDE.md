@@ -17,10 +17,16 @@ costruttori di lenti e filtri nei dati vanno bene.
   `BleUpload.cpp` riceve le card via Bluetooth (NimBLE-Arduino, acceso solo in
   ricezione; i file uguali non viaggiano, li copia lui dalle card attuali: `KEEP`)
   e rimanda al telefono `project.json` (`GET`) e il registro della batteria (nome riservato `camtag-batteria.csv`, pulsante "Registro batteria"); `UploadProto.h` ha le parti provabili sull'host (`device/test/`).
+  Riceve anche il firmware (`FIRMWARE`, dalla 0.4.0): conferma sui tasti dell'X3,
+  scrittura nella partizione OTA libera, riavvio; il nuovo parte in prova e si
+  conferma al primo giro di `loop()` (`markFirmwareValid`), se no il bootloader
+  torna al vecchio. `HELLO` e `FIRMWARE` non cambiano più tra un protocollo e l'altro.
   `Version.h` ha la versione del firmware (`CAMTAG_FW_VERSION`), scritta sulla
   schermata Bluetooth con i credits e mandata nella risposta a `HELLO`: lo
   configuratore web la mostra accanto a `FW_VERSION`; si ferma solo se il protocollo è diverso. Si cambiano
-  insieme, a ogni nuovo firmware.
+  insieme, a ogni nuovo firmware: il workflow Pages compila il firmware, lo pubblica
+  in `companion/firmware/camtag.bin` (per "Aggiorna firmware") e si ferma se la
+  versione nel binario (`CAMTAG_FW_TAG`) non è `FW_VERSION`.
   `Lang.h` ha le scritte del firmware in inglese e italiano (`tr()`): una frase
   nuova va lì con le due lingue, e se il simulatore la disegna anche in `DEV_TEXT`.
   `Filters.cpp` è la schermata filtri provabile sull'host (lettura di
@@ -75,8 +81,8 @@ costruttori di lenti e filtri nei dati vanno bene.
 ## Repo e comandi
 
 Repo pubblico `Trunk-Studio-Production/camtag`, licenza GPL-3.0, branch `main`. Commit e push
-solo quando l'utente lo chiede. Ogni push su `main` che tocca `companion/` o
-`data/` pubblica il configuratore web su GitHub Pages
+solo quando l'utente lo chiede. Ogni push su `main` che tocca `companion/`,
+`data/` o `device/` compila il firmware e pubblica il configuratore web su GitHub Pages
 (`.github/workflows/pages.yml`): https://trunk-studio-production.github.io/camtag/
 
 ```bash
@@ -88,6 +94,7 @@ git clone --depth 1 https://github.com/crosspoint-reader/crosspoint-reader refer
 cd device && ../.venv/bin/pio run -e x3                  # compila
 cd device && ../.venv/bin/pio run -e x3 -t upload        # carica (vedi sotto)
 python3 -m http.server 8766    # dalla radice; poi apri http://localhost:8766/companion/
+# per provare "Aggiorna firmware" in locale: cp device/.pio/build/x3/firmware.bin companion/firmware/camtag.bin
 ```
 
 Sessioni cloud (environment su claude.ai/code): l'hook SessionStart in
@@ -385,7 +392,9 @@ non è più vero invece di aggiungere note.
 
 ## Da tarare sull'hardware (aperto)
 
-Provati sull'X3: ricezione Bluetooth dal Mac (1,1 MB in ~40 s) e "Importa dall'X3", card vere, X/Y, rotazione e
+Provati sull'X3: ricezione Bluetooth dal Mac (1,1 MB in ~40 s) e "Importa dall'X3",
+aggiornamento del firmware via Bluetooth (864 KB in 26 s; il nuovo parte in prova,
+`stato 1`, e si conferma: il bootloader ha il rollback), card vere, X/Y, rotazione e
 blocco, bilancieri della lens chart nei 4 versi. Tasti, assi IMU e verso dello schermo sono tarati sull'X3 (`kKeyA`…`kKeyD`, `kKeyX`, `kKeyY`,
 `kImuSwapXY`, `kImuSignX`, `kImuSignY`, `kQuarterTurns` in `device/src/main.cpp`:
 la posizione naturale è `Canvas::ROT_270`).

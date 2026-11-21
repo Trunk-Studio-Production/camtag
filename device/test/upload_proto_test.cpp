@@ -60,5 +60,26 @@ int main() {
   assert(parse("ACK").cmd == Cmd::Unknown);
   assert(parse("ACK 12x").cmd == Cmd::Unknown);
   assert(parse("ACK 99999999").cmd == Cmd::Unknown);
+
+  Command fw = parse("FIRMWARE 851680 1a2b3c4d 0.4.0");
+  assert(fw.cmd == Cmd::Firmware && fw.size == 851680 && fw.crc == 0x1a2b3c4du);
+  assert(std::string(fw.path) == "0.4.0");
+  assert(parse("FIRMWARE 851680 1a2b3c4d 0.4.0-rc1").cmd == Cmd::Firmware);
+  assert(parse("FIRMWARE 7000000 1a 0.4.0").cmd == Cmd::Unknown);  // più grande della partizione
+  assert(parse("FIRMWARE 10 1a 0.4.0").cmd == Cmd::Unknown);       // meno dell'intestazione
+  assert(parse("FIRMWARE 851680 1a").cmd == Cmd::Unknown);
+  assert(parse("FIRMWARE 851680 1a ").cmd == Cmd::Unknown);
+  assert(parse("FIRMWARE 851680 1a 0.4 0").cmd == Cmd::Unknown);
+  assert(parse("FIRMWARE 851680 1a 0.4.0/../x").cmd == Cmd::Unknown);
+  assert(parse("FIRMWARE 851680 1a 0123456789abcdef").cmd == Cmd::Unknown);  // 16 caratteri
+
+  uint8_t head[24] = {0xE9, 6, 2, 0x2f, 0, 0, 0, 0, 0xee, 0, 0, 0, 5, 0};
+  assert(firmwareHeaderOk(head, sizeof(head)));
+  assert(!firmwareHeaderOk(head, 23));
+  head[12] = 0;  // ESP32 classico
+  assert(!firmwareHeaderOk(head, sizeof(head)));
+  head[12] = 5;
+  head[0] = 0x42;
+  assert(!firmwareHeaderOk(head, sizeof(head)));
   puts("upload_proto_test: ok");
 }

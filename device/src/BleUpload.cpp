@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <NimBLEDevice.h>
 #include <SDCardManager.h>
+#include <Update.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/stream_buffer.h>
@@ -41,6 +42,8 @@ constexpr uint32_t kAckEvery = 2048;
 constexpr uint32_t kSendWindow = 8192;
 constexpr int kSendBurst = 16;  // pacchetti al massimo per giro di loop
 constexpr size_t kCmdLen = 160;
+// FIRMWARE: tempo per confermare sull'X3, poi si rifiuta da solo.
+constexpr uint32_t kFwAskMs = 60000;
 
 QueueHandle_t cmdQueue = nullptr;
 StreamBufferHandle_t dataBuf = nullptr;
@@ -69,7 +72,9 @@ void requestFastInterval(uint16_t handle) {
 }
 bool running = false;
 
-enum class Phase { Idle, Session, Receiving, Sending };
+// FwAsk: FIRMWARE arrivato, si aspetta la conferma sui tasti; FwReceiving: i dati
+// vanno nella partizione OTA libera.
+enum class Phase { Idle, Session, Receiving, Sending, FwAsk, FwReceiving };
 Phase phase = Phase::Idle;
 FsFile file;
 uint32_t fileSize = 0;
@@ -89,6 +94,9 @@ uint32_t sdUs = 0;  // tempo passato a scrivere sulla microSD nella sessione
 uint8_t pending[512];
 size_t pendingLen = 0;  // pacchetto letto ma non ancora accettato da NimBLE
 char error[32] = "";
+char fwVersion[upload::kMaxFwVersion + 1] = "";
+uint32_t fwAskMs = 0;
+uint8_t fwHead[upload::kImageHeaderBytes];  // i primi byte, per controllare l'immagine
 
 void reply(const char* msg) {
   const bool ok = ctrlChr && isConnected && ctrlChr->notify(reinterpret_cast<const uint8_t*>(msg), strlen(msg));
@@ -149,6 +157,8 @@ void setError(const char* msg) { strncpy(error, msg, sizeof(error) - 1); }
 
 void cleanup() {
   if (file) file.close();
+  // Firmware a metà: la partizione OTA si scarta, si riavvia quello di prima.
+  if (Update.isRunning()) Update.abort();
   if (SdMan.exists(kTmpDir)) SdMan.removeDir(kTmpDir);
   phase = Phase::Idle;
   received = fileSize = 0;
@@ -241,6 +251,24 @@ Event finishFile() {
   reply(msg);
   phase = Phase::Session;
   return Event::Progress;
+}
+
+// Ultimo byte del firmware: CRC, poi Update controlla l'immagine e la rende la
+// partizione di avvio. Il rollback del bootloader la tiene in prova finché il
+// nuovo firmware non si dichiara sano (main.cpp, markFirmwareValid).
+Event finishFirmware() {
+  if (fileCrc != expectedCrc) return fail("CRC", lang::tr(lang::ErrCrc));
+  if (!Update.end()) {
+    BLOG("[ble] firmware: %s\n", Update.errorString());
+    return fail("FLASH", lang::tr(lang::ErrFwFlash));
+  }
+  BLOG("[ble] firmware %s: %lu B in %lu ms\n", fwVersion, static_cast<unsigned long>(received),
+       static_cast<unsigned long>(millis() - fileStartMs));
+  char msg[24];
+  snprintf(msg, sizeof(msg), "DONE %lu", static_cast<unsigned long>(received));
+  reply(msg);
+  phase = Phase::Idle;
+  return Event::FirmwareDone;
 }
 
 Event handle(const char* line) {
@@ -365,6 +393,19 @@ Event handle(const char* line) {
       return Event::None;
     }
 
+    // Nuovo firmware: prima la conferma sull'X3 (main.cpp chiama answerFirmware).
+    // "ASK" dice al client di aspettare la persona, poi "OK" o "ERR RIFIUTATO".
+    case upload::Cmd::Firmware:
+      if (phase != Phase::Idle) return fail("STATO", lang::tr(lang::ErrProtocol));
+      fileSize = c.size;
+      expectedCrc = c.crc;
+      strncpy(fwVersion, c.path, sizeof(fwVersion) - 1);
+      fwVersion[sizeof(fwVersion) - 1] = '\0';
+      fwAskMs = millis();
+      phase = Phase::FwAsk;
+      reply("ASK");
+      return Event::FirmwareAsk;
+
     case upload::Cmd::Abort:
       cleanup();
       reply("OK");
@@ -402,14 +443,30 @@ Event drainData() {
   Event ev = Event::None;
   size_t n;
   while ((n = xStreamBufferReceive(dataBuf, buf, sizeof(buf), 0)) > 0) {
-    if (phase != Phase::Receiving || received + n > fileSize) return fail("DATI", lang::tr(lang::ErrProtocol));
-    const uint32_t t = micros();
-    if (file.write(buf, n) != n) return fail("SD", lang::tr(lang::ErrSdFull));
-    sdUs += micros() - t;
+    const bool fw = phase == Phase::FwReceiving;
+    if ((phase != Phase::Receiving && !fw) || received + n > fileSize) return fail("DATI", lang::tr(lang::ErrProtocol));
+    if (fw) {
+      // Le prime righe dell'immagine: deve essere un firmware per ESP32-C3. Update
+      // tiene i dati in un buffer da 4 KB, quindi la flash non è ancora toccata.
+      if (received < sizeof(fwHead)) {
+        const size_t k = std::min<size_t>(n, sizeof(fwHead) - received);
+        memcpy(fwHead + received, buf, k);
+        if (received + k == sizeof(fwHead) && !upload::firmwareHeaderOk(fwHead, sizeof(fwHead)))
+          return fail("IMMAGINE", lang::tr(lang::ErrFwImage));
+      }
+      if (Update.write(buf, n) != n) {
+        BLOG("[ble] firmware: %s\n", Update.errorString());
+        return fail("FLASH", lang::tr(lang::ErrFwFlash));
+      }
+    } else {
+      const uint32_t t = micros();
+      if (file.write(buf, n) != n) return fail("SD", lang::tr(lang::ErrSdFull));
+      sdUs += micros() - t;
+    }
     fileCrc = upload::crc32(fileCrc, buf, n);
     received += n;
     if (received == fileSize) {
-      ev = finishFile();
+      ev = fw ? finishFirmware() : finishFile();
       if (ev == Event::Failed) return ev;
     } else if (received - lastAck >= kAckEvery) {
       if (received / 8192 != lastAck / 8192) BLOG("[ble] ricevuti %lu B\n", static_cast<unsigned long>(received));
@@ -508,11 +565,12 @@ Event poll() {
     overflow = false;
     return fail("OVERFLOW", lang::tr(lang::ErrTooFast));
   }
+  if (phase == Phase::FwAsk && millis() - fwAskMs > kFwAskMs) return fail("RIFIUTATO", lang::tr(lang::FwRefused));
   char line[kCmdLen];
   Event ev = Event::None;
   // I dati del file in corso vanno scritti prima del comando successivo.
   ev = drainData();
-  if (ev == Event::Failed) return ev;
+  if (ev == Event::Failed || ev == Event::FirmwareDone) return ev;
   // Più comandi per giro: durante un GET arrivano gli ACK del client.
   for (int i = 0; i < 8 && xQueueReceive(cmdQueue, line, 0) == pdTRUE; i++) {
     const Event cmdEv = handle(line);
@@ -523,6 +581,30 @@ Event poll() {
   if (pumpSend() == Event::Failed) return Event::Failed;
   return ev;
 }
+
+Event answerFirmware(bool yes, const char* reason) {
+  if (phase != Phase::FwAsk) return Event::None;
+  if (!yes) {
+    const bool battery = reason && strcmp(reason, "BATTERIA") == 0;
+    return fail(reason ? reason : "RIFIUTATO", lang::tr(battery ? lang::ErrFwBattery : lang::FwRefused));
+  }
+  xStreamBufferReset(dataBuf);
+  if (!Update.begin(fileSize, U_FLASH)) {
+    BLOG("[ble] firmware: %s\n", Update.errorString());
+    return fail("FLASH", lang::tr(lang::ErrFwFlash));
+  }
+  fileCrc = 0;
+  received = lastAck = 0;
+  fileStartMs = millis();
+  phase = Phase::FwReceiving;
+  reply("OK");
+  return Event::Progress;
+}
+
+bool firmwareAsking() { return phase == Phase::FwAsk; }
+bool firmwareReceiving() { return phase == Phase::FwReceiving; }
+const char* firmwareVersion() { return fwVersion; }
+uint8_t firmwarePercent() { return fileSize ? static_cast<uint8_t>(uint64_t(received) * 100 / fileSize) : 0; }
 
 bool connected() { return isConnected; }
 bool transferring() { return phase != Phase::Idle; }

@@ -206,9 +206,11 @@ intero prima di collegare il cavo.
 - CamTag è un firmware non ufficiale, senza alcun legame con Xteink. Il
   caricamento sostituisce il firmware originale, il bootloader e la tabella
   partizioni, e può far decadere la garanzia del dispositivo.
-- **CamTag non si aggiorna via rete.** L'unica strada per caricare altro, o per
-  tornare indietro, è la USB. Se sul tuo X3 la USB non funziona, resti con
-  quello che c'è sopra.
+- **Il primo caricamento passa sempre dalla USB.** Dal firmware 0.4.0 CamTag
+  si aggiorna anche via Bluetooth ("Aggiorna firmware" nel configuratore web,
+  con la conferma sui tasti dell'X3), ma solo con altre versioni di CamTag:
+  per tornare al firmware originale o a CrossPoint serve la USB. Se sul tuo X3
+  la USB non funziona, non caricarci CamTag.
 - **Alcune unità escono di fabbrica con il caricamento USB bloccato**, in
   particolare quelle vendute da negozi terzi e non da xteink.com (lo documenta
   [CrossPoint](https://github.com/crosspoint-reader/crosspoint-reader#usb-locked-devices-xteink-unlocker)).

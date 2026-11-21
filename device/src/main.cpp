@@ -46,6 +46,7 @@
 #include <Wire.h>
 #include <XteinkDetect.h>
 #include <driver/gpio.h>
+#include <esp_ota_ops.h>
 #include <esp_sleep.h>
 #include <esp_system.h>
 #include <esp_timer.h>
@@ -92,6 +93,10 @@ constexpr uint32_t RECEIVE_IDLE_MS = 180000;
 // Durante un trasferimento il display si aggiorna al massimo ogni tanto: ogni
 // aggiornamento ferma la scrittura sulla microSD.
 constexpr uint32_t RECEIVE_REDRAW_MS = 4000;
+// Aggiornamento del firmware: percentuale ridisegnata di rado (ogni aggiornamento
+// dello schermo ferma i dati), e batteria minima se non è in carica.
+constexpr uint32_t FW_REDRAW_MS = 8000;
+constexpr uint8_t FW_MIN_BATTERY_PCT = 30;
 constexpr int LOW_BATTERY_PERCENT = 20;
 // Sopra questa corrente in entrata è "in carica" (sotto è rumore del gauge).
 constexpr int16_t CHARGE_MIN_MA = 5;
@@ -1048,13 +1053,62 @@ void drawReceive(const char* status, const char* detail, bool full) {
   c.textCentered(mid + 130, tr(lang::ExitHint), 2);
   // In piccolo in fondo: versione del firmware e credits.
   const int h = c.height();
-  c.textCentered(h - 100, "FIRMWARE " CAMTAG_FW_VERSION, 2);
+  // Il marchio CAMTAG_FW=… va usato da qualche parte, se no il linker lo toglie.
+  static const char kTag[] = CAMTAG_FW_TAG;
+  char fw[32];
+  snprintf(fw, sizeof(fw), "FIRMWARE %s", kTag + sizeof("CAMTAG_FW=") - 1);
+  c.textCentered(h - 100, fw, 2);
   c.textCentered(h - 76, tr(lang::Credits), 2);
   c.textCentered(h - 52, "TRUNK STUDIO - TRUNKSTUDIO.IT", 2);
   present(full);
   lastReceiveDrawMs = millis();
   LOGF("[camtag] schermo ricezione: %lu ms\n", static_cast<unsigned long>(lastReceiveDrawMs - t0));
   prefs.putString("shown", "");  // al prossimo avvio ridisegna la card
+}
+
+// Aggiornamento del firmware via Bluetooth: conferma sui tasti (A-D sì, X o Y no).
+void drawFirmwareAsk() {
+  Canvas c = canvas(rotation);
+  const bool port = Canvas::isPortrait(rotation);
+  const int mid = c.height() / 2;
+  c.clear();
+  c.textCentered(mid - 170, "FIRMWARE", port ? 5 : 7);
+  c.textCentered(mid - 80, tr(lang::FwAsk), port ? 3 : 4);
+  char line[48];
+  snprintf(line, sizeof(line), tr(lang::FwFromTo), CAMTAG_FW_VERSION, bleupload::firmwareVersion());
+  c.textCentered(mid - 20, line, port ? 3 : 4);
+  c.textCentered(mid + 60, tr(lang::FwYes), port ? 2 : 3);
+  c.textCentered(mid + 100, tr(lang::FwNo), port ? 2 : 3);
+  drawKeyLabels(c);
+  present(true);
+  lastReceiveDrawMs = millis();
+  prefs.putString("shown", "");
+}
+
+void drawFirmwareProgress() {
+  char line[40];
+  snprintf(line, sizeof(line), tr(lang::FwUpdating), static_cast<unsigned>(bleupload::firmwarePercent()));
+  drawReceive(line, tr(lang::FwKeepOn), false);
+}
+
+// Risposta alla conferma (tasti o batteria) e schermata che ne segue.
+void answerFirmware(bool yes, const char* reason) {
+  lastActivityMs = millis();
+  if (bleupload::answerFirmware(yes, reason) == bleupload::Event::Failed)
+    drawReceive(tr(lang::Error), bleupload::lastError(), true);
+  else
+    drawFirmwareProgress();
+}
+
+// Firmware nuovo scritto: lascia arrivare il DONE al telefono e riparte da quello.
+[[noreturn]] void firmwareDone() {
+  drawReceive(tr(lang::FwDone), bleupload::firmwareVersion(), true);
+  for (uint32_t t0 = millis(); bleupload::connected() && millis() - t0 < 2000;) delay(20);
+  bleupload::stop();
+  LOGF("[camtag] riavvio con il firmware nuovo\n");
+  delay(100);
+  ESP.restart();
+  for (;;) {}
 }
 
 void showCurrentOrEmpty() {
@@ -1144,6 +1198,20 @@ void loopReceive() {
       lastActivityMs = millis();
       drawReceive(tr(lang::SendingProject), nullptr, false);
       break;
+    case bleupload::Event::FirmwareAsk: {
+      lastActivityMs = millis();
+      // Con poca batteria e senza carica niente aggiornamento: spegnersi a metà
+      // non rovina nulla (il vecchio firmware resta), ma lo si rifà da capo.
+      battery::Reading r;
+      battery::read(r);
+      if (r.ok && r.ma <= CHARGE_MIN_MA && r.pct < FW_MIN_BATTERY_PCT)
+        answerFirmware(false, "BATTERIA");
+      else
+        drawFirmwareAsk();
+      break;
+    }
+    case bleupload::Event::FirmwareDone:
+      firmwareDone();
     case bleupload::Event::Sent:
       lastActivityMs = millis();
       drawReceive(tr(lang::ProjectSent), tr(lang::CardsUnchanged), false);
@@ -1155,6 +1223,7 @@ void loopReceive() {
     case bleupload::Event::None:
       break;
   }
+  if (bleupload::firmwareReceiving() && millis() - lastReceiveDrawMs > FW_REDRAW_MS) drawFirmwareProgress();
   if (bleupload::transferring()) lastActivityMs = millis();
   if (millis() - lastActivityMs > RECEIVE_IDLE_MS) exitReceive();
 }
@@ -1532,6 +1601,26 @@ bool powerHeld() {
 // I pezzi della schermata filtri stanno sulla microSD.
 FsFile filtersOpen(const char* path) { return SdMan.open(path); }
 
+// --- Firmware nuovo in prova --------------------------------------------------------
+// Il bootloader ha il rollback: un firmware appena arrivato via Bluetooth parte "in
+// prova" e, se riparte prima di essersi dichiarato sano, il bootloader torna a quello
+// di prima. Il framework lo dichiarerebbe sano subito all'avvio; così lo fa
+// markFirmwareValid al primo giro di loop(), a setup() finito. Va fatto presto: lo
+// spento (GPIO13) e il sonno profondo passano dal bootloader, che lo boccerebbe.
+extern "C" bool verifyRollbackLater() { return true; }
+
+bool firmwareChecked = false;
+
+void markFirmwareValid() {
+  firmwareChecked = true;
+  const esp_partition_t* running = esp_ota_get_running_partition();
+  esp_ota_img_states_t st;
+  if (!running || esp_ota_get_state_partition(running, &st) != ESP_OK) return;
+  LOGF("[camtag] partizione %s, stato %d\n", running->label, static_cast<int>(st));
+  if (st == ESP_OTA_IMG_PENDING_VERIFY && esp_ota_mark_app_valid_cancel_rollback() == ESP_OK)
+    LOGF("[camtag] firmware nuovo confermato\n");
+}
+
 void setup() {
   BoardConfig::holdPowerRails();
 #ifdef CAMTAG_DEBUG
@@ -1660,7 +1749,10 @@ void longPress(char k) {
 
 void shortPress(char k) {
   if (receiving) {
-    if (k == 'X' || k == 'Y') exitReceive();
+    if (bleupload::firmwareAsking())
+      answerFirmware(k >= 'A' && k <= 'D', nullptr);
+    else if (k == 'X' || k == 'Y')
+      exitReceive();
     return;
   }
   if (cards.empty()) return;
@@ -1800,6 +1892,7 @@ void serialCommands() {
 #endif
 
 void loop() {
+  if (!firmwareChecked) markFirmwareValid();
   readPower();
   handlePower();
   handleKeys();

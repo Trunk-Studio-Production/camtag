@@ -39,6 +39,17 @@ enum Str : uint8_t {
   ErrSdRead,
   ErrSdFull,
   ErrTooFast,
+  FwAsk,
+  FwFromTo,  // formato printf con %s %s: versione attuale e nuova
+  FwYes,
+  FwNo,
+  FwUpdating,  // formato printf con %u: percentuale
+  FwKeepOn,
+  FwDone,
+  FwRefused,
+  ErrFwBattery,
+  ErrFwFlash,
+  ErrFwImage,
   kStrCount
 };
 
@@ -72,6 +83,17 @@ constexpr const char* kText[kStrCount][kCount] = {
     {"MICROSD UNREADABLE", "MICROSD ILLEGGIBILE"},
     {"MICROSD FULL OR FAULTY", "MICROSD PIENA O GUASTA"},
     {"TRANSFER TOO FAST", "TRASFERIMENTO TROPPO VELOCE"},
+    {"UPDATE THE FIRMWARE?", "AGGIORNARE IL FIRMWARE?"},
+    {"FROM %s TO %s", "DA %s A %s"},
+    {"A B C OR D: UPDATE", "A B C O D: AGGIORNA"},
+    {"X OR Y: CANCEL", "X O Y: ANNULLA"},
+    {"UPDATING FIRMWARE %u%%", "AGGIORNAMENTO FIRMWARE %u%%"},
+    {"KEEP THE PHONE CLOSE", "TIENI VICINO IL TELEFONO"},
+    {"FIRMWARE UPDATED - RESTARTING", "FIRMWARE AGGIORNATO - RIAVVIO"},
+    {"UPDATE CANCELLED", "AGGIORNAMENTO ANNULLATO"},
+    {"BATTERY LOW - CHARGE IT", "BATTERIA BASSA - CARICALA"},
+    {"FLASH WRITE FAILED", "SCRITTURA DELLA FLASH FALLITA"},
+    {"INVALID FIRMWARE", "FIRMWARE NON VALIDO"},
 };
 
 // Lingua in uso: inglese finché non se ne sceglie un'altra.

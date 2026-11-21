@@ -1,12 +1,13 @@
 # Pubblica il configuratore web su GitHub Pages a ogni push su main.
-# Solo companion/ e data/ (la pagina legge ../data/*.json); in radice un
-# rimando a companion/.
+# companion/ e data/ (la pagina legge ../data/*.json), più il firmware compilato
+# dallo stesso commit in companion/firmware/camtag.bin, che il configuratore web
+# manda all'X3 con "Aggiorna firmware"; in radice un rimando a companion/.
 name: Pages
 
 on:
   push:
     branches: [main]
-    paths: [companion/**, data/**, .github/workflows/pages.yml]
+    paths: [companion/**, data/**, device/**, third_party/**, .github/workflows/pages.yml]
   workflow_dispatch:
 
 permissions:
@@ -26,10 +27,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true  # third_party/freeink-sdk
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          key: pio-${{ hashFiles('device/platformio.ini') }}
+      - name: Compila il firmware
+        run: |
+          pip install platformio
+          cd device && pio run -e x3
+      # Il configuratore web si aspetta lo stesso firmware che manda (FW_VERSION):
+      # se Version.h e index.html non vanno d'accordo la pubblicazione si ferma.
+      - name: Controlla la versione del firmware
+        run: |
+          bin=$(grep -ao 'CAMTAG_FW=[0-9A-Za-z.-]*' device/.pio/build/x3/firmware.bin | head -1 | cut -d= -f2)
+          web=$(grep -o "^const FW_VERSION = '[^']*'" companion/index.html | cut -d"'" -f2)
+          echo "firmware $bin, configuratore web $web"
+          test -n "$bin" && test "$bin" = "$web"
       - name: Prepara il sito
         run: |
           mkdir -p _site
           cp -R companion data _site/
+          mkdir -p _site/companion/firmware
+          cp device/.pio/build/x3/firmware.bin _site/companion/firmware/camtag.bin
           cat > _site/index.html <<'HTML'
           <!doctype html>
           <meta charset="utf-8">

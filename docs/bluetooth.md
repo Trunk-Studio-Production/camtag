@@ -1,4 +1,4 @@
-# Protocollo Bluetooth (v3)
+# Protocollo Bluetooth (v4)
 
 Contratto tra `companion/index.html` (funzioni `bleSend` e `bleGet`) e il firmware
 (`device/src/BleUpload.cpp`, `UploadProto.h`). Se cambi uno, aggiorna l'altro e
@@ -32,6 +32,8 @@ client scrive, il dispositivo risponde con una notify.
 | `ABORT` | `OK` | cancella `/camtag.new`; `/camtag` resta com'era |
 | `GET <percorso>` | `FILE <byte> <crc32 hex> <percorso>`, poi i dati con notify su DATA | solo fuori da una sessione; `ERR ASSENTE` se il file non c'è. Il nome riservato `camtag-batteria.csv` (dal firmware 0.3.1) dà il registro dei consumi, che sta fuori da `/camtag` |
 | `ACK <byte>` | — | durante un `GET`: byte ricevuti dal client |
+| `FIRMWARE <byte> <crc32 hex> <versione>` | `ASK`, poi `OK` o `ERR RIFIUTATO`/`ERR BATTERIA` | dalla v4, solo fuori da una sessione: nuovo firmware (vedi sotto) |
+| *(firmware su DATA)* | `ACK <byte>` ogni 2 KB, `DONE <byte>` alla fine | `DONE` solo se CRC e immagine tornano; poi l'X3 riparte |
 
 La versione del firmware non cambia il protocollo: con la stessa versione del
 protocollo (o una di `BLE.oldVersions`) firmware e configuratore web sono compatibili, e il configuratore web mostra la
@@ -40,7 +42,8 @@ la più recente). Solo un protocollo diverso è un conflitto: l'invio si ferma
 e chiede di aggiornarli insieme.
 
 Errori: `ERR <motivo>`, con motivo `CRC`, `SD`, `OVERFLOW`, `STATO`, `DATI`,
-`COMANDO` o `ASSENTE` (solo per `GET`, non interrompe nulla). Dopo un errore il dispositivo cancella `/camtag.new` e torna in
+`COMANDO`, `ASSENTE` (solo per `GET`, non interrompe nulla), e per `FIRMWARE`
+`RIFIUTATO`, `BATTERIA`, `FLASH` o `IMMAGINE`. Dopo un errore il dispositivo cancella `/camtag.new` e torna in
 attesa di `BEGIN`. Se il collegamento cade a metà, succede lo stesso.
 
 - **Percorso**: relativo a `/camtag`, segmenti di `[A-Za-z0-9._-]` separati da
@@ -113,8 +116,9 @@ un'esportazione all'altra: il configuratore web disegna su canvas in software
 (`willReadFrequently` in `newCanvas`), perché Chromium passerebbe dalla GPU al
 software a metà e l'antialiasing diverso sposterebbe qualche pixel dopo la soglia.
 
-Con un X3 a protocollo 2 il configuratore web non usa `KEEP` e manda tutto: è l'unica
-versione precedente che accetta (`BLE.oldVersions`).
+Con un X3 a protocollo 2 il configuratore web non usa `KEEP` e manda tutto. Le
+versioni precedenti che accetta sono la 2 e la 3, che ha tutto tranne
+`FIRMWARE` (`BLE.oldVersions`).
 
 ## Sostituzione delle card
 
@@ -122,10 +126,51 @@ Al `COMMIT`: `/camtag` diventa `/camtag.old`, `/camtag.new` diventa
 `/camtag`, poi `/camtag.old` si cancella. Se il secondo passo fallisce,
 `/camtag.old` torna al suo posto.
 
+## Aggiornamento del firmware
+
+`HELLO` e `FIRMWARE` sono il **contratto fisso**: le versioni future del
+protocollo li tengono uguali, così un X3 dalla v4 in su si aggiorna anche
+quando il resto del protocollo cambia. Il configuratore web, con un protocollo
+diverso ma almeno 4, invece di fermarsi propone "Aggiorna firmware".
+
+1. Il client manda `FIRMWARE <byte> <crc32> <versione>` (al massimo 6,25 MB,
+   la partizione OTA; versione di `[0-9A-Za-z.-]`, fino a 15 caratteri).
+2. L'X3 risponde `ASK` e chiede conferma sullo schermo: A, B, C o D installano,
+   X o Y rifiutano (`ERR RIFIUTATO`), e dopo 60 s senza risposta rifiuta da
+   solo. Con la batteria sotto il 30% e senza carica risponde subito
+   `ERR BATTERIA`. Il client aspetta la conferma fino a 65 s.
+3. Dopo `OK` i dati viaggiano su DATA come quelli di un file (ACK ogni 2 KB,
+   finestra di 8 KB) e l'X3 li scrive nella partizione OTA libera (`Update`
+   dell'Arduino). I primi 24 byte devono essere un'intestazione ESP32-C3 (magic
+   `0xE9`, chip 5 al byte 12), se no `ERR IMMAGINE`.
+4. All'ultimo byte controlla il CRC, `Update` verifica l'immagine e la sceglie
+   per l'avvio; `DONE <byte>` e l'X3 riparte (quando il client si scollega, al
+   massimo dopo 2 s).
+
+Su qualsiasi errore, `ABORT` o collegamento caduto la partizione nuova si
+scarta e l'X3 resta com'era. Il nuovo firmware parte **in prova** (rollback del
+bootloader): si dichiara sano al primo giro di `loop()`; se riparte prima, il
+bootloader torna a quello di prima.
+
+Il client controlla il file prima di mandarlo: intestazione ESP32-C3 e la
+scritta `CAMTAG_FW=<versione>` nel binario (`CAMTAG_FW_TAG` in
+`device/src/Version.h`), da cui prende la versione. Il file è
+`companion/firmware/camtag.bin`, compilato da GitHub Actions con il
+configuratore web dello stesso commit (`.github/workflows/pages.yml`, che si
+ferma se la versione non è uguale a `FW_VERSION`); in locale non c'è, e con
+Maiusc premuto su "Aggiorna firmware" si sceglie un `.bin`.
+
+Sull'X3 dal Mac con Brave: 864 KB in 26 s (circa 33 KB/s), più veloce delle
+card perché non c'è la microSD di mezzo.
+
+Non c'è una firma: protegge la conferma sui tasti dell'X3, che si aggiunge a X
+tenuto per entrare in ricezione.
+
 ## Test
 
 - Host, senza hardware: `c++ -std=c++17 -I device/src device/test/upload_proto_test.cpp -o /tmp/upt && /tmp/upt`
-  (CRC, percorsi, lettura dei comandi, `KEEP`, `GET` e `ACK`).
+  (CRC, percorsi, lettura dei comandi, `KEEP`, `GET`, `ACK`, `FIRMWARE` e
+  intestazione dell'immagine).
 - Lato client il flusso si prova nel browser sostituendo
   `navigator.bluetooth.requestDevice` con un dispositivo finto che segue questa
   tabella.
