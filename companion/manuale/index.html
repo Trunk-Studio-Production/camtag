@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#121212">
 <title>CamTag · Manuale</title>
 <!-- Le schermate in questa cartella vengono dal simulatore del configuratore web
-     (stesso disegno del firmware 0.3.0), con un progetto di prova. -->
+     (stesso disegno del firmware 0.4.0), con un progetto di prova. -->
 <style>
   @font-face { font-family: "Inter"; src: url("../fonts/InterVariable.woff2") format("woff2");
                font-weight: 100 900; font-style: normal; font-display: swap; }
@@ -175,7 +175,7 @@
   <main>
     <div class="hero">
       <div>
-        <div class="eyebrow">Manuale d'uso · firmware 0.3.0</div>
+        <div class="eyebrow">Manuale d'uso · firmware 0.4.0</div>
         <h1>CamTag <em>sulla camera</em></h1>
         <p class="lede">Il badge e-paper del reparto camera: lens chart, filtri, crew e note sempre in vista, anche da spento. Qui trovi i tasti, quando premerli e cosa vedrai sullo schermo.</p>
         <div class="meta">
@@ -183,7 +183,7 @@
           <span class="chip">8 tasti, niente touch</span>
           <span class="chip">Lo schermo resta anche da spento</span>
         </div>
-        <div class="note"><b class="t">Novità della 0.3.0</b><p>L'X3 parla inglese o italiano: la lingua si sceglie alla prima accensione (<a href="#accendere">Accendere e spegnere</a>) e si cambia dal configuratore web, che ora ha anche le card e l'interfaccia in tutte e due le lingue (<a href="#bluetooth">Card via Bluetooth</a>).</p></div>
+        <div class="note"><b class="t">Novità della 0.4.0</b><p>Il firmware dell'X3 si aggiorna via Bluetooth dal configuratore web, senza cavo e senza computer (<a href="#firmware">Aggiornare il firmware</a>).</p></div>
       </div>
       <figure class="fig" data-dev='{"screen":"lens-port","k":0.95}'></figure>
     </div>
@@ -424,6 +424,20 @@
         </ul></div>
       <h3>Lingue</h3>
       <p>Nella barra del configuratore web il pulsante della lingua (<strong>EN</strong> o <strong>IT</strong>) sceglie tre cose separate: la lingua del <strong>configuratore web</strong>, quella in cui si disegnano le <strong>card</strong> e quella delle <strong>scritte dell'X3</strong>. Quest'ultima arriva all'X3 con il prossimo invio delle card; con <em>Non cambiare</em> l'X3 tiene quella scelta alla prima accensione. Card e X3 in lingue diverse vanno bene: l'invio funziona comunque.</p>
+      <h3 id="firmware">Aggiornare il firmware</h3>
+      <div class="row top">
+        <figure class="fig" data-dev='{"screen":"firmware","k":0.85,"hi":[{"keys":"ABCD","text":"aggiorna"},{"keys":"X","text":"annulla"}]}'>
+          <figcaption>L'X3 chiede conferma e mostra la versione che ha e quella nuova.</figcaption>
+        </figure>
+        <ol class="steps">
+          <li>Metti l'X3 in ricezione (<strong>pressione lunga su <kbd>X</kbd></strong>). La versione che ha è scritta in basso sulla schermata <span class="msg">BLUETOOTH</span>; quando ti colleghi, il configuratore web ti dice se ce n'è una più recente.</li>
+          <li>Nel configuratore web tocca <strong>Bluetooth</strong>, poi <strong>Aggiorna firmware</strong>, e scegli il nome dell'X3.</li>
+          <li>Sull'X3 compare <span class="msg">AGGIORNARE IL FIRMWARE</span>: premi <kbd>A</kbd>, <kbd>B</kbd>, <kbd>C</kbd> o <kbd>D</kbd> per installare, <kbd>X</kbd> o <kbd>Y</kbd> per annullare.</li>
+          <li>Tieni il telefono vicino all'X3 per mezzo minuto circa. Alla fine l'X3 si riavvia con il firmware nuovo.</li>
+        </ol>
+      </div>
+      <p>Le card, il progetto e le impostazioni restano. Se non confermi entro un minuto l'X3 annulla da solo, e con la batteria sotto il 30% rifiuta l'aggiornamento: mettilo prima in carica. Se il collegamento cade a metà, o il firmware nuovo non parte, l'X3 torna da solo a quello di prima.</p>
+      <p>Funziona dalla 0.4.0 in su: un X3 con un firmware più vecchio va aggiornato una volta con il cavo USB, come spiega il README.</p>
       <h3>Con la microSD</h3>
       <p>In alternativa scarica lo zip dal configuratore web (<strong>Scarica .zip</strong>) e copia la sua cartella <code>camtag/</code> nella radice della microSD, al posto di quella che c'è.</p>
     </section>
@@ -468,6 +482,7 @@
           <tr><td>La schermata non ruota</td><td>La rotazione è bloccata: sbloccala con una pressione lunga su Y.</td></tr>
           <tr><td>A–D non fanno nulla</td><td>È normale fuori dalla lens chart e dai filtri, e su una lens chart di una sola pagina.</td></tr>
           <tr><td>Il telefono non trova l'X3</td><td>Metti l'X3 in ricezione (pressione lunga su X) prima di toccare "Invia le card", e usa un browser con il Bluetooth.</td></tr>
+          <tr><td>L'aggiornamento del firmware non parte</td><td>L'X3 deve essere in ricezione e la batteria sopra il 30% (o in carica). Sull'X3 conferma con A, B, C o D entro un minuto.</td></tr>
           <tr><td>All'accensione chiede la lingua</td><td>Succede finché non ne scegli una: <kbd>A</kbd> o <kbd>B</kbd> per l'inglese, <kbd>C</kbd> o <kbd>D</kbd> per l'italiano.</td></tr>
           <tr><td>L'X3 scrive nella lingua sbagliata</td><td>Nel configuratore web: pulsante EN/IT → <em>Scritte dell'X3</em>, scegli la lingua e invia di nuovo le card.</td></tr>
           <tr><td>Non risponde per niente</td><td>Premi Reset, in alto a sinistra. Le card restano.</td></tr>

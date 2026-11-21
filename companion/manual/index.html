@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#121212">
 <title>CamTag · Manual</title>
 <!-- The screenshots in this folder come from the web configurator simulator
-     (same drawing as firmware 0.3.0), with a test project. -->
+     (same drawing as firmware 0.4.0), with a test project. -->
 <style>
   @font-face { font-family: "Inter"; src: url("../fonts/InterVariable.woff2") format("woff2");
                font-weight: 100 900; font-style: normal; font-display: swap; }
@@ -175,7 +175,7 @@
   <main>
     <div class="hero">
       <div>
-        <div class="eyebrow">User manual · firmware 0.3.0</div>
+        <div class="eyebrow">User manual · firmware 0.4.0</div>
         <h1>CamTag <em>on the camera</em></h1>
         <p class="lede">The e-paper badge for the camera department: lens chart, filters, crew and notes always in view, even when it's off. Here you'll find the buttons, when to press them and what you'll see on the screen.</p>
         <div class="meta">
@@ -183,6 +183,7 @@
           <span class="chip">8 buttons, no touch</span>
           <span class="chip">The screen stays on even when off</span>
         </div>
+        <div class="note"><b class="t">New in 0.4.0</b><p>The X3 firmware updates via Bluetooth from the web configurator, with no cable and no computer (<a href="#firmware">Updating the firmware</a>).</p></div>
       </div>
       <figure class="fig" data-dev='{"screen":"lens-port","k":0.95}'></figure>
     </div>
@@ -414,7 +415,7 @@
       </div>
       <p>The new cards replace the old ones only once the transfer is complete: if the connection drops, the previous cards stay on the X3. Cards identical to those already on the X3 aren't sent again, so a small tweak arrives in a few seconds. <kbd>X</kbd> or <kbd>Y</kbd> exit receiving; after 3 minutes without a transfer it exits by itself.</p>
       <h3>Getting the project back from the X3</h3>
-      <p>The web configurator project travels along with the cards. On another phone, or if the browser has lost your work, put the X3 in receive mode and tap <strong>Bluetooth → Import from X3</strong>: the tool gets the project back and the cards on the X3 don't change.</p>
+      <p>The web configurator project travels along with the cards. On another phone, or if the browser has lost your work, put the X3 in receive mode and tap <strong>Bluetooth → Import from X3</strong>: the web configurator gets the project back and the cards on the X3 don't change.</p>
       <div class="note warn"><b class="t">Which browser</b>
         <ul>
           <li><strong>Android, Mac, Windows, Linux</strong>: Chrome or Edge. In Brave, Bluetooth has to be enabled in <code>brave://flags</code>.</li>
@@ -422,7 +423,21 @@
           <li>The page has to be opened from the web configurator's <strong>https://</strong> address.</li>
         </ul></div>
       <h3>Languages</h3>
-      <p>In the web configurator's toolbar, the language button (<strong>EN</strong> or <strong>IT</strong>) sets three separate things: the language of the <strong>tool</strong>, the one the <strong>cards</strong> are drawn in, and the one for the <strong>X3 messages</strong>. The last one reaches the X3 with the next card upload; with <em>Don't change</em> the X3 keeps the one chosen at first start. Cards and X3 in different languages are fine: sending works anyway.</p>
+      <p>In the web configurator's toolbar, the language button (<strong>EN</strong> or <strong>IT</strong>) sets three separate things: the language of the <strong>web configurator</strong>, the one the <strong>cards</strong> are drawn in, and the one for the <strong>X3 messages</strong>. The last one reaches the X3 with the next card upload; with <em>Don't change</em> the X3 keeps the one chosen at first start. Cards and X3 in different languages are fine: sending works anyway.</p>
+      <h3 id="firmware">Updating the firmware</h3>
+      <div class="row top">
+        <figure class="fig" data-dev='{"screen":"firmware","k":0.85,"hi":[{"keys":"ABCD","text":"update"},{"keys":"X","text":"cancel"}]}'>
+          <figcaption>The X3 asks for confirmation and shows the version it has and the new one.</figcaption>
+        </figure>
+        <ol class="steps">
+          <li>Put the X3 in receive mode (<strong>hold <kbd>X</kbd></strong>). Its version is written at the bottom of the <span class="msg">BLUETOOTH</span> screen; when you connect, the web configurator tells you if there's a newer one.</li>
+          <li>In the web configurator tap <strong>Bluetooth</strong>, then <strong>Update firmware</strong>, and choose the X3's name.</li>
+          <li>The X3 shows <span class="msg">UPDATE THE FIRMWARE</span>: press <kbd>A</kbd>, <kbd>B</kbd>, <kbd>C</kbd> or <kbd>D</kbd> to install, <kbd>X</kbd> or <kbd>Y</kbd> to cancel.</li>
+          <li>Keep the phone close to the X3 for about half a minute. At the end the X3 restarts with the new firmware.</li>
+        </ol>
+      </div>
+      <p>Cards, project and settings are kept. If you don't confirm within a minute the X3 cancels by itself, and with the battery below 30% it refuses the update: charge it first. If the connection drops halfway, or the new firmware doesn't start, the X3 goes back to the previous one by itself.</p>
+      <p>It works from 0.4.0 onwards: an X3 with older firmware has to be updated once with the USB cable, as the README explains.</p>
       <h3>With the microSD</h3>
       <p>Alternatively, download the zip from the web configurator (<strong>Download .zip</strong>) and copy its <code>camtag/</code> folder to the root of the microSD, replacing the one that's there.</p>
     </section>
@@ -467,6 +482,7 @@
           <tr><td>The screen doesn't rotate</td><td>Rotation is locked: unlock it by holding Y.</td></tr>
           <tr><td>A–D do nothing</td><td>That's normal outside the lens chart and the filters, and on a single-page lens chart.</td></tr>
           <tr><td>The phone can't find the X3</td><td>Put the X3 in receive mode (hold X) before tapping "Send cards", and use a browser with Bluetooth.</td></tr>
+          <tr><td>The firmware update doesn't start</td><td>The X3 has to be in receive mode and the battery above 30% (or charging). Confirm on the X3 with A, B, C or D within a minute.</td></tr>
           <tr><td>It asks for the language when turned on</td><td>It does until you choose one: <kbd>A</kbd> or <kbd>B</kbd> for English, <kbd>C</kbd> or <kbd>D</kbd> for Italian.</td></tr>
           <tr><td>The X3 shows the wrong language</td><td>In the web configurator: EN/IT button → <em>X3 messages</em>, choose the language and send the cards again.</td></tr>
           <tr><td>It doesn't respond at all</td><td>Press Reset, at the top left. The cards are kept.</td></tr>

@@ -64,6 +64,17 @@ async function makeManualShots(lang = 'it', putUrl = null) {
       tinyCentered(ctx, W, H - 76, en ? 'DEVELOPED BY IACOPO BOCCALARI' : 'SVILUPPATO DA IACOPO BOCCALARI', 2);
       tinyCentered(ctx, W, H - 52, 'TRUNK STUDIO - TRUNKSTUDIO.IT', 2);
     } });
+    // Conferma dell'aggiornamento del firmware: come drawFirmwareAsk nel firmware.
+    await shot('firmware', { draw: (ctx, W, H) => {
+      const mid = H / 2, en = lang === 'en';
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#000';
+      tinyCentered(ctx, W, mid - 170, 'FIRMWARE', 5);
+      tinyCentered(ctx, W, mid - 80, en ? 'UPDATE THE FIRMWARE?' : 'AGGIORNARE IL FIRMWARE?', 3);
+      tinyCentered(ctx, W, mid - 20, en ? `FROM 0.3.0 TO ${FW_VERSION}` : `DA 0.3.0 A ${FW_VERSION}`, 3);
+      tinyCentered(ctx, W, mid + 60, en ? 'A B C OR D: UPDATE' : 'A B C O D: AGGIORNA', 2);
+      tinyCentered(ctx, W, mid + 100, en ? 'X OR Y: CANCEL' : 'X O Y: ANNULLA', 2);
+      drawKeyLabels(ctx, 0);
+    } });
     // Scelta della lingua al primo avvio: come showLangChoice nel firmware.
     await shot('lang', { draw: (ctx, W, H) => {
       const mid = H / 2, sc = 4, lh = 7 * sc, gap = 24, pad = 26, l1 = 'A / B  ENGLISH', l2 = 'C / D  ITALIANO';
