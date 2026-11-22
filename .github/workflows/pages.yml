@@ -31,16 +31,29 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: true  # third_party/freeink-sdk
-      - uses: actions/setup-python@v7
+      # Firmware già compilato da un commit con gli stessi device/ e SDK: se c'è,
+      # niente PlatformIO né compilazione (una modifica al solo configuratore web
+      # si pubblica in pochi secondi). Il controllo della versione resta.
+      - id: fw
+        uses: actions/cache@v6
+        with:
+          path: |
+            device/.pio/build/x3/firmware.bin
+            device/.pio/build/x3/firmware.factory.bin
+          key: fw-${{ hashFiles('device/**', 'third_party/**') }}
+      - if: steps.fw.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v7
         with:
           python-version: '3.13'
-      - uses: actions/cache@v6
+      - if: steps.fw.outputs.cache-hit != 'true'
+        uses: actions/cache@v6
         with:
           path: |
             ~/.platformio
             ~/.cache/pip
           key: pio-${{ hashFiles('device/platformio.ini') }}
       - name: Compila il firmware
+        if: steps.fw.outputs.cache-hit != 'true'
         run: |
           pip install platformio
           cd device && pio run -e x3
