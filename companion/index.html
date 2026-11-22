@@ -291,7 +291,7 @@
     #addBtn { flex: none; width: auto; border-radius: 999px; }
   }
   /* Telefono: niente zoom con le dita (lo zoom dell'anteprima è il tutto schermo). */
-  @media (max-width: 699px) { html { touch-action: pan-x pan-y; } }
+  @media (max-width: 699px) { html { touch-action: pan-x pan-y; } html, body { overflow-anchor: none; } }
   /* ---------- Sotto 700 px: anteprima compatta e striscia fisse, l'editor scorre ---------- */
   @media (max-width: 699px) {
     header.bar { gap: 6px; padding: 0 12px; }
@@ -2085,6 +2085,8 @@ function renderList() {
 }
 // Sceglie una schermata; nella striscia (sotto i 1100 px) la porta in vista.
 function selectScreen(to) {
+  // Toccando una schermata con l'anteprima tolta da sola si riparte dall'inizio, anteprima compresa.
+  if (autoHid) { autoHid = false; paintPreview(); scrollTo(0, 0); lastY = 0; }
   sel = to; refresh();
   const b = $('#list li.sel .scr'); if (!b) return;
   b.focus({ preventScroll: true });
@@ -2816,7 +2818,7 @@ $('#prevTog').onclick = () => autoHid ? setAutoHid(false) : showPreview(!!ui.pre
 // la pagina scorre di quanto cambia la parte fissa, così l'editor sotto il dito
 // non salta (per questo serve overflow-anchor: none, che farebbe lo stesso due volte).
 const AUTO_HIDE_PX = 60;
-let autoHid = false, lastY = scrollY, downRun = 0;
+var autoHid = false, lastY = scrollY, downRun = 0;  // var: selectScreen e showPreview possono girare prima
 function setAutoHid(on) {
   if (on === autoHid) return;
   const work = $('.work'), h0 = work.offsetHeight;
