@@ -193,6 +193,7 @@
   .hint.fmt code { padding: 1px 5px; border-radius: 4px; background: var(--sel); color: var(--ink); font-size: 12px; }
   .hint.fmt b, .hint.fmt i { color: var(--ink); }
   .hint.fmt .sep { margin: 0 10px; }
+  .hint.fmt .info { margin-right: 8px; }
   .warn { font-size: 12px; color: var(--danger); margin: 8px 0 0; }
   .empty { color: var(--muted); padding: 14px 0; text-align: center; }
   .out { background: var(--ink); color: var(--panel); padding: 0 4px; border-radius: 3px; }
@@ -259,9 +260,9 @@
   #simHint { margin: 0; text-align: center; }
 
   /* ---------- Invio via Bluetooth ---------- */
-  #bleDlg { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink);
+  #bleDlg, #askDlg { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink);
             width: min(480px, calc(100vw - 32px)); padding: 18px; overflow: visible; }
-  #bleDlg::backdrop { background: rgba(0, 0, 0, .45); }
+  #bleDlg::backdrop, #askDlg::backdrop { background: rgba(0, 0, 0, .45); }
   #bleDlg h3 { margin: 0 0 8px; padding-right: 24px; font-size: 15px; }
   /* La X sporge dallo spigolo in alto a destra. */
   #bleDlg .x { position: absolute; top: -14px; right: -14px; width: 34px; height: 34px; padding: 0; border-radius: 50%;
@@ -282,8 +283,10 @@
   #bleAttn .left { font-variant-numeric: tabular-nums; }
   @keyframes attn { 50% { box-shadow: 0 0 0 6px rgba(187, 255, 0, .18); } }
   @media (prefers-reduced-motion: reduce) { #bleAttn { animation: none; } }
-  #bleDlg .acts { justify-content: center; gap: 8px; margin-top: 14px; }
-  #bleDlg .acts button { white-space: nowrap; }
+  #bleDlg .acts, #askDlg .acts { justify-content: center; gap: 8px; margin-top: 14px; }
+  #bleDlg .acts button, #askDlg .acts button { white-space: nowrap; }
+  #askDlg { width: min(380px, calc(100vw - 32px)); }
+  #askMsg { margin: 0; }
   #bleDlg .usb { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
   #bleDlg .usb p { margin: 0; }
   #bleDlg .usb b { display: block; font-weight: 600; }
@@ -424,6 +427,12 @@
 <div class="pop tip" id="tip" role="tooltip"></div>
 <div id="newBuild" role="status" hidden><span>C'è una versione più nuova del configuratore web.</span><button id="newBuildGo" class="primary">Aggiorna</button></div>
 
+<!-- Domande e avvisi al posto di confirm() e alert(): alcuni browser per iPhone
+     con Web Bluetooth non li gestiscono (il confirm non rende la risposta). -->
+<dialog id="askDlg">
+  <p id="askMsg"></p>
+  <div class="acts"><button id="askNo">Annulla</button><button id="askYes" class="primary"></button></div>
+</dialog>
 <dialog id="bleDlg">
   <h3>CamTag via Bluetooth</h3>
   <button id="bleClose" class="x" title="Chiudi" aria-label="Chiudi">✕</button>
@@ -536,7 +545,7 @@ const DEFAULTS = {
   lens:  () => ({ formats: 'both', type: 'lens', brand: tc('MARCA'), series: tc('Serie'), focal: '35', tstop: '1.8', mod: '0.35 m', front: '95 mm', thread: '', notes: '' }),
   // Lista Voce / Valore: di partenza una crew, ma va bene per contatti, canali radio…
   list:  () => ({ formats: 'both', type: 'list', title: 'CAMERA DEPT', rows: ['DOP', '1st AC', '2nd AC', 'DIT', 'Gaffer'].map(item => ({ item, value: tc('Nome Cognome') })) }),
-  notes: () => ({ formats: 'both', type: 'notes', title: tc('NOTE'), body: tc('CH 1 Camera\nCH 2 Elettrici\n\nScena 12 — Steadicam') }),
+  notes: () => ({ formats: 'both', type: 'notes', title: tc('NOTE'), body: tc('*CH 1* Camera\n*CH 2* Elettrici\n\nScena 12 — _Steadicam_') }),
   patch: () => ({ formats: 'both', type: 'patch', img: null, fit: 'contain', dither: 'atkinson', threshold: 128, contrast: 0, pivot: 128, invert: false, caption: '' }),
 };
 const TYPE_LABEL = { lens: 'Lente', list: 'Lista', notes: 'Note', patch: 'Immagine' };  // patch: il tipo interno e il nome dei file restano
@@ -2271,7 +2280,7 @@ function lensEditor(ed) {
       if (editingUid === l.uid) rows.push(h('div', { class: 'ledit' }, lensDataEditor(l, e)));
     }
     rows.push(h('div', { class: 'acts' },
-      h('button', { class: 'small danger', onclick: () => { if (confirm(t('Togliere tutte le lenti?'))) { state.lenses = []; changed(true); } } }, 'Togli tutte')));
+      h('button', { class: 'small danger', onclick: async () => { if (await ask(t('Togliere tutte le lenti?'), t('Togli tutte'))) { state.lenses = []; changed(true); } } }, 'Togli tutte')));
   }
   ed.append(section('lens.sel', 'Lenti selezionate', state.lenses.length ? (nPages > 1 ? t('{} · {} pagine', state.lenses.length, nPages) : String(state.lenses.length)) : 'nessuna', rows, true,
     { tip: 'In negativo va la lente "fuori dal coro": serie diversa dal set principale o tipo diverso (es. l\'unica macro).' }));
@@ -2307,10 +2316,10 @@ function lensEditor(ed) {
       h('select', { 'aria-label': 'Tipo', onchange: e => m.type = e.target.value }, ...Object.entries(LENS_TYPES).map(([k, v]) => h('option', { value: k }, v)))),
     h('div', { class: 'three mt' }, mountSelect('', v => m.mount = v)),
     h('div', { class: 'acts' }, h('button', { class: 'primary', onclick: () => {
-      if (!m.focal.trim()) { alert(t('Serve almeno la focale.')); return; }
+      if (!m.focal.trim()) { say(t('Serve almeno la focale.')); return; }
       const f = range(m.focal), ts = m.tstop.trim() ? range(m.tstop) : [null];
-      if (!f) { alert(t('Focale non valida: scrivi un numero (35) o un\'escursione (24-70).')); return; }
-      if (!ts) { alert(t('T non valido: scrivi un numero (2.8) o un\'escursione (2.8-4).')); return; }
+      if (!f) { say(t('Focale non valida: scrivi un numero (35) o un\'escursione (24-70).')); return; }
+      if (!ts) { say(t('T non valido: scrivi un numero (2.8) o un\'escursione (2.8-4).')); return; }
       const zoom = f.length === 2, num = v => v === '' ? null : Number(v);
       state.lenses.push({ uid: 'm-' + Date.now(), dbId: null, brand: m.brand || 'Manuale', series: m.series || m.brand || 'Manuale',
         seriesCode: (m.seriesCode || slug(m.series).slice(0, 3)).toUpperCase(), type: zoom && m.type === 'prime' ? 'zoom' : m.type,
@@ -2327,9 +2336,9 @@ function lensEditor(ed) {
     const file = ev.target.files[0]; if (!file) return;
     file.text().then(txt => {
       const d = JSON.parse(txt);
-      if (!d || typeof d.overrides !== 'object') { alert(t('File non valido: manca "overrides".')); return; }
+      if (!d || typeof d.overrides !== 'object') { say(t('File non valido: manca "overrides".')); return; }
       Object.assign(lensOverrides, d.overrides); saveOverrides(); changed(true);
-    }).catch(() => alert(t('File non valido.')));
+    }).catch(() => say(t('File non valido.')));
   } });
   ed.append(section('lens.ovr', 'Lenti modificate', nOvr ? String(nOvr) : 'nessuna', h('div', { class: 'acts' },
       h('button', { class: 'small', disabled: !nOvr, onclick: () => download(new Blob([JSON.stringify({ version: 1, overrides: lensOverrides }, null, 2)], { type: 'application/json' }), t('camtag-lenti-modificate.json')) }, 'Esporta modifiche'),
@@ -2604,7 +2613,7 @@ function filtersEditor(ed, list = false) {
   cat.push(section('flt.manual', 'Aggiungi un vetro a mano', null, [
     h('div', { class: 'two' }, cName, cStr),
     h('div', { class: 'acts' }, h('button', { class: 'primary', onclick: () => {
-      const n = cName.value.trim(); if (!n) { alert(t('Serve almeno il nome.')); return; }
+      const n = cName.value.trim(); if (!n) { say(t('Serve almeno il nome.')); return; }
       addToKit(f, null, n, cStr.value.split(',').map(s => s.trim()).filter(Boolean)); changed(true);
     } }, 'Aggiungi'))], false, { sub: true }));
   ed.append(section('flt.db', 'Catalogo vetri', filterDb.length ? plural(filterDb.length, 'famiglia', 'famiglie') : null, cat, true,
@@ -2686,8 +2695,8 @@ function dupCard() {
   if (sel.kind !== 'card') return;
   state.cards.splice(sel.i + 1, 0, structuredClone(state.cards[sel.i])); sel = { kind: 'card', i: sel.i + 1 }; save(); refresh();
 }
-function delCard() {
-  if (sel.kind !== 'card' || !confirm(t('Eliminare «{}»?', tExact(cardTitle(state.cards[sel.i]))))) return;
+async function delCard() {
+  if (sel.kind !== 'card' || !await ask(t('Eliminare «{}»?', tExact(cardTitle(state.cards[sel.i]))), t('Elimina'))) return;
   state.cards.splice(sel.i, 1); sel = state.cards.length ? { kind: 'card', i: Math.max(0, sel.i - 1) } : { kind: 'lenschart' }; save(); refresh();
 }
 
@@ -2714,7 +2723,8 @@ function cardEditor(ed, c, idx) {
     // La formattazione si vede in chiaro sotto il testo: segno e risultato.
     const g = t('grassetto'), k = t('corsivo');
     ed.append(field(c, 'Titolo', 'title'), fillArea(field(c, 'Testo', 'body', 'textarea')),
-      h('p', { class: 'hint fmt' }, h('code', {}, `*${g}*`), ' → ', h('b', {}, g), h('span', { class: 'sep' }, '·'),
+      h('p', { class: 'hint fmt' }, info('Il testo si ingrandisce fino a riempire la pagina. Se è poco e lo vuoi più piccolo, aggiungi delle righe vuote in fondo.'),
+        h('code', {}, `*${g}*`), ' → ', h('b', {}, g), h('span', { class: 'sep' }, '·'),
         h('code', {}, `_${k}_`), ' → ', h('i', {}, k)));
   } else {
     imageControls(ed, c);
@@ -3186,6 +3196,25 @@ $('#bleCopy').onclick = async () => {
   $('#bleCopy').textContent = t(ok ? 'Copiato' : 'Non riesco a copiare: tieni premuto il messaggio per selezionarlo');
   setTimeout(() => { $('#bleCopy').textContent = t('Copia il messaggio'); }, 2500);
 };
+
+// Domanda (con `yes`) o avviso (senza) nella finestra #askDlg; Esc o fuori = Annulla.
+function ask(msg, yes) {
+  const dlg = $('#askDlg');
+  $('#askMsg').textContent = msg;
+  $('#askYes').textContent = yes || 'OK';
+  $('#askNo').hidden = !yes;
+  $('#askNo').textContent = t('Annulla');
+  return new Promise(res => {
+    const end = v => { dlg.onclose = null; if (dlg.open) dlg.close(); res(v); };
+    $('#askYes').onclick = () => end(true);
+    $('#askNo').onclick = () => end(!yes);
+    dlg.onclick = e => { if (e.target === dlg) end(!yes); };
+    dlg.onclose = () => end(!yes);  // Esc
+    dlg.showModal();
+    $('#askYes').focus();
+  });
+}
+const say = msg => ask(msg);
 
 // Domanda dentro la finestra Bluetooth, al posto di confirm(): alcuni browser
 // per iPhone con Web Bluetooth mostrano il confirm ma non rendono la risposta.

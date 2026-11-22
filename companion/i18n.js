@@ -293,6 +293,7 @@ const I18N_EN = {
   'Mattebox e valori di partenza': 'Matte box and starting values',
 
   // ---------- Editor: schede manuali ----------
+  'Il testo si ingrandisce fino a riempire la pagina. Se è poco e lo vuoi più piccolo, aggiungi delle righe vuote in fondo.': 'The text grows to fill the page. If it is short and you want it smaller, add some empty lines at the end.',
   'Eliminare «{}»?': 'Delete “{}”?',
   'Sposta su': 'Move up',
   'Sposta giù': 'Move down',
@@ -506,7 +507,7 @@ const I18N_EN = {
   'MARCA': 'BRAND',
   'NOTE': 'NOTES',
   'Nome Cognome': 'First Last',
-  'CH 1 Camera\nCH 2 Elettrici\n\nScena 12 — Steadicam': 'CH 1 Camera\nCH 2 Electric\n\nScene 12 — Steadicam',
+  '*CH 1* Camera\n*CH 2* Elettrici\n\nScena 12 — _Steadicam_': '*CH 1* Camera\n*CH 2* Electric\n\nScene 12 — _Steadicam_',
   // Installazione via USB (install/)
   "Copia il registro": "Copy the log",
   "Serve un computer": "You need a computer",

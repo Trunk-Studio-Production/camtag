@@ -70,6 +70,9 @@ costruttori di lenti e filtri nei dati vanno bene.
   Feedback: modulo Google (`FEEDBACK`, url per rispondere + campo `entry.NNN`
   "Dati tecnici" precompilato con versioni, lingue e tipo di schermo, mai dati
   personali); link discreto in fondo all'editor e nei credits, nascosto senza url.
+  Niente `confirm()`/`alert()` del browser: alcuni browser per iPhone con Web
+  Bluetooth non rendono la risposta. Si usano `ask(msg, sì)` e `say(msg)`
+  (finestra `#askDlg`), e `bleAsk` dentro la finestra Bluetooth.
   Nei testi per l'utente si chiama sempre **configuratore web** (in inglese
   *web configurator*), mai "strumento" o "app".
 - `companion/install/` — prima installazione e ripristino via USB dal browser
@@ -301,7 +304,7 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   esempio, Cooke S4/i 18/25/32/50/75 e Angénieux Optimo 28-76 e 45-120 in PL
   (`STARTER_LENSES`, aggiunte quando arriva il database), ND del kit e Black
   Pro-Mist completo (`freshState`), nel mattebox ND 0.3 e Black Pro-Mist 1/8;
-  elenco filtri acceso, lista della crew e nota d'esempio (canali radio, Steadicam).
+  elenco filtri acceso, lista della crew e nota d'esempio (canali radio in grassetto, Steadicam in corsivo, per mostrare la formattazione).
 - Lens chart: focale, T, CF (close focus), Ø frontale (più piccolo, dato secondario, si può
   nascondere: `state.lensFront`). Attacco (`state.lensMount`, spento di
   partenza): come le sigle, quello principale in basso (solo la sigla, "LPL", subito dopo la prima serie che lo usa), gli
