@@ -1137,6 +1137,30 @@ void toggleRotationLock() {
 }
 
 // --- Ricezione via Bluetooth ----------------------------------------------------
+// Testo centrato che resta dentro la cornice della ricezione (bordo da 16 a 20 px):
+// troppo largo va su due righe se c'è " - " ("FIRMWARE AGGIORNATO - RIAVVIO"), se no si
+// rimpicciolisce. Restituisce il numero di righe usate.
+int textFit(Canvas& c, int y, const char* s, int scale) {
+  const int maxW = c.width() - 2 * 22;  // 2 px dal bordo: ci sta "AGGIORNAMENTO FIRMWARE 100%"
+  if (tinyfont::textWidth(s, scale) <= maxW) { c.textCentered(y, s, scale); return 1; }
+  const char* dash = strstr(s, " - ");
+  if (dash) {
+    char first[64];
+    const size_t n = std::min(static_cast<size_t>(dash - s), sizeof(first) - 1);
+    memcpy(first, s, n);
+    first[n] = '\0';
+    const char* second = dash + 3;
+    if (tinyfont::textWidth(first, scale) <= maxW && tinyfont::textWidth(second, scale) <= maxW) {
+      c.textCentered(y, first, scale);
+      c.textCentered(y + 10 * scale, second, scale);
+      return 2;
+    }
+  }
+  while (scale > 1 && tinyfont::textWidth(s, scale) > maxW) scale--;
+  c.textCentered(y, s, scale);
+  return 1;
+}
+
 void drawReceive(const char* status, const char* detail, bool full) {
 #ifdef CAMTAG_DEBUG
   const uint32_t t0 = millis();
@@ -1148,9 +1172,10 @@ void drawReceive(const char* status, const char* detail, bool full) {
   c.strokeRect(16, 16, c.width() - 32, c.height() - 32, 4, true);
   c.textCentered(mid - 150, "BLUETOOTH", port ? 5 : 7);
   c.textCentered(mid - 60, bleName, port ? 3 : 4);
-  c.textCentered(mid + 20, status, port ? 3 : 4);
-  if (detail) c.textCentered(mid + 80, detail, 2);
-  c.textCentered(mid + 130, tr(lang::ExitHint), 2);
+  // Con lo stato su due righe dettaglio e uscita scendono di una riga.
+  const int down = textFit(c, mid + 20, status, port ? 3 : 4) > 1 ? (port ? 30 : 40) : 0;
+  if (detail) textFit(c, mid + 80 + down, detail, 2);
+  textFit(c, mid + 130 + down, tr(lang::ExitHint), 2);
   // In piccolo in fondo: versione del firmware e credits.
   const int h = c.height();
   // Il marchio CAMTAG_FW=… va usato da qualche parte, se no il linker lo toglie.
@@ -1173,12 +1198,12 @@ void drawFirmwareAsk() {
   const int mid = c.height() / 2;
   c.clear();
   c.textCentered(mid - 170, "FIRMWARE", port ? 5 : 7);
-  c.textCentered(mid - 80, tr(lang::FwAsk), port ? 3 : 4);
+  textFit(c, mid - 80, tr(lang::FwAsk), port ? 3 : 4);
   char line[48];
   snprintf(line, sizeof(line), tr(lang::FwFromTo), CAMTAG_FW_VERSION, bleupload::firmwareVersion());
-  c.textCentered(mid - 20, line, port ? 3 : 4);
-  c.textCentered(mid + 60, tr(lang::FwYes), port ? 2 : 3);
-  c.textCentered(mid + 100, tr(lang::FwNo), port ? 2 : 3);
+  textFit(c, mid - 20, line, port ? 3 : 4);
+  textFit(c, mid + 60, tr(lang::FwYes), port ? 2 : 3);
+  textFit(c, mid + 100, tr(lang::FwNo), port ? 2 : 3);
   drawKeyLabels(c);
   present(true);
   lastReceiveDrawMs = millis();
