@@ -227,7 +227,10 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   primo `_` o `-`; `lenschart` vale `lens`. Le schede manuali si chiamano
   `NN_<tipo>_<titolo>` (`lens`, `notes`, `list`, `patch`); un nome fatto a mano
   è un tipo a sé, salvo che la parola coincida. Una scheda immagine (`patch`) vuota non si
-  esporta (niente avviso: nell'anteprima resta il segnaposto). L'esportazione (`exportPlan`,
+  esporta (niente avviso: nell'anteprima resta il segnaposto). Immagine a tutto schermo nei due
+  versi: quadrato 792×792 con Riempi (centro 528×528 sempre visibile, angoli da 132 mai);
+  lo dicono la ⓘ e il modello scaricabile (`squareTemplate`); per lo sfondo di Spento il modello
+  porta sopra `drawOffOverlay` dei due versi, blu l'orizzontale e arancione il verticale. L'esportazione (`exportPlan`,
   `cardOrder`) mette i tipi di fila (liste e note, se il tipo ha più pagine,
   portano "2/3" in alto a destra come la lens chart: `cardPage`): lenti (lens chart, poi schede lente),
   `filters`, `filterlist`, poi gli altri nell'ordine della lista; ↑↓ spostano

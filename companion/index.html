@@ -185,6 +185,7 @@
   .rrow.head { padding: 0 0 2px; font-size: 12px; color: var(--muted); }
   .rows-add { margin-top: 8px; }
   .urlrow { display: flex; gap: 8px; }
+  .tmpl { margin: 2px 0 12px; }
   .urlrow input { flex: 1; min-width: 0; }
   .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
   .mt { margin-top: 8px; }
@@ -2781,7 +2782,11 @@ function imageControls(ed, c) {
       const file = inp.files[0]; if (!file) return;
       say(''); useImage(file).catch(() => say(t('Il file non è un\'immagine leggibile.')));
     } });
-    ed.append(h('label', { class: 'fld' }, h('span', { class: 'lab' }, c === state.off ? 'Immagine di sfondo (facoltativa)' : 'Immagine'), inp));
+    const off = c === state.off;
+    ed.append(h('label', { class: 'fld' }, h('span', { class: 'lab' }, off ? 'Immagine di sfondo (facoltativa) ' : 'Immagine ',
+      info(off ? SQUARE_TIP_OFF : SQUARE_TIP)), inp));
+    ed.append(h('p', { class: 'tmpl' }, h('button', { type: 'button', class: 'small', title: 'PNG 792×792 con le parti che si vedono in orizzontale, in verticale, sempre e mai',
+      onclick: () => squareTemplate(off).then(b => download(b, `camtag-${t(off ? 'modello-spento' : 'modello')}-792.png`)) }, 'Scarica il modello quadrato')));
     // Da un indirizzo web: serve che il sito permetta di leggere l'immagine da un'altra pagina (CORS).
     const urlIn = h('input', { type: 'text', inputmode: 'url', placeholder: 'https://…/immagine.jpg', 'aria-label': 'Indirizzo dell\'immagine' });
     const urlBtn = h('button', { type: 'button' }, 'Carica');
@@ -2927,6 +2932,69 @@ function refresh() {
   $('#dims .dev-s').textContent = `X3 · ${d.h}×${d.w}`;
   renderList(); renderEditor(); drawPreview();
   if (simOn) renderSim();
+}
+
+// Immagine a tutto schermo nei due versi: con "Riempi" un quadrato da 792 px copre
+// l'orizzontale (fascia centrale 792×528) e il verticale (colonna centrale 528×792) senza
+// rimpicciolirsi. Il quadrato centrale 528×528 si vede sempre, gli angoli da 132 px mai.
+// Una frase intera per tipo, perché info() traduce solo chiavi esatte.
+const SQUARE_TIP = 'Per un\'immagine a tutto schermo nei due versi usa un quadrato da 792×792 px con l\'adattamento Riempi. In orizzontale si vede la fascia centrale (792×528), in verticale la colonna centrale (528×792): il soggetto va nel quadrato al centro (528×528), che si vede sempre; gli angoli (132×132) non si vedono mai. Il modello mostra le zone. Con la didascalia la parte bassa si accorcia.';
+const SQUARE_TIP_OFF = 'Per un\'immagine a tutto schermo nei due versi usa un quadrato da 792×792 px con l\'adattamento Riempi. In orizzontale si vede la fascia centrale (792×528), in verticale la colonna centrale (528×792): il soggetto va nel quadrato al centro (528×528), che si vede sempre; gli angoli (132×132) non si vedono mai. Il modello mostra le zone. Da spento l\'X3 ci disegna sopra la fascia in basso, la batteria e, se accesi, il nome e le etichette dei tasti: il modello di questa pagina li mostra in blu per l\'orizzontale e in arancione per il verticale.';
+// Per la schermata di spento il modello porta sopra, a colori, quello che l'X3 disegna
+// sull'immagine (fascia, batteria, nome, etichette dei tasti, secondo le scelte di
+// Spento): l'orizzontale e il verticale con due colori diversi.
+const TPL_LAND = [37, 99, 235], TPL_PORT = [234, 88, 12];
+function tintedOverlay(W, H, q, rgb) {
+  const [cv, g] = newCanvas(W, H);
+  g.clearRect(0, 0, W, H);  // newCanvas parte bianco: qui serve trasparente
+  drawOffOverlay(g, W, H, q, true);
+  const d = g.getImageData(0, 0, W, H), p = d.data;
+  for (let i = 0; i < p.length; i += 4) {
+    if (!p[i + 3]) continue;
+    const dark = p[i] < 128;
+    p[i] = rgb[0]; p[i + 1] = rgb[1]; p[i + 2] = rgb[2]; p[i + 3] = dark ? 235 : 80;
+  }
+  g.putImageData(d, 0, 0);
+  return cv;
+}
+async function squareTemplate(off = false) {
+  await Promise.all([400, 700].map(w => document.fonts.load(`${w} 30px "Inter"`).catch(() => {})));
+  const S = 792, m = (792 - 528) / 2;
+  const [cv] = newCanvas(S, S), g = cv.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, S, S);
+  const corners = [[0, 0], [S - m, 0], [0, S - m], [S - m, S - m]];
+  for (const [x, y] of corners) {
+    g.fillStyle = '#d7d7d7'; g.fillRect(x, y, m, m);
+    g.save(); g.beginPath(); g.rect(x, y, m, m); g.clip();
+    g.strokeStyle = '#afafaf'; g.lineWidth = 2;
+    for (let k = -m; k < m; k += 18) { g.beginPath(); g.moveTo(x + k, y); g.lineTo(x + k + m, y + m); g.stroke(); }
+    g.restore();
+  }
+  const col = rgb => off ? `rgb(${rgb})` : '#000';
+  g.lineWidth = 4;
+  g.strokeStyle = col(TPL_LAND); g.strokeRect(2, m, S - 4, S - 2 * m);
+  g.strokeStyle = col(TPL_PORT); g.strokeRect(m, 2, S - 2 * m, S - 4);
+  g.fillStyle = '#000'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  const lines = (txt, x, y, px, w = 400, color = '#000') => {
+    g.font = `${w} ${px}px ${FONT}`; g.fillStyle = color;
+    const ls = txt.split('\n'); ls.forEach((l, i) => g.fillText(l, x, y + (i - (ls.length - 1) / 2) * px * 1.25));
+  };
+  lines(t('SEMPRE VISIBILE') + '\n528 × 528', S / 2, S / 2 - 10, 34, 700);
+  // Sulla schermata di spento i bordi del quadrato centrale li occupano nome e fascia:
+  // le misure vanno sotto la scritta centrale, che resta libera.
+  lines(t('orizzontale') + ' 792 × 528', S / 2, off ? S / 2 + 70 : S - m - 26, 21, off ? 700 : 400, col(TPL_LAND));
+  lines(t('verticale') + ' 528 × 792', S / 2, off ? S / 2 + 100 : m + 26, 21, off ? 700 : 400, col(TPL_PORT));
+  for (const y of [m / 2, off ? S - m + 28 : S - m / 2]) lines(t('solo in verticale'), S / 2, y, 22);
+  for (const x of [m / 2, S - m / 2]) lines(t('solo in\norizzontale'), x, S / 2, 21);
+  for (const [x, y] of corners) {
+    g.fillStyle = '#d7d7d7'; g.fillRect(x + m / 2 - 34, y + m / 2 - 16, 68, 32);
+    lines(t('mai'), x + m / 2, y + m / 2, 22, 400, '#505050');
+  }
+  if (off) {
+    g.drawImage(tintedOverlay(S, S - 2 * m, 3, TPL_LAND), 0, m);
+    g.drawImage(tintedOverlay(S - 2 * m, S, 0, TPL_PORT), m, 0);
+  }
+  return new Promise(res => cv.toBlob(res, 'image/png'));
 }
 
 function download(blob, name) {
