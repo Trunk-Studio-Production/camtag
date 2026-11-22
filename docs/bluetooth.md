@@ -80,6 +80,16 @@ quando il display si sta aggiornando. Se si riempie comunque: `ERR OVERFLOW`.
 Non alzare la finestra: con 24 KB il browser sul Mac intasa la sua coda di
 scritture senza risposta, e l'invio rallenta fino a 1 KB/s o resta appeso.
 
+Non tutti i browser consegnano davvero quello che scrivono: Bluefy su iPhone
+accetta pacchetti da 512 byte senza risposta e non li manda (registro
+dell'X3, 22/11/2026: `FILE … OK`, poi nessun byte). Per questo, al primo invio
+o aggiornamento della pagina, il configuratore web manda in una sessione a
+parte un file di prova da 4 KB (`BEGIN`, `FILE … camtag-prova.bin`), che il
+`BEGIN` vero o un `ABORT` buttano via, e prova i modi in ordine finché l'X3
+conferma entro 5 s: senza risposta a MTU − 3 byte, senza risposta a 182 byte,
+con risposta a 182 byte (`BLE_WRITE_MODES`). Il modo trovato vale finché la
+pagina resta aperta.
+
 Il browser manda un pacchetto per intervallo del collegamento: la velocità
 dipende quasi solo da quello. Il dispositivo chiede 15 ms esatti (le regole
 Apple non danno di meno; con "15-30 ms" il Mac sceglie 30) subito dopo lo

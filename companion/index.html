@@ -387,6 +387,8 @@
     <button id="bleGet" title="Riprende il progetto salvato sull'X3 insieme alle card">Importa dall'X3</button>
     <button id="bleStart" class="primary">Invia le card</button>
     <button id="bleCancel" hidden>Annulla</button>
+    <button id="bleNo" hidden>Annulla</button>
+    <button id="bleYes" class="primary" hidden></button>
   </div>
   <div class="usb">
     <p><b>Prima installazione</b><span>X3 nuovo o da ripristinare, con il cavo USB</span></p>
@@ -2790,7 +2792,13 @@ const BLE = {
   window: 8192,
   ackEvery: 2048,    // GET: il client conferma ogni 2 KB ricevuti
   timeoutMs: 15000,
+  probeMs: 5000,     // prova del modo di scrittura: senza conferme per tanto, si passa al modo dopo
 };
+// Modi di scrittura dei dati, provati in ordine con un file di prova (linkProbe).
+// Bluefy su iPhone accetta pacchetti da 512 byte senza risposta e non li manda:
+// l'X3 non riceve nulla. `max` = byte per pacchetto, `nr` = senza risposta.
+const BLE_WRITE_MODES = [{ nr: true, max: 512 }, { nr: true, max: 182 }, { nr: false, max: 182 }];
+let bleWriteMode = null;  // indice del modo che funziona, trovato una volta per pagina
 const BLE_ERRORS = {
   CRC: t('I dati sono arrivati rovinati. Riprova.'),
   SD: t('Il dispositivo non riesce a scrivere sulla microSD (piena, protetta o assente?).'),
@@ -2860,6 +2868,20 @@ function bleUi(msg, { detail = '', progress = null, error = false, busy = false 
   $('#bleCancel').hidden = !busy;
 }
 
+// Domanda dentro la finestra Bluetooth, al posto di confirm(): alcuni browser
+// per iPhone con Web Bluetooth mostrano il confirm ma non rendono la risposta.
+function bleAsk(msg, detail, yes) {
+  bleUi(msg, { detail });
+  bleActs(false);
+  $('#bleYes').textContent = yes;
+  $('#bleYes').hidden = $('#bleNo').hidden = false;
+  return new Promise(res => {
+    const end = v => { $('#bleYes').hidden = $('#bleNo').hidden = true; $('#bleYes').onclick = $('#bleNo').onclick = null; res(v); };
+    $('#bleYes').onclick = () => end(true);
+    $('#bleNo').onclick = () => end(false);
+  });
+}
+
 // Collegamento con l'X3: requestDevice va chiamato subito, dentro il clic (il
 // browser lo permette solo in risposta a un gesto). `work` riceve il canale già
 // salutato con HELLO; il collegamento si chiude comunque alla fine.
@@ -2898,9 +2920,12 @@ async function bleSession(work, onFail) {
   };
   // ACK di un GET: senza risposta se l'X3 lo permette (firmware recente): con la
   // risposta, mentre l'X3 invia, Chrome sul Mac può fallire (docs/bluetooth.md).
-  link.ack = c => (ctrl.properties.writeWithoutResponse && ctrl.writeValueWithoutResponse
+  // Bluefy non ha `properties`: lì si scrive con la risposta.
+  link.ack = c => (ctrl.properties?.writeWithoutResponse && ctrl.writeValueWithoutResponse
     ? timed(ctrl.writeValueWithoutResponse(enc.encode(c)), BLE.timeoutMs) : link.cmd(c));
-  link.write = chunk => timed(data.writeValueWithoutResponse ? data.writeValueWithoutResponse(chunk) : data.writeValue(chunk), BLE.timeoutMs);
+  link.write = chunk => timed(link.mode.nr && data.writeValueWithoutResponse ? data.writeValueWithoutResponse(chunk)
+    : data.writeValueWithResponse ? data.writeValueWithResponse(chunk) : data.writeValue(chunk), BLE.timeoutMs);
+  link.useMode = i => { link.mode = BLE_WRITE_MODES[i]; link.chunkSize = Math.min(link.mtuChunk, link.mode.max); };
   link.connected = () => !!ctrl && !disconnected;
   link.cancelled = () => cancelled;
   bleRun = { cancel: () => { cancelled = true; wake(); } };
@@ -2951,7 +2976,8 @@ async function bleSession(work, onFail) {
         bleShowFw(fw, link.version);
         mtu = +h[4] || 23;
       }
-      link.chunkSize = Math.max(20, Math.min(512, mtu - 3));
+      link.mtuChunk = Math.max(20, Math.min(512, mtu - 3));
+      link.useMode(bleWriteMode ?? 0);
       link.dataNotify = () => data.startNotifications();
     };
     await work(link);
@@ -2975,6 +3001,7 @@ async function bleSend() {
     if (!files.some(f => f.path.endsWith('.bmp'))) throw new Error(t('Non ci sono card da inviare.'));
     const total = files.reduce((s, f) => s + f.bytes.length, 0);
     await link.open();
+    await linkProbe(link);
 
     await link.cmd('BEGIN'); await link.next();
     let sent = 0, kept = 0, keptBytes = 0;
@@ -2995,8 +3022,6 @@ async function bleSend() {
       const r = await link.next();
       if (r.startsWith('DONE')) continue;  // file vuoto
       await linkPush(link, f.bytes, off => { $('#bleBar').value = (sent + off) / total; });
-      const done = await link.next();
-      if (!done.startsWith('DONE')) throw new Error(t('Risposta inattesa: {}', done));
       sent += f.bytes.length;
     }
     bleUi(t('Salvo sul dispositivo…'), { busy: true, progress: 1 });
@@ -3015,14 +3040,51 @@ async function bleSend() {
 
 // Dati di un file su DATA, dopo l'OK a FILE o FIRMWARE: al massimo BLE.window
 // byte non confermati dagli ACK dell'X3. `progress(byte inviati)`.
-async function linkPush(link, bytes, progress) {
+// Finisce con il DONE dell'X3. Con `stallMs` (prova del modo di scrittura) un
+// silenzio più lungo diventa l'errore STALL invece di "non risponde".
+async function linkPush(link, bytes, progress, stallMs) {
   link.acked = 0;
-  for (let off = 0; off < bytes.length; off += link.chunkSize) {
-    await link.waitFor(() => off - link.acked < BLE.window || link.inbox.length);
-    if (link.inbox.length) await link.next();  // un ERR interrompe qui
-    await link.write(bytes.subarray(off, off + link.chunkSize));
-    progress(off);
+  try {
+    for (let off = 0; off < bytes.length; off += link.chunkSize) {
+      await link.waitFor(() => off - link.acked < BLE.window || link.inbox.length, stallMs);
+      if (link.inbox.length) await link.next();  // un ERR interrompe qui
+      await link.write(bytes.subarray(off, off + link.chunkSize));
+      progress(off);
+    }
+    progress(bytes.length);  // tutto partito: si aspetta il DONE
+    await link.waitFor(() => link.inbox.length, stallMs);
+  } catch (e) {
+    if (!stallMs || e.code || link.cancelled() || !link.connected()) throw e;
+    const s = new Error(e.message); s.code = 'STALL'; throw s;
   }
+  const done = await link.next();
+  if (!done.startsWith('DONE')) throw new Error(t('Risposta inattesa: {}', done));
+}
+
+// Al primo invio della pagina: un file di prova da 4 KB, in una sessione che il
+// BEGIN dopo (o ABORT) butta via, con i modi di BLE_WRITE_MODES finché uno arriva.
+const PROBE_FILE = 'camtag-prova.bin';
+async function linkProbe(link) {
+  if (bleWriteMode !== null) return;
+  const bytes = new Uint8Array(4096).map((_, i) => i * 7);
+  const spec = `FILE ${bytes.length} ${crc32(bytes).toString(16)} ${PROBE_FILE}`;
+  for (let m = 0; m < BLE_WRITE_MODES.length; m++) {
+    link.useMode(m);
+    bleUi(t('Provo il collegamento…'), { busy: true, progress: 0 });
+    link.inbox.length = 0;
+    await link.cmd('BEGIN'); await link.next();
+    await link.cmd(spec); await link.next();
+    try {
+      await linkPush(link, bytes, () => {}, BLE.probeMs);
+      bleWriteMode = m;
+      if (m) console.info('[ble] scrittura dei dati:', BLE_WRITE_MODES[m]);
+      return;
+    } catch (e) {
+      if (!['STALL', 'CRC', 'DATI', 'OVERFLOW'].includes(e.code)) throw e;
+      console.warn('[ble] il modo', BLE_WRITE_MODES[m], 'non arriva all\'X3:', e.code);
+    }
+  }
+  throw new Error(t("Questo browser non riesce a mandare dati all'X3. Prova con un altro browser."));
 }
 
 // Un file dall'X3 con GET: il client conferma con ACK ogni 2 KB (come fa l'X3
@@ -3070,7 +3132,7 @@ async function bleGet() {
   if (!project) return;
   const when = project.savedAt ? new Date(project.savedAt).toLocaleString(uiLang === 'it' ? 'it-IT' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : t('in data sconosciuta');
   const name = project.production ? (uiLang === 'it' ? `«${project.production}», ` : `“${project.production}”, `) : '';
-  if (!confirm(t('Sull\'X3 c\'è il progetto {}inviato {}.\n\nSostituisce quello di questo browser: se ti serve il lavoro attuale, prima usa "Salva progetto".', name, when))) {
+  if (!await bleAsk(t('Sull\'X3 c\'è il progetto {}inviato {}.', name, when), t('Sostituisce quello di questo browser: se ti serve il lavoro attuale, prima usa "Salva progetto".'), t('Sostituisci'))) {
     bleUi(t('Importazione annullata: il progetto in questo browser non è cambiato.'));
     return;
   }
@@ -3103,8 +3165,12 @@ async function bleFirmware(file) {
     if (!version) throw new Error(t('Il file non è un firmware CamTag per l\'X3.'));
     if (!file && version !== FW_VERSION) console.warn('[ble] firmware pubblicato', version, 'invece di', FW_VERSION);
     await link.open({ firmware: true });
+    if (bleWriteMode === null && link.version >= BLE.firmwareFrom) {
+      await linkProbe(link);
+      await link.cmd('ABORT'); await link.next();
+    }
     if (link.version < BLE.firmwareFrom) throw new Error(t("Il firmware dell'X3 ({}) non si aggiorna via Bluetooth: la prima volta serve il cavo USB («Installa via USB»).", link.fw || t('precedente alla 0.1.0')));
-    if (link.fw && fwCompare(link.fw, version) >= 0 && !confirm(t("L'X3 ha già il firmware {}. Installare comunque la {}?", link.fw, version))) {
+    if (link.fw && fwCompare(link.fw, version) >= 0 && !await bleAsk(t("L'X3 ha già il firmware {}. Installare comunque la {}?", link.fw, version), '', t('Installa'))) {
       bleUi(t("Il firmware dell'X3 non è cambiato."));
       return;
     }
@@ -3116,11 +3182,10 @@ async function bleFirmware(file) {
     const ok = await link.next(BLE.confirmMs);
     if (ok !== 'OK') throw new Error(t('Risposta inattesa: {}', ok));
     const t0 = Date.now(), kb = Math.round(bytes.length / 1024);
-    await linkPush(link, bytes, off => bleUi(t('Installo il firmware {}…', version), { busy: true, progress: off / bytes.length,
-      detail: t('{} di {} KB. Tieni il telefono vicino all\'X3.', Math.round(off / 1024), kb) }));
-    bleUi(t('L\'X3 controlla il firmware…'), { busy: true, progress: 1 });
-    const done = await link.next();
-    if (!done.startsWith('DONE')) throw new Error(t('Risposta inattesa: {}', done));
+    await linkPush(link, bytes, off => off < bytes.length
+      ? bleUi(t('Installo il firmware {}…', version), { busy: true, progress: off / bytes.length,
+        detail: t('{} di {} KB. Tieni il telefono vicino all\'X3.', Math.round(off / 1024), kb) })
+      : bleUi(t('L\'X3 controlla il firmware…'), { busy: true, progress: 1 }));
     installed = { version, secs: Math.max(1, Math.round((Date.now() - t0) / 1000)), kb };
   }, async (e, link) => {
     if (link.connected()) { try { await link.cmd('ABORT'); } catch {} }
@@ -3187,7 +3252,10 @@ $('#bleFwFile').onchange = async e => {
     detail: v ? t('Ricarica la pagina per tornare al firmware pubblicato.') : '' });
 };
 $('#bleCancel').onclick = () => { if (bleRun) bleRun.cancel(); };
-$('#bleClose').onclick = () => { if (bleRun) bleRun.cancel(); else $('#bleDlg').close(); };
+// Chiudere la finestra durante una domanda (bleAsk) vale come "Annulla".
+const bleAskNo = () => { if (!$('#bleNo').hidden) $('#bleNo').click(); };
+$('#bleDlg').addEventListener('close', bleAskNo);
+$('#bleClose').onclick = () => { bleAskNo(); if (bleRun) bleRun.cancel(); else $('#bleDlg').close(); };
 $('#bleDlg').addEventListener('cancel', e => { if (bleRun) { e.preventDefault(); bleRun.cancel(); } });
 // Il file di progetto porta con sé le modifiche delle sue lenti, per essere completo su un altro computer.
 function projectData() {
