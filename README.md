@@ -135,8 +135,9 @@ Requirements:
   Brave, Bluetooth must be enabled in `brave://flags`, entry "Web Bluetooth
   API");
 - **iPhone and iPad**: Safari has no Web Bluetooth; you need a browser that
-  adds it, such as **[BLE Link](https://apps.apple.com/app/id6468414672)**
-  (tested) or [Bluefy](https://apps.apple.com/app/id1492822055).
+  adds it: **[BLE Link](https://apps.apple.com/app/id6468414672)** or
+  **[Bluefy](https://apps.apple.com/app/id1492822055)**, both tested (sending,
+  "Import from X3" and firmware update).
 
 The protocol is described in [`docs/bluetooth.md`](docs/bluetooth.md).
 
@@ -420,7 +421,8 @@ orientation and the card on screen, and waits for the X3 if it turns off:
 - [x] Firmware update over Bluetooth: 864 KB in 26 s; the new firmware boots
       on trial and confirms itself, otherwise the bootloader rolls back
 - [x] Battery log downloaded over Bluetooth ("Battery log" button, in developer mode)
-- [ ] Bluetooth from Android (Chrome) and iPhone (BLE Link)
+- [x] Bluetooth from iPhone with BLE Link and Bluefy: sending, import and firmware
+- [ ] Bluetooth from Android (Chrome)
 - [x] Real cards in portrait and landscape, X/Y in a loop, automatic rotation
       and lock (Y held)
 - [x] Rockers on a multi-page lens chart in all 4 orientations (like

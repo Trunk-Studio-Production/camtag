@@ -443,7 +443,8 @@ non è più vero invece di aggiungere note.
 
 Provati sull'X3: ricezione Bluetooth dal Mac (1,1 MB in ~40 s) e "Importa dall'X3",
 aggiornamento del firmware via Bluetooth (864 KB in 26 s; il nuovo parte in prova,
-`stato 1`, e si conferma: il bootloader ha il rollback), card vere, X/Y, rotazione e
+`stato 1`, e si conferma: il bootloader ha il rollback), tutto anche da iPhone con
+BLE Link e Bluefy (utilizzabili tutti e due), card vere, X/Y, rotazione e
 blocco, bilancieri della lens chart nei 4 versi. Tasti, assi IMU e verso dello schermo sono tarati sull'X3 (`kKeyA`…`kKeyD`, `kKeyX`, `kKeyY`,
 `kImuSwapXY`, `kImuSignX`, `kImuSignY`, `kQuarterTurns` in `device/src/main.cpp`:
 la posizione naturale è `Canvas::ROT_270`).

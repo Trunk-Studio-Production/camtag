@@ -136,8 +136,9 @@ Requisiti:
 - **Android, Mac, Windows, Linux**: Chrome, Edge o Brave (provato su Mac; in
   Brave il Bluetooth va acceso in `brave://flags`, voce "Web Bluetooth API");
 - **iPhone e iPad**: Safari non ha Web Bluetooth; serve un browser che lo
-  aggiunga, come **[BLE Link](https://apps.apple.com/app/id6468414672)** (provato)
-  o [Bluefy](https://apps.apple.com/app/id1492822055).
+  aggiunga: **[BLE Link](https://apps.apple.com/app/id6468414672)** o
+  **[Bluefy](https://apps.apple.com/app/id1492822055)**, provati tutti e due
+  (invio, "Importa dall'X3" e aggiornamento del firmware).
 
 Il protocollo è descritto in [`docs/bluetooth.md`](docs/bluetooth.md).
 
@@ -417,7 +418,8 @@ schermo, e aspetta l'X3 se si spegne:
 - [x] Aggiornamento del firmware via Bluetooth: 864 KB in 26 s; il nuovo parte
       in prova e si conferma da sé, altrimenti il bootloader torna al vecchio
 - [x] Registro della batteria scaricato via Bluetooth (pulsante "Registro batteria", in modalità sviluppatore)
-- [ ] Bluetooth da Android (Chrome) e iPhone (BLE Link)
+- [x] Bluetooth da iPhone con BLE Link e Bluefy: invio, importazione e firmware
+- [ ] Bluetooth da Android (Chrome)
 - [x] Card vere in verticale e in orizzontale, X/Y in ciclo, rotazione
       automatica e blocco (Y tenuto)
 - [x] Bilancieri sulla lens chart di più pagine nei 4 versi (come

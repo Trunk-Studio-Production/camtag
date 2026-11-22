@@ -88,8 +88,8 @@ appesa, mentre i comandi, che hanno un buffer loro, arrivano (registro dell'X3,
 22/11/2026). Con `slice` va senza risposta a MTU − 3 byte come gli altri
 browser (7 file e `project.json`, circa 75 KB/s per file).
 
-Browser per iPhone provati (22/11/2026), invio e "Importa dall'X3": Bluefy e
-BLE Link. BLE Link non ha `properties` sulle caratteristiche (l'`ACK` del `GET`
+Browser per iPhone provati (22/11/2026), invio, "Importa dall'X3" e
+aggiornamento del firmware: Bluefy e BLE Link, utilizzabili tutti e due. BLE Link non ha `properties` sulle caratteristiche (l'`ACK` del `GET`
 si scrive allora con la risposta); in Bluefy, dopo l'OK a `confirm()`, il progetto
 non cambiava, con la domanda nella finestra Bluetooth (`bleAsk`) sì.
 
