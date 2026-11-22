@@ -80,25 +80,18 @@ quando il display si sta aggiornando. Se si riempie comunque: `ERR OVERFLOW`.
 Non alzare la finestra: con 24 KB il browser sul Mac intasa la sua coda di
 scritture senza risposta, e l'invio rallenta fino a 1 KB/s o resta appeso.
 
-Non tutti i browser consegnano davvero quello che scrivono: Bluefy su iPhone
-accetta pacchetti da 512 byte senza risposta e non li manda (registro
-dell'X3, 22/11/2026: `FILE … OK`, poi nessun byte). Per questo, al primo invio
-o aggiornamento della pagina, il configuratore web manda in una sessione a
-parte un file di prova da 4 KB (`BEGIN`, `FILE … camtag-prova.bin`), che il
-`BEGIN` vero o un `ABORT` buttano via, e prova i modi in ordine finché l'X3
-conferma entro 5 s: senza risposta a MTU − 3 byte, senza risposta a 182 byte,
-con risposta a 182 byte (`BLE_WRITE_MODES`). In Bluefy la scrittura senza
-risposta blocca anche le scritture dopo (registro del 22/11/2026: dopo la prova
-non arriva più nulla) e rifiuta con un numero, non un errore: tra un modo e
-l'altro il configuratore web si scollega e si ricollega (`link.reopen`). Il modo
-trovato vale finché la pagina resta aperta; su iPhone resta anche nel browser
-(localStorage `camtag.bleWrite.v1`), così la prova costa una volta sola.
-
 Ogni pacchetto di dati è un `Uint8Array` con un buffer suo (`slice`, non
-`subarray`): in Bluefy con una vista su un buffer più grande non partiva nulla,
-in nessun modo (senza risposta "riuscita" ma niente all'X3, con risposta
-appesa), mentre i comandi, che hanno sempre un buffer loro, arrivavano. È
-l'ipotesi più probabile, non ancora confermata.
+`subarray`). Bluefy su iPhone, con una vista su un buffer più grande, passa a
+iOS tutto il buffer sotto (l'intero file) e non parte nulla: senza risposta la
+scrittura risulta riuscita ma all'X3 non arriva un byte, con la risposta resta
+appesa, mentre i comandi, che hanno un buffer loro, arrivano (registro dell'X3,
+22/11/2026). Con `slice` va senza risposta a MTU − 3 byte come gli altri
+browser (7 file e `project.json`, circa 75 KB/s per file).
+
+Browser per iPhone provati (22/11/2026), invio e "Importa dall'X3": Bluefy e
+BLE Link. BLE Link non ha `properties` sulle caratteristiche (l'`ACK` del `GET`
+si scrive allora con la risposta); in Bluefy, dopo l'OK a `confirm()`, il progetto
+non cambiava, con la domanda nella finestra Bluetooth (`bleAsk`) sì.
 
 Il browser manda un pacchetto per intervallo del collegamento: la velocità
 dipende quasi solo da quello. Il dispositivo chiede 15 ms esatti (le regole

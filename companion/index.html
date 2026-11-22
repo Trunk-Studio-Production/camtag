@@ -304,6 +304,10 @@
     .stagecol { order: 1; }
     .work.nopreview .stagecol { display: none; }
     #prevTog { display: block; flex: none; width: auto; border-radius: 999px; padding: 6px 12px; }
+    /* "+" subito dopo l'anteprima, sempre in vista anche con tante schermate, e nel verde. */
+    #addBtn { order: -1; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-size: 20px; font-weight: 700;
+              line-height: 1; padding: 0 14px; }
+    #prevTog { order: -2; }
     .screens { order: 2; }
     /* Il simulatore serve da computer: sul telefono resta solo l'anteprima. */
     #modeRow, .pbar, #previewNote { display: none; }
@@ -2802,25 +2806,7 @@ const BLE = {
   window: 8192,
   ackEvery: 2048,    // GET: il client conferma ogni 2 KB ricevuti
   timeoutMs: 15000,
-  probeMs: 5000,     // prova del modo di scrittura: senza conferme per tanto, si passa al modo dopo
 };
-// Modi di scrittura dei dati, provati in ordine con un file di prova (linkProbe).
-// Bluefy su iPhone accetta pacchetti da 512 byte senza risposta e non li manda:
-// l'X3 non riceve nulla. `max` = byte per pacchetto, `nr` = senza risposta.
-// `notify` accende prima le notifiche di DATA, `legacy` usa writeValue(). In Bluefy
-// (22/11/2026) i comandi su CTRL arrivano e i dati su DATA no, in tutti e tre i
-// primi modi: gli ultimi due e gli errori nel messaggio servono a capire perché.
-const BLE_WRITE_MODES = [{ nr: true, max: 512 }, { nr: true, max: 182 }, { nr: false, max: 182, notify: true },
-  { legacy: true, max: 182, notify: true }];
-// Indice del modo che funziona, trovato una volta per pagina. Su iPhone lo si
-// ricorda anche nel browser, perché lì la prova di un modo sbagliato costa un
-// ricollegamento.
-const BLE_MODE_KEY = 'camtag.bleWrite.v1';
-let bleWriteMode = null;
-function bleStoredMode() {
-  try { const m = +localStorage.getItem(BLE_MODE_KEY); if (IOS && m > 0 && m < BLE_WRITE_MODES.length) return m; } catch {}
-  return null;
-}
 // Bluefy rifiuta con un numero invece di un Error.
 function bleErrText(e) {
   return e instanceof Error && e.message ? e.message : t('Errore del browser Bluetooth: {}', String(e?.message || e));
@@ -2939,7 +2925,6 @@ async function bleSession(work, onFail) {
   let device;
   $('#bleFw').hidden = true;
   try { device = await devicePromise; } catch (e) { bleUi(t('Nessun dispositivo scelto.'), { detail: t('Sull\'X3 tieni premuto X finché compare BLUETOOTH, poi riprova.') }); return; }
-  bleWriteMode ??= bleStoredMode();
   let cancelled = false, disconnected = false, waiter = null;
   const link = { acked: 0, inbox: [], rx: [], rxBytes: 0, device };
   const wake = () => { if (waiter) { const w = waiter; waiter = null; w(); } };
@@ -2965,7 +2950,7 @@ async function bleSession(work, onFail) {
   // Una scrittura che non si chiude (il Mac a volte la lascia appesa) diventa un errore, non un'attesa infinita.
   const timed = (p, ms) => {
     let tm;
-    const late = new Promise((_, rej) => { tm = setTimeout(() => { const e = new Error(t('Il dispositivo non risponde. Riprova.')); e.hung = true; rej(e); }, ms); });
+    const late = new Promise((_, rej) => { tm = setTimeout(() => rej(new Error(t('Il dispositivo non risponde. Riprova.'))), ms); });
     return Promise.race([p, late]).finally(() => clearTimeout(tm));
   };
   // ACK di un GET: senza risposta se l'X3 lo permette (firmware recente): con la
@@ -2973,53 +2958,33 @@ async function bleSession(work, onFail) {
   // Bluefy non ha `properties`: lì si scrive con la risposta.
   link.ack = c => (ctrl.properties?.writeWithoutResponse && ctrl.writeValueWithoutResponse
     ? timed(ctrl.writeValueWithoutResponse(enc.encode(c)), BLE.timeoutMs) : link.cmd(c));
-  link.write = (chunk, ms = BLE.timeoutMs) => timed(link.mode.legacy ? data.writeValue(chunk)
-    : link.mode.nr && data.writeValueWithoutResponse ? data.writeValueWithoutResponse(chunk)
-    : data.writeValueWithResponse ? data.writeValueWithResponse(chunk) : data.writeValue(chunk), ms);
-  link.useMode = i => { link.mode = BLE_WRITE_MODES[i]; link.chunkSize = Math.min(link.mtuChunk, link.mode.max); };
+  link.write = chunk => timed(data.writeValueWithoutResponse ? data.writeValueWithoutResponse(chunk) : data.writeValue(chunk), BLE.timeoutMs);
   link.connected = () => !!ctrl && !disconnected;
   link.cancelled = () => cancelled;
   bleRun = { cancel: () => { cancelled = true; wake(); } };
   device.addEventListener('gattserverdisconnected', () => { disconnected = true; wake(); });
-  const onCtrl = e => {
-    const m = dec.decode(e.target.value);
-    if (m.startsWith('ACK ')) link.acked = +m.slice(4); else link.inbox.push(m);
-    wake();
-  };
-  // Pacchetti di un file chiesto con GET.
-  const onData = e => {
-    const v = e.target.value;
-    link.rx.push(new Uint8Array(v.buffer.slice(v.byteOffset, v.byteOffset + v.byteLength)));
-    link.rxBytes += v.byteLength;
-    wake();
-  };
-  // Scollega e ricollega: in Bluefy una scrittura senza risposta che non parte
-  // blocca anche le scritture dopo, e solo un nuovo collegamento le libera.
-  link.reopen = async () => {
-    ctrl = null;
-    if (device.gatt.connected) device.gatt.disconnect();
-    await new Promise(r => setTimeout(r, 800));
-    if (cancelled) throw new Error(t('Annullato.'));
-    disconnected = false;
-    link.inbox.length = 0;
-    await link.open(link.openOpts);
-  };
 
   try {
     // `firmware`: si apre per aggiornarlo, quindi un protocollo diverso va bene se
     // l'X3 conosce FIRMWARE (contratto fisso, docs/bluetooth.md).
-    link.open = async (opts = {}) => {
-      const { firmware = false } = link.openOpts = opts;
+    link.open = async ({ firmware = false } = {}) => {
       bleUi(t('Mi collego a {}…', device.name || 'CamTag'), { busy: true, progress: 0 });
       const server = await device.gatt.connect();
       const svc = await server.getPrimaryService(BLE.service);
       const c = await svc.getCharacteristic(BLE.ctrl);
       data = await svc.getCharacteristic(BLE.data);
-      // Dopo un ricollegamento le caratteristiche possono essere gli stessi oggetti.
-      c.removeEventListener('characteristicvaluechanged', onCtrl);
-      c.addEventListener('characteristicvaluechanged', onCtrl);
-      data.removeEventListener('characteristicvaluechanged', onData);
-      data.addEventListener('characteristicvaluechanged', onData);
+      c.addEventListener('characteristicvaluechanged', e => {
+        const m = dec.decode(e.target.value);
+        if (m.startsWith('ACK ')) link.acked = +m.slice(4); else link.inbox.push(m);
+        wake();
+      });
+      // Pacchetti di un file chiesto con GET.
+      data.addEventListener('characteristicvaluechanged', e => {
+        const v = e.target.value;
+        link.rx.push(new Uint8Array(v.buffer.slice(v.byteOffset, v.byteOffset + v.byteLength)));
+        link.rxBytes += v.byteLength;
+        wake();
+      });
       await c.startNotifications();
       ctrl = c;
       // HELLO: versione del protocollo e MTU. Se l'MTU non è ancora negoziato (23),
@@ -3044,8 +3009,7 @@ async function bleSession(work, onFail) {
         bleShowFw(fw, link.version);
         mtu = +h[4] || 23;
       }
-      link.mtuChunk = Math.max(20, Math.min(512, mtu - 3));
-      link.useMode(bleWriteMode ?? 0);
+      link.chunkSize = Math.max(20, Math.min(512, mtu - 3));
       link.dataNotify = () => data.startNotifications();
     };
     await work(link);
@@ -3069,7 +3033,6 @@ async function bleSend() {
     if (!files.some(f => f.path.endsWith('.bmp'))) throw new Error(t('Non ci sono card da inviare.'));
     const total = files.reduce((s, f) => s + f.bytes.length, 0);
     await link.open();
-    await linkProbe(link);
 
     await link.cmd('BEGIN'); await link.next();
     let sent = 0, kept = 0, keptBytes = 0;
@@ -3108,67 +3071,22 @@ async function bleSend() {
 
 // Dati di un file su DATA, dopo l'OK a FILE o FIRMWARE: al massimo BLE.window
 // byte non confermati dagli ACK dell'X3. `progress(byte inviati)`.
-// Finisce con il DONE dell'X3. Con `stallMs` (prova del modo di scrittura) un
-// silenzio più lungo diventa l'errore STALL invece di "non risponde".
-async function linkPush(link, bytes, progress, stallMs) {
+// Finisce con il DONE dell'X3.
+async function linkPush(link, bytes, progress) {
   link.acked = 0;
-  try {
-    for (let off = 0; off < bytes.length; off += link.chunkSize) {
-      await link.waitFor(() => off - link.acked < BLE.window || link.inbox.length, stallMs);
-      if (link.inbox.length) await link.next();  // un ERR interrompe qui
-      // slice, non subarray: Bluefy manda tutto il buffer sotto una vista, cioè
-      // l'intero file in un pacchetto, che non parte (22/11/2026). Una copia
-      // per pacchetto costa poco.
-      await link.write(bytes.slice(off, off + link.chunkSize), stallMs);
-      progress(off);
-    }
-    progress(bytes.length);  // tutto partito: si aspetta il DONE
-    await link.waitFor(() => link.inbox.length, stallMs);
-  } catch (e) {
-    // e.code di testo = ERR dell'X3; un DOMException del browser ha un code numerico.
-    if (!stallMs || typeof e?.code === 'string' || link.cancelled() || !link.connected()) throw e;
-    const s = new Error(e?.message || String(e)); s.code = 'STALL';
-    // Per capire un browser che non manda: scrittura appesa, nessuna conferma
-    // dell'X3 (scritta "riuscita" ma non arrivata) o l'errore del browser.
-    s.detail = e?.hung ? 'write hung' : e instanceof Error && e.message === t('Il dispositivo non risponde. Riprova.')
-      ? `no ACK, ${link.acked} B` : e instanceof Error ? `${e.name}: ${e.message}` : `${typeof e} ${String(e)}`;
-    throw s;
+  for (let off = 0; off < bytes.length; off += link.chunkSize) {
+    await link.waitFor(() => off - link.acked < BLE.window || link.inbox.length);
+    if (link.inbox.length) await link.next();  // un ERR interrompe qui
+    // slice, non subarray: Bluefy non manda la vista ma tutto il buffer sotto,
+    // cioè l'intero file in un pacchetto, e non parte nulla (docs/bluetooth.md).
+    await link.write(bytes.slice(off, off + link.chunkSize));
+    progress(off);
   }
+  progress(bytes.length);  // tutto partito: si aspetta il DONE
   const done = await link.next();
   if (!done.startsWith('DONE')) throw new Error(t('Risposta inattesa: {}', done));
 }
 
-// Al primo invio della pagina: un file di prova da 4 KB, in una sessione che il
-// BEGIN dopo (o ABORT) butta via, con i modi di BLE_WRITE_MODES finché uno arriva.
-const PROBE_FILE = 'camtag-prova.bin';
-async function linkProbe(link) {
-  if (bleWriteMode !== null) return;
-  const bytes = new Uint8Array(4096).map((_, i) => i * 7);
-  const spec = `FILE ${bytes.length} ${crc32(bytes).toString(16)} ${PROBE_FILE}`, errs = [];
-  for (let m = 0; m < BLE_WRITE_MODES.length; m++) {
-    if (m) await link.reopen();
-    link.useMode(m);
-    if (link.mode.notify) {
-      try { await link.dataNotify(); } catch (e) { errs.push(`${m + 1} notify: ${e?.message || e}`); }
-    }
-    bleUi(t('Provo il collegamento…'), { busy: true, progress: 0 });
-    link.inbox.length = 0;
-    await link.cmd('BEGIN'); await link.next();
-    await link.cmd(spec); await link.next();
-    try {
-      await linkPush(link, bytes, () => {}, BLE.probeMs);
-      bleWriteMode = m;
-      if (m) console.info('[ble] scrittura dei dati:', BLE_WRITE_MODES[m]);
-      if (m && IOS) try { localStorage.setItem(BLE_MODE_KEY, String(m)); } catch {}
-      return;
-    } catch (e) {
-      if (!['STALL', 'CRC', 'DATI', 'OVERFLOW'].includes(e.code) || link.cancelled()) throw e;
-      console.warn('[ble] il modo', BLE_WRITE_MODES[m], 'non arriva all\'X3:', e.code, e.detail);
-      errs.push(`${m + 1}: ${e.detail || e.code}`);
-    }
-  }
-  throw new Error(`${t("Questo browser non riesce a mandare dati all'X3. Prova con un altro browser.")} (${errs.join(' · ')})`);
-}
 
 // Un file dall'X3 con GET: il client conferma con ACK ogni 2 KB (come fa l'X3
 // quando riceve) e controlla il CRC. `what` è la scritta dell'avanzamento.
@@ -3248,10 +3166,6 @@ async function bleFirmware(file) {
     if (!version) throw new Error(t('Il file non è un firmware CamTag per l\'X3.'));
     if (!file && version !== FW_VERSION) console.warn('[ble] firmware pubblicato', version, 'invece di', FW_VERSION);
     await link.open({ firmware: true });
-    if (bleWriteMode === null && link.version >= BLE.firmwareFrom) {
-      await linkProbe(link);
-      await link.cmd('ABORT'); await link.next();
-    }
     if (link.version < BLE.firmwareFrom) throw new Error(t("Il firmware dell'X3 ({}) non si aggiorna via Bluetooth: la prima volta serve il cavo USB («Installa via USB»).", link.fw || t('precedente alla 0.1.0')));
     if (link.fw && fwCompare(link.fw, version) >= 0 && !await bleAsk(t("L'X3 ha già il firmware {}. Installare comunque la {}?", link.fw, version), '', t('Installa'))) {
       bleUi(t("Il firmware dell'X3 non è cambiato."));
