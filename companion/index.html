@@ -236,7 +236,7 @@
   .simbox { flex: none; width: calc(560px * var(--sim-scale, 1)); height: calc(560px * var(--sim-scale, 1)); display: flex; align-items: center; justify-content: center; }
   .simscale { flex: none; transform: scale(var(--sim-scale, 1)); }
   .device { position: relative; width: 340px; height: 521px; background: #d6d5d0; border-radius: 26px;
-            box-shadow: inset 0 0 0 6px #c9c8c2, 0 6px 18px rgba(0,0,0,.25); transition: transform .35s ease; }
+            box-shadow: inset 0 0 0 6px #c9c8c2, 0 6px 18px rgba(0,0,0,.25); transition: transform .5s cubic-bezier(.65, 0, .35, 1); }  /* ease in-out (cubica); durata = SIM_TURN_MS */
   .device.asleep #simScreen { filter: contrast(.92); }
   #simScreen { position: absolute; left: 32px; top: 34px; width: 277px; height: 415px; background: #fff; image-rendering: auto;
                box-shadow: inset 0 0 0 1px #bbb; }
@@ -419,7 +419,7 @@
   <button data-add="list" role="menuitem">Lista</button>
   <button data-add="notes" role="menuitem">Note</button>
   <button data-add="lens" role="menuitem">Lente singola</button>
-  <button data-add="patch" role="menuitem">Patch</button>
+  <button data-add="patch" role="menuitem">Immagine</button>
 </div>
 <div class="pop tip" id="tip" role="tooltip"></div>
 <div id="newBuild" role="status" hidden><span>C'è una versione più nuova del configuratore web.</span><button id="newBuildGo" class="primary">Aggiorna</button></div>
@@ -539,7 +539,7 @@ const DEFAULTS = {
   notes: () => ({ formats: 'both', type: 'notes', title: tc('NOTE'), body: tc('CH 1 Camera\nCH 2 Elettrici\n\nScena 12 — Steadicam') }),
   patch: () => ({ formats: 'both', type: 'patch', img: null, fit: 'contain', dither: 'atkinson', threshold: 128, contrast: 0, pivot: 128, invert: false, caption: '' }),
 };
-const TYPE_LABEL = { lens: 'Lente', list: 'Lista', notes: 'Note', patch: 'Patch' };
+const TYPE_LABEL = { lens: 'Lente', list: 'Lista', notes: 'Note', patch: 'Immagine' };  // patch: il tipo interno e il nome dei file restano
 // Lingua delle card (state.lang) e delle scritte dell'X3 (state.deviceLang: lang= in
 // settings.ini; vuota = "non cambiare"): vedi i18n.js. Il simulatore disegna le
 // scritte del firmware nella lingua dell'X3, o in quella delle card se non è scelta.
@@ -550,13 +550,13 @@ const devText = k => DEV_TEXT[state.deviceLang || cardLang()][k];
 function freshState() {
   return {
     version: 10, device: 'x3', lang: uiLang, deviceLang: '', production: '', lensByMount: false, lensSplit: false, lensSeries: 'mix', zoomsLast: true, lensFront: true, lensMount: false,
-    auto: { lenschart: true, filters: true, filterlist: false },
+    auto: { lenschart: true, filters: true, filterlist: true },
     lenses: [],
     filters: { ndFormat: 'density', ndType: 'ND', nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], ndCombos: [], dio: [],
       effects: [{ id: 'tiffen-black-pro-mist', name: 'Black Pro-Mist', strengths: ['1/8', '1/4', '1/2', '1', '2'].map(s => ({ s })) }],
       // Nel mattebox di partenza: ND 0.3 nello stadio 1 (previewNd = indice in ndSteps) e Black Pro-Mist 1/8.
       stages: [null, 'tiffen-black-pro-mist|1/8', null], previewNd: 1, previewDio: 0 },
-    cards: [DEFAULTS.list()],
+    cards: [DEFAULTS.list(), DEFAULTS.notes()],
     off: freshOff(),
   };
 }
@@ -567,9 +567,10 @@ function migrate(s) {
   if (!s || !Array.isArray(s.cards)) return s;
   for (const c of s.cards) { if (!c.formats) c.formats = 'both'; delete c.orient; delete c.mount; }
   const f = freshState(), hadStages = Array.isArray(s.filters?.stages);
-  for (const k of ['production', 'lensByMount', 'lensSplit', 'lensSeries', 'zoomsLast', 'lensFront', 'lensMount', 'auto', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
+  for (const k of ['production', 'lensByMount', 'lensSplit', 'lensSeries', 'zoomsLast', 'lensFront', 'lensMount', 'lenses', 'filters']) if (s[k] === undefined) s[k] = f[k];
   s.filters = Object.assign(f.filters, s.filters);
-  s.auto = Object.assign({ ...f.auto }, s.auto);
+  // L'elenco filtri è acceso solo nei progetti nuovi: in quelli di prima resta com'era (spento se manca).
+  s.auto = Object.assign({ ...f.auto, filterlist: false }, s.auto);
   // v7: schermata di spento composta, etichette dei tasti. Chi aveva già una scheda di
   // spento la ritrova com'era, senza il nome sopra.
   if (!s.off) s.off = { ...f.off, logo: !s.cards.some(c => c.off) };
@@ -1393,7 +1394,7 @@ function drawHintsPreview(ctx, W, H) {
 }
 
 // ============================================================================
-// Schede manuali (lente singola, lista, note, patch)
+// Schede manuali (lente singola, lista, note, immagine)
 // ============================================================================
 function drawFocal(ctx, big, x, maxW, maxSize, y, centredOnY) {
   let s = maxSize, bw, mw;
@@ -1919,9 +1920,10 @@ function cardOrder() {
   return types.flatMap(k => state.cards.map((c, i) => (c.type === k ? i : -1)).filter(i => i >= 0));
 }
 // Ordine sul dispositivo: lenti (lens chart e schede lente), filtri, elenco filtri, poi
-// le altre schede manuali per tipo (cardOrder).
+// le altre schede manuali per tipo (cardOrder). Una scheda immagine vuota non esce:
+// sull'X3 resterebbe solo il segnaposto dell'anteprima.
 function exportPlan() {
-  const plan = [], ord = cardOrder(), add = i => { const c = state.cards[i]; if (!c.off) plan.push({ kind: 'card', card: c, base: `${c.type}_${slug(cardTitle(c))}` }); };
+  const plan = [], ord = cardOrder(), add = i => { const c = state.cards[i]; if (!c.off && !(c.type === 'patch' && !c.img)) plan.push({ kind: 'card', card: c, base: `${c.type}_${slug(cardTitle(c))}` }); };
   if (state.auto.lenschart && state.lenses.length)
     lensPages().forEach((_, i) => plan.push({ kind: 'lenschart', page: i, base: i ? `lenschart-${i + 1}` : 'lenschart' }));
   ord.filter(i => state.cards[i].type === 'lens').forEach(add);
@@ -2741,7 +2743,7 @@ function rowsEditor(ed, c) {
   ed.append(box, h('div', { class: 'rows-add' }, add));
 }
 
-// Immagine e retinatura: schede Patch e schermata di spento.
+// Immagine e retinatura: schede Immagine e schermata di spento.
 function imageControls(ed, c) {
   const pair = (a, b) => ed.append(h('div', { class: 'two' }, a, b));
     const msg = h('p', { class: 'warn', hidden: true });
@@ -3576,7 +3578,9 @@ $('#importFile').onchange = e => {
 // Simulatore: dispositivo con i tasti, comportamento previsto per il firmware
 // ============================================================================
 // rot = rotazione fisica del dispositivo in gradi, in senso orario (0 = verticale, tasti in basso).
-const sim = { i: 0, rot: 0, locked: false, lockRot: 0, off: false, keyLock: false, nd: null, ndShown: 0, dio: null, dioShown: 0, stages: [], sig: '', msg: '' };
+// rot: verso del dispositivo (0/90/180/270); turn: gli stessi quarti di giro senza ridurli
+// a un giro, così il disegno ruota sempre di 90° per il verso più corto.
+const sim = { i: 0, rot: 0, turn: 0, locked: false, lockRot: 0, off: false, keyLock: false, nd: null, ndShown: 0, dio: null, dioShown: 0, stages: [], sig: '', msg: '' };
 let simOn = false;
 
 function simPlan() { return exportPlan(); }
@@ -3727,7 +3731,7 @@ function renderSim() {
   if (sig !== sim.sig) { sim.sig = sig; sim.nd = Math.min(f.previewNd, ndSteps().length - 1); sim.dio = Math.min(f.previewDio, dioSteps().length - 1); sim.stages = [...f.stages]; sim.ndShown = sim.nd; sim.dioShown = sim.dio; clearTimeout(simSettleTimer); }
   if (sim.i >= plan.length) sim.i = 0;
   const dev = $("#simDevice"), cv = $('#simScreen'), ctx = cv.getContext('2d');
-  dev.style.transform = `rotate(${sim.rot}deg)`;
+  dev.style.transform = `rotate(${sim.turn}deg)`;
   dev.classList.toggle('asleep', sim.off);
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
   const item = plan[sim.i];
@@ -3804,8 +3808,18 @@ const leaveSimOnPhone = () => { if (phoneMq.matches === simOn && (simOn || ui.mo
 phoneMq.addEventListener('change', leaveSimOnPhone);
 addEventListener('resize', leaveSimOnPhone);
 if (ui.mode === 'sim' && !phoneMq.matches) setMode('sim', false);
-$('#rotL').onclick = () => { sim.rot = (sim.rot + 270) % 360; sim.msg = ''; renderSim(); };
-$('#rotR').onclick = () => { sim.rot = (sim.rot + 90) % 360; sim.msg = ''; renderSim(); };
+// Il dispositivo gira subito; il contenuto cambia verso a metà rotazione (a 45° è storto
+// uguale per il verso vecchio e per il nuovo, e con l'ease simmetrico metà tempo è metà
+// angolo). SIM_TURN_MS = la transizione di .device. Pressioni di fila: conta l'ultima.
+const SIM_TURN_MS = 500;
+let simTurnTimer;
+function simTurn(d) {
+  sim.turn += d; $('#simDevice').style.transform = `rotate(${sim.turn}deg)`;
+  clearTimeout(simTurnTimer);
+  simTurnTimer = setTimeout(() => { sim.rot = ((sim.turn % 360) + 360) % 360; sim.msg = ''; renderSim(); }, SIM_TURN_MS / 2);
+}
+$('#rotL').onclick = () => simTurn(-90);
+$('#rotR').onclick = () => simTurn(90);
 // Come sul dispositivo: la pressione lunga scatta allo scadere del tempo, con il
 // tasto ancora giù, e il rilascio che segue non conta; quella breve al rilascio.
 // Maiusc = pressione lunga subito. simHold: tasto giù → timer (0 = nessuno, -1 = già scattata).

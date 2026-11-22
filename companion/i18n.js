@@ -107,7 +107,6 @@ const I18N_EN = {
   'Lente': 'Lens',
   'Lista': 'List',
   'Note': 'Notes',
-  'Patch': 'Patch',
   'Immagine': 'Image',
   'T': 'T',
   'T tele': 'T tele',

@@ -212,7 +212,7 @@ Schermate:
   "fuori dal coro" va in negativo; si può forzare per ogni lente.
 - **Filtri** (automatica): kit ND e diottrie (i tasti +/− del dispositivo
   scorrono solo questi), formato ND, kit dei vetri (più gradazioni per famiglia in un colpo) e stadi del mattebox, da 1 a 3 (il `+` apre 4, 5 e 6, per mattebox più grandi o un vetro montato fuori; vedi `docs/filtri.md`).
-- **Schede manuali**: lista (righe voce e valore: crew, contatti…), note, lente singola, patch (immagine).
+- **Schede manuali**: lista (righe voce e valore: crew, contatti…), note, lente singola, immagine (un logo, un QR…).
 
 "Progetto ▾ › Scarica le card (.zip)" crea `camtag.zip`: la cartella `camtag/` va copiata nella
 radice della microSD.

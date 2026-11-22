@@ -37,7 +37,7 @@ costruttori di lenti e filtri nei dati vanno bene.
   scrive il registro dei consumi (`/camtag-batteria.csv`, specifica in `docs/batteria.md`).
   Problemi aperti dello schermo: `docs/schermo.md`.
 - `companion/index.html` — configuratore web a file singolo: lens chart e filtri
-  generati in automatico più schede manuali (lista, note, lente singola, patch);
+  generati in automatico più schede manuali (lista, note, lente singola, immagine: tipo interno `patch`);
   esporta uno zip di BMP 1 bit o manda gli stessi file all'X3 via Web Bluetooth
   (`bleSend`; `bleGet` riprende il progetto dall'X3). Dipendenze esterne: JSZip da cdnjs (i font
   Inter sono nel repo). `i18n.js` ha il dizionario italiano→inglese (`I18N_EN`,
@@ -220,12 +220,13 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
 - Tipo della card (`navType`, uguale nel firmware): la parola dopo `NN_` fino al
   primo `_` o `-`; `lenschart` vale `lens`. Le schede manuali si chiamano
   `NN_<tipo>_<titolo>` (`lens`, `notes`, `list`, `patch`); un nome fatto a mano
-  è un tipo a sé, salvo che la parola coincida. L'esportazione (`exportPlan`,
+  è un tipo a sé, salvo che la parola coincida. Una scheda immagine (`patch`) vuota non si
+  esporta (niente avviso: nell'anteprima resta il segnaposto). L'esportazione (`exportPlan`,
   `cardOrder`) mette i tipi di fila (liste e note, se il tipo ha più pagine,
   portano "2/3" in alto a destra come la lens chart: `cardPage`): lenti (lens chart, poi schede lente),
   `filters`, `filterlist`, poi gli altri nell'ordine della lista; ↑↓ spostano
   la scheda nel suo tipo e, dal capo, il tipo intero.
-- `NN_filterlist` (facoltativa, `state.auto.filterlist`, spenta di partenza):
+- `NN_filterlist` (facoltativa, `state.auto.filterlist`, accesa nei progetti nuovi; in quelli di prima, se manca, spenta):
   elenco di tutti i vetri a disposizione (ND del kit, diottrie intere e split,
   famiglie con le gradazioni; le coppie di ND no), generato da `filterListRows`.
   Nome e gradazioni affiancati se ogni riga sta su una linea, se no nome sopra
@@ -299,7 +300,8 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
 - Primo avvio del configuratore web (nessun progetto nel localStorage): kit di
   esempio, Cooke S4/i 18/25/32/50/75 e Angénieux Optimo 28-76 e 45-120 in PL
   (`STARTER_LENSES`, aggiunte quando arriva il database), ND del kit e Black
-  Pro-Mist completo (`freshState`), nel mattebox ND 0.3 e Black Pro-Mist 1/8.
+  Pro-Mist completo (`freshState`), nel mattebox ND 0.3 e Black Pro-Mist 1/8;
+  elenco filtri acceso, lista della crew e nota d'esempio (canali radio, Steadicam).
 - Lens chart: focale, T, CF (close focus), Ø frontale (più piccolo, dato secondario, si può
   nascondere: `state.lensFront`). Attacco (`state.lensMount`, spento di
   partenza): come le sigle, quello principale in basso (solo la sigla, "LPL", subito dopo la prima serie che lo usa), gli

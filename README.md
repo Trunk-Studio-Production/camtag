@@ -215,7 +215,7 @@ Screens:
   cycle only through these), ND format, glass kit (several grades per family
   at once) and mattebox stages, from 1 to 3 (`+` opens 4, 5 and 6, for bigger
   matte boxes or a glass mounted outside; see `docs/filtri.md`).
-- **Manual cards**: list (item and value rows: crew, contacts…), notes, single lens, patch (image).
+- **Manual cards**: list (item and value rows: crew, contacts…), notes, single lens, image (a logo, a QR code…).
 
 "Project ▾ › Download cards (.zip)" creates `camtag.zip`: copy the `camtag/` folder to the root of
 the microSD.
