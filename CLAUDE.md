@@ -424,12 +424,13 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
 - Dopo una modifica al configuratore web: aprilo nel browser integrato e
   controlla l'anteprima; verifica che i BMP esportati abbiano le dimensioni giuste.
 - **Mai caricare firmware su un X3 nuovo senza i tre controlli del README**
-  ("Rischi e controlli prima di caricare": compare sulla USB,
+  (per sviluppatori, "Installare dal terminale": compare sulla USB,
   `get-security-info` pulito, flash letta due volte uguale, o una volta e
   uguale all'MD5 calcolato dal chip come fa `companion/install/`; la lettura è
   anche il backup). Un'unità con la USB bloccata può restare inutilizzabile: se un
   controllo non passa, fermati. Il README deve dire sempre chiaro che il
-  caricamento è a rischio di chi lo fa.
+  caricamento è a rischio di chi lo fa; a chi usa CamTag consiglia solo la
+  pagina di installazione ("Installare CamTag"), il terminale sta tra gli sviluppatori.
   Il caricamento lo fa l'utente, o lo fai tu solo se lo chiede esplicitamente.
 
 ## Manutenzione di questo file
@@ -445,12 +446,11 @@ Provati sull'X3: ricezione Bluetooth dal Mac (1,1 MB in ~40 s) e "Importa dall'X
 aggiornamento del firmware via Bluetooth (864 KB in 26 s; il nuovo parte in prova,
 `stato 1`, e si conferma: il bootloader ha il rollback), tutto anche da iPhone con
 BLE Link e Bluefy (utilizzabili tutti e due), card vere, X/Y per tipo e A–D
-dentro il tipo (0.5.0), rotazione e blocco, bilancieri della lens chart nei 4 versi. Tasti, assi IMU e verso dello schermo sono tarati sull'X3 (`kKeyA`…`kKeyD`, `kKeyX`, `kKeyY`,
+dentro il tipo (0.5.0), rotazione (soglie confermate in giorni d'uso) e blocco,
+niente ghosting con `FULL_REFRESH_EVERY` = 6, bilancieri della lens chart nei 4 versi. Tasti, assi IMU e verso dello schermo sono tarati sull'X3 (`kKeyA`…`kKeyD`, `kKeyX`, `kKeyY`,
 `kImuSwapXY`, `kImuSignX`, `kImuSignY`, `kQuarterTurns` in `device/src/main.cpp`:
 la posizione naturale è `Canvas::ROT_270`).
 
-- Soglie della rotazione (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) su camera vera.
-- Ghosting (`FULL_REFRESH_EVERY`).
 - Cavo USB collegato a riposo (0.4.2): provato sull'X3 con `taratura.py usb`
   (22/11/2026, batteria piena, attraverso hub: 9 su 10 entro 10 s, porta in
   2,6-6,7 s, nessuna lettura sbagliata). Un hub senza computer si legge come un computer: lì

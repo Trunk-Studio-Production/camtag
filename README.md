@@ -44,13 +44,13 @@ them in the simulator, buttons included.
 > **⚠️ Unofficial firmware: you flash it at your own risk.** CamTag replaces the
 > X3's firmware and, in the worst case, can leave it unusable beyond repair.
 > There is no warranty of any kind. Before flashing, read
-> [Risks and checks before flashing](#risks-and-checks-before-flashing).
+> [Installing CamTag](#installing-camtag).
 
 ## Getting started
 
 1. Make your cards in the [web configurator](https://trunk-studio-production.github.io/camtag/).
 2. Connect the X3 and open **[Install via USB](https://trunk-studio-production.github.io/camtag/companion/install/)**
-   in Chrome or Edge: it runs the [safety checks](#risks-and-checks-before-flashing),
+   in Chrome or Edge: it runs the [safety checks](#installing-camtag),
    saves a full backup and installs CamTag.
 3. Send the cards over Bluetooth (hold **X** on the X3) or via microSD.
 
@@ -68,6 +68,7 @@ explains every button and screen.
   [send it](https://github.com/Trunk-Studio-Production/camtag/issues/new?template=on-set.yml).
   <!-- INSTAGRAM: add the account here when it exists ("or tag us on Instagram"). -->
 - **Bugs and ideas**: [open an issue](https://github.com/Trunk-Studio-Production/camtag/issues/new/choose).
+- **Want to work on the code?** The technical part is at the bottom, under [For developers](#for-developers).
 
 Made in Italy by [Trunk Studio Production](https://github.com/Trunk-Studio-Production),
 tested on set by working camera assistants. Free software under the GPL v3.
@@ -216,21 +217,34 @@ rotation (Y held) and turn it off (power held), and it behaves as the firmware
 is meant to. Screens are at full resolution (792×528 and 528×792); the
 simulator shows them at about half scale, close to the real size.
 
-## Risks and checks before flashing
+## Installing CamTag
 
 **Flashing CamTag can make the X3 unusable.** Read this whole section before
 plugging in the cable.
 
-The **[install page](https://trunk-studio-production.github.io/camtag/companion/install/)** does all of this from the browser
-(Chrome or Edge on a computer): it runs the three checks below, stops if one
-fails, saves the backup and installs CamTag only after you've saved it. For
-the backup it reads the whole memory once and compares it with the MD5 the
-X3 computes of its own memory, which proves the copy as well as two reads.
-It can also restore a backup. The commands below do the same from the
-terminal.
+Install from the **[install page](https://trunk-studio-production.github.io/camtag/companion/install/)**, with Chrome or Edge on a computer
+and a USB-C data cable. It's the recommended way: nothing to install, and it
+has been tested end to end on an X3 with the original firmware.
+
+1. Turn the X3 on and connect it to the computer: when off it doesn't show up
+   on USB.
+2. The page runs three **safety checks** (the X3 shows up on USB, the chip has
+   no protections enabled, the memory reads without errors) and **stops if one
+   fails**.
+3. It saves a **full backup** of the memory (16 MB, under a minute), read and
+   verified against the fingerprint the X3 computes itself. Without a backup it
+   doesn't go on.
+4. It installs CamTag (a few seconds) and restarts the X3.
+
+**Keep the backup in at least two places.** It's the exact copy of your device
+and the only way back to the factory state. It contains your unit's data:
+don't publish it.
 
 If the X3 gets stuck during the procedure (screen frozen, buttons not
 responding): press **RESET**, then hold **power** for 3–5 seconds.
+
+After the first install, updates come over Bluetooth ("Update firmware" in the
+[web configurator](https://trunk-studio-production.github.io/camtag/)).
 
 ### What can go wrong
 
@@ -248,71 +262,15 @@ responding): press **RESET**, then hold **power** for 3–5 seconds.
   On a locked unit, firmware not supported by their unlock tool can leave the
   device dead for good, and CamTag is not among the supported ones. **Do not
   flash CamTag on a locked unit.**
-- We don't know how that lock works. The checks below tell with reasonable
-  confidence whether an X3 is at risk, but they are not a guarantee.
+- We don't know how that lock works. The install page's checks tell with
+  reasonable confidence whether an X3 is at risk, but they are not a guarantee.
 - So far CamTag has been tested on a single X3: bought from a third-party
   shop, with original firmware V6.1.15, and not locked.
-
-### Checks: if even one fails, do not flash
-
-You need a USB-C data cable and the X3 **on**: when off it doesn't show up on
-USB. `esptool` is the one PlatformIO installs on the first build (if missing:
-`.venv/bin/pip install esptool`, then `.venv/bin/python -m esptool`).
-Below, `esptool` stands for `~/.platformio/penv/bin/python -m esptool --chip esp32c3`.
-
-1. **The X3 shows up on USB.** With the original firmware running:
-
-   ```bash
-   ls /dev/cu.usbmodem*        # macOS; on Linux /dev/ttyACM*
-   ```
-
-   If it doesn't show up, try another cable and another port. If it still
-   doesn't show up, that is the sign of a locked unit: stop.
-
-2. **The chip has no protections enabled.**
-
-   ```bash
-   esptool get-security-info
-   ```
-
-   You must read `Flags: 0x00000000`, `Secure Boot: Disabled` and
-   `Flash Encryption: Disabled`, and before that `Stub flasher running`. With
-   different values, or if esptool can't connect, stop.
-
-3. **The whole flash reads, twice identical.** This is also the backup:
-
-   ```bash
-   esptool read-flash 0 0x1000000 backup-x3-originale.bin
-   esptool read-flash 0 0x1000000 backup-x3-rilettura.bin
-   shasum -a 256 backup-x3-originale.bin backup-x3-rilettura.bin
-   ```
-
-   Each read takes about a minute and must yield 16777216 bytes; the two
-   hashes must be identical. If a read fails or the hashes differ, stop.
-
-After every command esptool restarts the X3, and the original firmware goes
-back to sleep: press power and check that it starts up as before.
-
-**Keep `backup-x3-originale.bin` in at least two places.** It is the exact copy
-of your device and the only way back to the factory state. It contains your
-unit's data: do not publish it.
-
-### Flashing
-
-Only with all three checks passed and the backup safe, from a clone of this
-repository set up as in [After cloning](#after-cloning):
-
-```bash
-cd device && ../.venv/bin/pio run -e x3 -t upload && ../.venv/bin/pio device monitor
-```
-
-Keep the X3 awake and connected until flashing has finished.
 
 ### Restore
 
 - Full backup, which puts the X3 back exactly as it was: "Restore from a
-  backup" on the [install page](https://trunk-studio-production.github.io/camtag/companion/install/), or
-  `~/.platformio/penv/bin/python -m esptool --chip esp32c3 write-flash 0 backup-x3-originale.bin`.
+  backup" on the [install page](https://trunk-studio-production.github.io/camtag/companion/install/).
 - Original Xteink firmware or CrossPoint: from the web flasher at
   crosspointreader.com. CamTag's partition table is the same as CrossPoint's.
 
@@ -323,7 +281,15 @@ opening the device, as described by
 [CrossPoint](https://github.com/crosspoint-reader/crosspoint-reader/blob/HEAD/docs/fix-bricked-xteink.md):
 a delicate operation, which may finish breaking it.
 
+<br>
+
+---
+
 ## For developers
+
+> **From here down it's the technical part**: how the code is organized, how
+> to build the firmware and what is left to try on the hardware. You don't need
+> it to use CamTag: start from [Getting started](#getting-started).
 
 ### Structure
 
@@ -382,6 +348,73 @@ firmware does and compares them pixel by pixel with the previews, along with
 the stage rules. The data is in `device/test/filters_fixture.zip`: if the
 filters export changes, regenerate it with `device/test/filters_fixture.js`
 (instructions in the file).
+
+### Installing from the terminal
+
+For those working on the firmware: the same steps as the
+[install page](#installing-camtag), with `esptool`. The same risks apply; if you
+just use CamTag, install from the page.
+
+#### Checks: if even one fails, do not flash
+
+You need a USB-C data cable and the X3 **on**: when off it doesn't show up on
+USB. `esptool` is the one PlatformIO installs on the first build (if missing:
+`.venv/bin/pip install esptool`, then `.venv/bin/python -m esptool`).
+Below, `esptool` stands for `~/.platformio/penv/bin/python -m esptool --chip esp32c3`.
+
+1. **The X3 shows up on USB.** With the original firmware running:
+
+   ```bash
+   ls /dev/cu.usbmodem*        # macOS; on Linux /dev/ttyACM*
+   ```
+
+   If it doesn't show up, try another cable and another port. If it still
+   doesn't show up, that is the sign of a locked unit: stop.
+
+2. **The chip has no protections enabled.**
+
+   ```bash
+   esptool get-security-info
+   ```
+
+   You must read `Flags: 0x00000000`, `Secure Boot: Disabled` and
+   `Flash Encryption: Disabled`, and before that `Stub flasher running`. With
+   different values, or if esptool can't connect, stop.
+
+3. **The whole flash reads, twice identical.** This is also the backup:
+
+   ```bash
+   esptool read-flash 0 0x1000000 backup-x3-originale.bin
+   esptool read-flash 0 0x1000000 backup-x3-rilettura.bin
+   shasum -a 256 backup-x3-originale.bin backup-x3-rilettura.bin
+   ```
+
+   Each read takes about a minute and must yield 16777216 bytes; the two
+   hashes must be identical. If a read fails or the hashes differ, stop.
+
+After every command esptool restarts the X3, and the original firmware goes
+back to sleep: press power and check that it starts up as before.
+
+**Keep `backup-x3-originale.bin` in at least two places.** It is the exact copy
+of your device and the only way back to the factory state. It contains your
+unit's data: do not publish it.
+
+#### Flashing
+
+Only with all three checks passed and the backup safe, from a clone of this
+repository set up as in [After cloning](#after-cloning):
+
+```bash
+cd device && ../.venv/bin/pio run -e x3 -t upload && ../.venv/bin/pio device monitor
+```
+
+Keep the X3 awake and connected until flashing has finished.
+
+#### Restoring from the terminal
+
+```bash
+~/.platformio/penv/bin/python -m esptool --chip esp32c3 write-flash 0 backup-x3-originale.bin
+```
 
 ### To verify on hardware
 
@@ -445,8 +478,8 @@ orientation and the card on screen, and waits for the X3 if it turns off:
       the display controller to deep sleep after updates, confirmed after
       hours of use ([`docs/schermo.md`](docs/schermo.md))
 - [x] X and Y by kind of page, A–D within the kind (firmware 0.5.0)
-- [ ] Rotation thresholds (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) on a real camera
-- [ ] Ghosting: how often a full refresh is needed (now every 6 changes)
+- [x] Rotation thresholds (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`), confirmed over days of use
+- [x] Ghosting: no shadows with a full refresh every 6 changes (`FULL_REFRESH_EVERY`)
 - [ ] Battery icon on the cards below 20% and while charging
 
 ### Next steps
@@ -454,18 +487,18 @@ orientation and the card on screen, and waits for the X3 if it turns off:
 1. **Install from the browser** (`companion/install/`): tried with Chrome on
    a Mac on an X3 with the original firmware (backup, install, restore); to
    try on other units and on Windows and Linux.
-2. **Feedback from the beta testers** on set, and the rotation thresholds on a
-   real camera.
+2. **Feedback from the beta testers** on set.
 3. **Consumption when off** during the first three days, and from there the
    time before going white (`OFF_BLANK_S`). A build configuration without
    `CAMTAG_DEBUG` is also needed: today `x3` always has it on.
-4. **Screen** (`docs/schermo.md`): the rest that kicks in with USB connected,
-   and how often a full refresh is needed (`FULL_REFRESH_EVERY`). The
+4. **Screen** (`docs/schermo.md`): the rest that kicks in with USB connected. The
    spontaneous restart after rest, seen once, didn't happen again in 39 h of
    log. Heat above about 50 °C and direct sunlight for months damage the
    panel.
 5. **Filter catalog** (`data/filters.json`) verified against the
    manufacturers' data sheets: today it is provisional.
+
+---
 
 ## License
 
