@@ -91,6 +91,33 @@
                   box-shadow: inset 0 0 0 2px #1c1c1a, 0 12px 32px rgba(0, 0, 0, .4); }
   .phone img { display: block; width: 100%; height: auto; border-radius: 22px; }
   .phone figcaption { font-size: 13px; color: var(--muted); text-align: center; margin-top: 10px; }
+  .phone .frame { cursor: zoom-in; transition: transform .15s; }
+  .phone .frame:hover { transform: translateY(-2px); }
+  .phone .frame:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  /* Phone screenshots enlarged: browsable within their group (.phones) */
+  dialog.lb { border: 0; padding: 0; margin: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none;
+              background: rgba(8, 8, 7, .95); color: var(--ink); overflow: hidden; }
+  dialog.lb::backdrop { background: transparent; }
+  dialog.lb[open] { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+  .lb .frame { padding: 7px; border-radius: 34px; background: #0b0b0a; border: 1px solid #3a3a36; box-shadow: inset 0 0 0 2px #1c1c1a, 0 20px 60px rgba(0, 0, 0, .6); }
+  .lb img { display: block; height: calc(100dvh - 150px); width: auto; max-width: calc(100vw - 32px); object-fit: contain; border-radius: 27px; }
+  .lb .cap { font-size: 14px; color: var(--muted); text-align: center; max-width: 32em; padding: 0 16px; min-height: 1.6em; }
+  .lb .cap strong { color: var(--ink); }
+  .lb .count { font-size: 12px; color: var(--muted); letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+  .lb button { position: absolute; width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--line); background: rgba(28, 28, 27, .85);
+               color: var(--ink); font: 22px/1 "Inter", sans-serif; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .lb button:hover { border-color: var(--accent); color: var(--accent); }
+  .lb button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .lb button[hidden] { display: none; }
+  .lb .close { top: 16px; right: 16px; }
+  .lb .prev { left: max(16px, calc(50% - 360px)); top: 50%; transform: translateY(-50%); }
+  .lb .next { right: max(16px, calc(50% - 360px)); top: 50%; transform: translateY(-50%); }
+  @media (max-width: 759px) {
+    dialog.lb[open] { justify-content: flex-start; padding-top: 72px; gap: 10px; }
+    .lb img { height: calc(100dvh - 200px); }
+    .lb .cap { padding: 0 72px; font-size: 13px; }
+    .lb .prev, .lb .next { top: auto; bottom: 16px; transform: none; }
+  }
 
   /* Numbered steps */
   ol.steps { list-style: none; padding: 0; counter-reset: st; }
@@ -661,6 +688,58 @@ const seen = new Set(), io = new IntersectionObserver(es => {
   if (first) links.forEach((a, id) => a.classList.toggle('on', id === first));
 }, { rootMargin: '-20% 0px -60% 0px' });
 document.querySelectorAll('section.s').forEach(s => io.observe(s));
+
+// Phone screenshots enlarged. The arrows (and swiping) move to the other
+// screenshots of the same group (.phones); Esc or a tap outside closes.
+(() => {
+  const en = document.documentElement.lang === 'en';
+  const T = en ? { close: 'Close', prev: 'Previous', next: 'Next', open: 'Enlarge: ' }
+               : { close: 'Chiudi', prev: 'Precedente', next: 'Successiva', open: 'Ingrandisci: ' };
+  const lb = document.createElement('dialog');
+  lb.className = 'lb';
+  lb.innerHTML = `<div class="frame"><img alt=""></div><div class="count"></div><div class="cap"></div>
+    <button class="prev" type="button" aria-label="${T.prev}">‹</button>
+    <button class="next" type="button" aria-label="${T.next}">›</button>
+    <button class="close" type="button" aria-label="${T.close}">✕</button>`;
+  document.body.append(lb);
+  const img = lb.querySelector('img'), cap = lb.querySelector('.cap'), count = lb.querySelector('.count');
+  const prev = lb.querySelector('.prev'), next = lb.querySelector('.next');
+  let group = [], at = 0;
+  const show = i => {
+    at = (i + group.length) % group.length;
+    const f = group[at], src = f.querySelector('img');
+    img.src = src.currentSrc || src.src; img.alt = src.alt;
+    cap.innerHTML = f.querySelector('figcaption')?.innerHTML || '';
+    count.textContent = group.length > 1 ? `${at + 1} / ${group.length}` : '';
+    prev.hidden = next.hidden = group.length < 2;
+  };
+  for (const g of document.querySelectorAll('.phones')) {
+    const figs = [...g.querySelectorAll('.phone')];
+    figs.forEach((f, i) => {
+      const fr = f.querySelector('.frame');
+      fr.tabIndex = 0; fr.setAttribute('role', 'button');
+      fr.setAttribute('aria-label', T.open + f.querySelector('img').alt);
+      const open = () => { group = figs; show(i); lb.showModal(); };
+      fr.addEventListener('click', open);
+      fr.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+    });
+  }
+  prev.onclick = () => show(at - 1);
+  next.onclick = () => show(at + 1);
+  lb.querySelector('.close').onclick = () => lb.close();
+  lb.addEventListener('click', e => { if (e.target === lb) lb.close(); });
+  lb.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft' && group.length > 1) show(at - 1);
+    if (e.key === 'ArrowRight' && group.length > 1) show(at + 1);
+  });
+  let x0 = null;
+  lb.addEventListener('touchstart', e => { x0 = e.touches.length === 1 ? e.touches[0].clientX : null; }, { passive: true });
+  lb.addEventListener('touchend', e => {
+    if (x0 === null || group.length < 2) return;
+    const dx = e.changedTouches[0].clientX - x0; x0 = null;
+    if (Math.abs(dx) > 50) show(at + (dx < 0 ? 1 : -1));
+  });
+})();
 </script>
 </body>
 </html>
