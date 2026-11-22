@@ -73,8 +73,6 @@ const I18N_EN = {
   "Lens chart e Filtri si generano da soli. L'ordine qui è l'ordine sul dispositivo.": 'Lens chart and Filters are generated automatically. The order here is the order on the device.',
   'Anteprima': 'Preview',
   "Nascondi o mostra l'anteprima": 'Hide or show the preview',
-  '▴ Anteprima': '▴ Preview',
-  '▾ Anteprima': '▾ Preview',
   'Simulatore': 'Simulator',
   'Orizzontale': 'Landscape',
   'Verticale': 'Portrait',

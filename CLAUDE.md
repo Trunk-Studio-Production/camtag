@@ -52,8 +52,8 @@ costruttori di lenti e filtri nei dati vanno bene.
   Inter 800 con spaziatura 0,08 em e la T nel verde `--accent` (`.logo-t`), come in `install/` (l'interfaccia resta nel font di sistema).
   Barra e anteprima restano fisse mentre l'editor scorre: tre colonne da 1100 px,
   due da 700 (striscia delle schermate e anteprima a sinistra), sotto i 700
-  anteprima compatta in alto che si apre a tutto schermo e si richiude dal primo
-  pulsante della striscia (`ui.prevHidden`, aperta di partenza; scorrendo giù l'editor si toglie da sola, `autoHid`, e torna all'inizio dell'editor o da quel pulsante), senza zoom con le dita; `fitStage` tiene
+  anteprima compatta in alto che si apre a tutto schermo e si richiude dalla
+  freccia a sinistra della striscia (`#prevTog`, fuori dallo scorrimento; `ui.prevHidden`, aperta di partenza; scorrendo giù l'editor si toglie da sola, `autoHid`, e torna all'inizio dell'editor o dalla freccia), senza zoom con le dita; `fitStage` tiene
   anteprima e simulatore dentro lo schermo (il simulatore si scala). Nell'editor
   le sezioni richiudibili si fanno con `section()` e le spiegazioni stanno dietro
   una ⓘ (`info()`): in chiaro restano solo avvisi e stati vuoti. Le preferenze

@@ -303,11 +303,16 @@
     body:has(.stagecol.full) { overflow: hidden; }
     .stagecol { order: 1; }
     .work.nopreview .stagecol { display: none; }
-    #prevTog { display: block; flex: none; width: auto; border-radius: 999px; padding: 6px 12px; }
+    /* Freccia dell'anteprima fuori dalla striscia, così non scorre via con le schermate:
+       in su chiude, in giù apre. */
+    .screens { display: flex; align-items: center; gap: 6px; }
+    .screens .scr-row { flex: 1; min-width: 0; }
+    #prevTog { display: flex; align-items: center; justify-content: center; flex: none; width: 40px; height: 40px; padding: 0; border-radius: 999px; }
+    #prevTog svg { transition: transform .15s; }
+    #prevTog[aria-expanded="false"] svg { transform: rotate(180deg); }
     /* "+" subito dopo l'anteprima, sempre in vista anche con tante schermate, e nel verde. */
     #addBtn { order: -1; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-size: 20px; font-weight: 700;
               line-height: 1; padding: 0 14px; }
-    #prevTog { order: -2; }
     .screens { order: 2; }
     /* Il simulatore serve da computer: sul telefono resta solo l'anteprima. */
     #modeRow, .pbar, #previewNote { display: none; }
@@ -322,6 +327,7 @@
     .sec:not(.sub) > summary { flex-wrap: wrap; row-gap: 0; }
     .sec:not(.sub) > summary > .sec-s { flex: 1 0 100%; text-align: left; padding-left: 18px; margin-top: -4px; }
     #editor input[type=text], #editor input[type=number], #editor input[type=search], #editor textarea, #editor select { background: var(--panel); }
+    #editor textarea { min-height: 200px; }
     /* Le liste del database (lenti, vetri) non scorrono per conto loro: sotto il dito scorre sempre la pagina. */
     .db { max-height: none; overflow: visible; }
     .db .grp { position: static; }
@@ -411,8 +417,8 @@
   <div class="work">
     <section class="panel screens">
       <h2>Schermate</h2>
+      <button id="prevTog" aria-expanded="true" title="Nascondi o mostra l'anteprima" aria-label="Nascondi o mostra l'anteprima"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <div class="scr-row">
-        <button id="prevTog" aria-expanded="true" title="Nascondi o mostra l'anteprima"></button>
         <ul id="list"></ul>
         <button id="addBtn" title="Aggiungi una schermata">+<span class="l"> Aggiungi</span></button>
       </div>
@@ -2574,9 +2580,9 @@ function cardEditor(ed, c, idx) {
     ed.append(field(c, 'Filettatura filtri (opzionale, es. M82)', 'thread'));
     ed.append(field(c, 'Nota in basso (opzionale)', 'notes'));
   } else if (c.type === 'crew') {
-    ed.append(field(c, 'Titolo', 'title'), field(c, 'Una riga per persona — "Ruolo: Nome"', 'lines', 'textarea'));
+    ed.append(field(c, 'Titolo', 'title'), fillArea(field(c, 'Una riga per persona — "Ruolo: Nome"', 'lines', 'textarea')));
   } else if (c.type === 'notes') {
-    ed.append(field(c, 'Titolo', 'title'), field(c, 'Testo', 'body', 'textarea'));
+    ed.append(field(c, 'Titolo', 'title'), fillArea(field(c, 'Testo', 'body', 'textarea')));
   } else {
     imageControls(ed, c);
     ed.append(field(c, 'Inverti colori', 'invert', 'checkbox'), field(c, 'Didascalia (opzionale)', 'caption'));
@@ -2673,15 +2679,26 @@ function renderEditor() {
     const c = state.cards[sel.i];
     if (!c) { ed.append(h('div', { class: 'empty' }, 'Seleziona una schermata')); return; }
     cardEditor(ed, c, sel.i);
-  } finally { ed.querySelectorAll('textarea').forEach(growArea); }
+  } finally { growAll(); }
 }
 // Le textarea crescono con il testo (crew, note, scritta da spento): tutto il testo
 // resta in vista, senza una seconda barra di scorrimento dentro la pagina.
+// Sul telefono la textarea principale di una scheda (crew, note: .fill) arriva almeno
+// in fondo allo schermo, contando la parte fissa com'è ora: chiudendo l'anteprima
+// si allunga. innerHeight, non visualViewport: con la tastiera aperta non si accorcia.
 function growArea(ta) {
+  const y = scrollY;  // con 'auto' la pagina si accorcia un attimo e il browser la farebbe risalire
   ta.style.height = 'auto';
-  ta.style.height = `${ta.scrollHeight + ta.offsetHeight - ta.clientHeight}px`;
+  let h = ta.scrollHeight + ta.offsetHeight - ta.clientHeight;
+  if (innerWidth < 700 && ta.classList.contains('fill'))
+    h = Math.max(h, Math.floor(innerHeight - (ta.getBoundingClientRect().top + scrollY) - 44));  // 44 = margine sotto l'editor
+  ta.style.height = `${h}px`;
+  if (scrollY !== y) scrollTo(0, y);
 }
+function fillArea(fld) { fld.querySelector('textarea').classList.add('fill'); return fld; }
+function growAll() { document.querySelectorAll('#editor textarea').forEach(growArea); }
 document.addEventListener('input', e => { if (e.target.matches?.('#editor textarea')) growArea(e.target); });
+addEventListener('resize', growAll);
 
 function downscale(url, max = 1000) {
   return new Promise((res, rej) => {
@@ -2804,16 +2821,15 @@ function showPreview(on) {
 function paintPreview() {
   const on = !ui.prevHidden && !autoHid;
   $('.work').classList.toggle('nopreview', !on);
-  const b = $('#prevTog');
-  b.textContent = on ? t('▴ Anteprima') : t('▾ Anteprima');
-  b.setAttribute('aria-expanded', String(on));
+  $('#prevTog').setAttribute('aria-expanded', String(on));
   fitStage();
+  growAll();  // le textarea .fill seguono lo spazio lasciato dall'anteprima
 }
-// Con "▾ Anteprima" mentre si è tolta da sola, torna senza spostare l'editor.
+// Con la freccia mentre si è tolta da sola, torna senza spostare l'editor.
 $('#prevTog').onclick = () => autoHid ? setAutoHid(false) : showPreview(!!ui.prevHidden);
 // Sul telefono, con l'anteprima aperta, scorrendo l'editor verso il basso (almeno
 // AUTO_HIDE_PX di fila) l'anteprima si toglie di mezzo da sola (autoHid, non
-// salvato); torna quando si risale fino all'inizio dell'editor o con "▾ Anteprima".
+// salvato); torna quando si risale fino all'inizio dell'editor o con la freccia (#prevTog).
 // Risalire a metà non la riapre: nelle liste si scorre su e giù. In entrambi i casi
 // la pagina scorre di quanto cambia la parte fissa, così l'editor sotto il dito
 // non salta (per questo serve overflow-anchor: none, che farebbe lo stesso due volte).
