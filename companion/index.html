@@ -343,8 +343,14 @@
     .screens { order: 2; }
     /* Il simulatore serve da computer: sul telefono resta solo l'anteprima. */
     #modeRow, .pbar, #previewNote { display: none; }
-    /* Orientamento, pagine e "ingrandisci" stanno nel bordo basso della cornice, senza coprire la schermata. */
-    .frame { padding: 6px 6px 42px; border-radius: 10px; min-width: 176px; }
+    /* Orientamento, pagine e "ingrandisci" stanno nel bordo basso della cornice, senza coprire la schermata.
+       Gli altri tre bordi sono sottili anche in verticale: la cornice si allarga oltre la schermata
+       solo se i pulsanti non ci starebbero (con le frecce delle pagine sono più stretti). */
+    .frame { padding: 6px 6px 42px; border-radius: 10px; min-width: 84px; }
+    .frame:has(#fPrev:not([hidden])) { min-width: 136px; }
+    .frame:has(#fPrev:not([hidden])) .fbtn { width: 34px; }
+    .frame:has(#fPrev:not([hidden])) .fbtn.l { left: 0; }
+    .frame:has(#fPrev:not([hidden])) .fbtn.r { right: 0; }
     canvas#preview { cursor: zoom-in; margin: 0 auto; }
     .fbtn { display: block; position: absolute; bottom: 1px; width: 40px; height: 40px; padding: 0; border: 0; color: #fff; font-size: 16px; line-height: 40px;
             background: radial-gradient(circle, rgba(22, 22, 22, .78) 15px, transparent 15.5px); }
