@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#121212">
+<title>CamTag Install</title>
+<style>
+  @font-face { font-family: "Inter"; src: url("../fonts/InterVariable.woff2") format("woff2");
+               font-weight: 100 900; font-style: normal; font-display: swap; }
+  /* Stessi colori del configuratore web: un solo tema, scuro. */
+  :root {
+    color-scheme: dark;
+    --bg: #121212; --panel: #1c1c1b; --ink: #ecebe6; --muted: #9a9993; --line: #33332f;
+    --danger: #f25f54; --track: #5a5954;
+    --accent: #bbff00; --accent-ink: #161a00; --accent-soft: #314107;
+    --r-s: 6px; --r-l: 14px;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
+  a { color: var(--accent); }
+  button, input { font: inherit; color: inherit; }
+  button, a.btn { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-s);
+                  padding: 8px 14px; cursor: pointer; text-decoration: none; display: inline-block; color: var(--ink); }
+  button:hover:not(:disabled), a.btn:hover { border-color: var(--track); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.danger { color: var(--danger); }
+  button:disabled { opacity: .4; cursor: default; }
+  header.bar { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 12px;
+               height: 52px; padding: 0 16px; background: var(--bg); border-bottom: 1px solid var(--line); }
+  header h1 { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: .08em; }
+  header .sp { flex: 1; }
+  main { max-width: 680px; margin: 0 auto; padding: 28px 16px 72px; }
+  h2 { font-size: 26px; line-height: 1.2; margin: 0 0 12px; }
+  h3 { font-size: 15px; margin: 0; }
+  p { margin: 0 0 12px; }
+  .muted { color: var(--muted); }
+  .box { border: 1px solid var(--line); border-radius: var(--r-l); padding: 14px 16px; margin: 20px 0; }
+  .box.warn { border-color: var(--danger); }
+  .box ul { margin: 6px 0 0; padding-left: 20px; }
+  label.check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; margin-top: 10px; }
+  label.check input { margin-top: 4px; accent-color: var(--accent); flex: none; }
+  ol.steps { list-style: none; padding: 0; margin: 20px 0; display: grid; gap: 10px; }
+  .step { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-l);
+          padding: 14px 16px; display: grid; grid-template-columns: 26px 1fr; gap: 2px 12px; }
+  .step .ico { grid-row: span 3; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--track);
+               display: grid; place-items: center; font-size: 13px; font-weight: 700; color: var(--muted); }
+  .step[data-s="run"] { border-color: var(--accent); }
+  .step[data-s="run"] .ico { border-color: var(--accent); color: var(--accent); }
+  .step[data-s="ok"] .ico { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .step[data-s="fail"] { border-color: var(--danger); }
+  .step[data-s="fail"] .ico { background: var(--danger); border-color: var(--danger); color: #1a0000; }
+  .step .msg { margin: 2px 0 0; color: var(--muted); overflow-wrap: anywhere; }
+  .step[data-s="fail"] .msg { color: var(--danger); }
+  .step .more { display: grid; gap: 10px; margin-top: 10px; justify-items: start; }
+  progress { width: 100%; height: 8px; accent-color: var(--accent); }
+  .acts { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  dialog { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r-l);
+           padding: 20px; max-width: min(460px, calc(100vw - 32px)); }
+  dialog::backdrop { background: rgba(0, 0, 0, .6); }
+  dialog h3 { font-size: 18px; margin-bottom: 10px; }
+  dialog .acts { margin-top: 16px; }
+  details { border-top: 1px solid var(--line); padding: 14px 0 0; margin-top: 28px; }
+  summary { cursor: pointer; font-weight: 600; }
+  details > div { margin-top: 12px; }
+  pre#log { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-s); padding: 10px 12px;
+            max-height: 260px; overflow: auto; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+            white-space: pre-wrap; margin: 0; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>CAMTAG</h1>
+  <span class="muted" data-t>Installa</span>
+  <span class="sp"></span>
+  <button id="langBtn" title="Lingua della pagina"></button>
+  <a class="btn" href="../" data-t>Configuratore web</a>
+</header>
+<main>
+  <h2 data-t>Installa CamTag sull'X3</h2>
+  <p data-t>Questa pagina installa CamTag sul tuo Xteink X3 con il cavo USB. Prima controlla che l'X3 si possa aggiornare senza rischi e ne salva una copia completa; se un controllo non passa, si ferma. Serve solo la prima volta: dopo, il firmware si aggiorna via Bluetooth dal configuratore web.</p>
+
+  <div class="box" id="noSerial" hidden>
+    <p data-t>Questo browser non può usare la USB. Apri questa pagina con Chrome o Edge su un computer (Mac, Windows o Linux).</p>
+  </div>
+
+  <div class="box">
+    <h3 data-t>Cosa serve</h3>
+    <ul>
+      <li data-t>Chrome o Edge su un computer.</li>
+      <li data-t>Un cavo USB-C che porta i dati, non solo la carica.</li>
+      <li data-t>L'X3 acceso e carico: da spento non compare sulla USB.</li>
+      <li data-t>Circa cinque minuti, senza staccare il cavo.</li>
+    </ul>
+  </div>
+
+  <div class="box warn">
+    <p data-th><strong>Firmware non ufficiale: lo installi a tuo rischio.</strong> CamTag sostituisce il firmware dell'X3 e, nel caso peggiore, può lasciarlo inutilizzabile senza rimedio. Non c'è alcuna garanzia. Alcuni X3 escono dalla fabbrica con la USB bloccata: i controlli qui sotto li riconoscono con buona sicurezza, ma non è una certezza.</p>
+    <label class="check"><input type="checkbox" id="risk"> <span data-t>Ho capito: installo CamTag a mio rischio.</span></label>
+  </div>
+
+  <ol class="steps">
+    <li class="step" id="s1"><span class="ico">1</span><h3 data-t>L'X3 compare sulla USB</h3><p class="msg"></p></li>
+    <li class="step" id="s2"><span class="ico">2</span><h3 data-t>Il chip non ha protezioni attive</h3><p class="msg"></p></li>
+    <li class="step" id="s3"><span class="ico">3</span><h3 data-t>Copia completa della memoria</h3><p class="msg"></p>
+      <div class="more" id="s3more" hidden>
+        <button id="saveBtn" class="primary" data-t>Salva il backup</button>
+        <label class="check"><input type="checkbox" id="saved" disabled> <span data-t>Ho salvato il backup e lo tengo in almeno due posti. Non lo pubblico: contiene i dati di questo X3.</span></label>
+      </div>
+    </li>
+    <li class="step" id="s4"><span class="ico">4</span><h3 id="s4title"></h3><p class="msg"></p>
+      <div class="more" id="s4more" hidden>
+        <a class="btn primary" href="../" data-t>Vai al configuratore web</a>
+      </div>
+    </li>
+  </ol>
+
+  <p class="muted" data-t>Se l'X3 resta bloccato (schermo fermo, tasti che non rispondono): premi RESET, poi tieni premuto power per 3-5 secondi.</p>
+
+  <div class="acts">
+    <button id="startBtn" class="primary" disabled data-t>Comincia i controlli</button>
+    <button id="installBtn" disabled data-t>Installa</button>
+  </div>
+
+  <details id="restore">
+    <summary data-t>Ripristina da un backup</summary>
+    <div>
+      <p data-t>Riscrive tutta la memoria dell'X3 con un backup fatto da questa pagina o con esptool, e lo riporta esattamente com'era quando l'hai salvato.</p>
+      <p><input type="file" id="restoreFile" accept=".bin"></p>
+      <p class="muted" id="restoreMsg"></p>
+      <progress id="restoreBar" max="1" value="0" hidden></progress>
+      <p><button id="restoreBtn" class="danger" disabled data-t>Ripristina</button></p>
+    </div>
+  </details>
+
+  <details>
+    <summary data-t>Dettagli tecnici</summary>
+    <div><pre id="log"></pre><p style="margin-top:10px"><button id="copyLog" data-t>Copia il registro</button></p></div>
+  </details>
+
+  <p class="muted" style="margin-top:28px" data-th>Se la USB non risponde più, resta solo la riscrittura della memoria con un programmatore esterno, aprendo l'X3: lo spiega <a href="https://github.com/crosspoint-reader/crosspoint-reader/blob/HEAD/docs/fix-bricked-xteink.md" target="_blank" rel="noopener">CrossPoint</a>.</p>
+</main>
+
+<dialog id="askSaved">
+  <h3 data-t>Hai salvato il backup?</h3>
+  <p data-t>Il backup è l'unico modo per riportare l'X3 com'era. Prima di installare salvalo sul computer e tienilo in almeno due posti.</p>
+  <div class="acts">
+    <button id="askSave" class="primary" data-t>Salva il backup</button>
+    <button id="askGo" data-t>L'ho già salvato: installa</button>
+    <button id="askNo" data-t>Annulla</button>
+  </div>
+</dialog>
+
+<script src="../i18n.js"></script>
+<script type="module">
+import { md5 } from './md5.js';
+import { readFlash, stats } from './readflash.js';
+
+// esptool-js (Espressif, Apache-2.0): un solo file, versione fissata.
+const ESPTOOL = 'https://cdn.jsdelivr.net/npm/esptool-js@0.7.1/bundle.js';
+const IMAGE = '../firmware/camtag-factory.bin';  // bootloader + partizioni + firmware, da 0x0
+const FLASH = 16 * 1024 * 1024;                  // la flash dell'X3
+const $ = s => document.querySelector(s);
+const norm = s => s.replace(/\s+/g, ' ').trim();
+
+// Testi statici: scritti in italiano, tradotti con il dizionario del configuratore web.
+for (const el of document.querySelectorAll('[data-t]')) el.textContent = t(norm(el.textContent));
+for (const el of document.querySelectorAll('[data-th]')) el.innerHTML = t(norm(el.innerHTML));
+for (const el of document.querySelectorAll('[title]')) el.title = t(el.title);
+$('#langBtn').textContent = uiLang === 'it' ? 'EN' : 'IT';
+$('#langBtn').onclick = () => {
+  try {
+    const ui = JSON.parse(localStorage.getItem('camtag.ui.v1')) || {};
+    ui.lang = uiLang === 'it' ? 'en' : 'it';
+    localStorage.setItem('camtag.ui.v1', JSON.stringify(ui));
+  } catch {}
+  location.reload();
+};
+
+// ---------- Registro e passi ----------
+const logEl = $('#log');
+function log(s) { logEl.textContent += s + '\n'; logEl.scrollTop = logEl.scrollHeight; }
+const terminal = { clean() {}, writeLine: log, write: s => { logEl.textContent += s; } };
+
+function step(n, state, msg) {
+  const el = $('#s' + n);
+  el.dataset.s = state;
+  el.querySelector('.ico').textContent = state === 'ok' ? '✓' : state === 'fail' ? '✕' : n;
+  if (msg !== undefined) el.querySelector('.msg').textContent = msg;
+  if (state === 'fail') log('[' + n + '] ' + msg);
+}
+function bar(n, frac) {
+  const el = $('#s' + n);
+  let p = el.querySelector('progress');
+  if (!p) { p = document.createElement('progress'); p.max = 1; el.insertBefore(p, el.querySelector('.more')); }
+  p.hidden = frac == null; if (frac != null) p.value = frac;
+}
+class Stop extends Error {}
+
+// ---------- Immagine da installare ----------
+let image = null, imageVersion = '';
+$('#s4title').textContent = t('Installa CamTag');
+(async () => {
+  try {
+    const r = await fetch(IMAGE, { cache: 'no-cache' });
+    if (!r.ok) throw new Error(r.status);
+    const data = new Uint8Array(await r.arrayBuffer());
+    const txt = new TextDecoder('latin1').decode(data);
+    const m = txt.match(/CAMTAG_FW=([0-9A-Za-z.-]+)/);
+    if (data[0] !== 0xe9 || !m) throw new Error('not a CamTag image');
+    image = data; imageVersion = m[1];
+    $('#s4title').textContent = t('Installa CamTag {}', imageVersion);
+  } catch (e) {
+    step(4, 'fail', t("Il firmware da installare non è in questa copia della pagina: c'è solo in quella pubblicata su GitHub Pages."));
+    log('[immagine] ' + e.message);
+  }
+})();
+
+// ---------- Collegamento ----------
+let esptool = null, port = null, transport = null, loader = null, busy = false;
+async function connect(n, restoring = false) {
+  if (loader) return;
+  if (!esptool) {
+    try { esptool = await import(ESPTOOL); }
+    catch {
+      step(n, 'fail', t('Non riesco a caricare esptool-js: controlla la connessione e ricarica la pagina.'));
+      throw new Stop();
+    }
+  }
+  step(n, 'run', t("Scegli l'X3 nella finestra del browser."));
+  try { port = await navigator.serial.requestPort({ filters: [{ usbVendorId: esptool.ESPRESSIF_VID }] }); }
+  catch {
+    // Per il ripristino niente avviso sulla USB bloccata: quell'X3 ha già ricevuto un firmware da qui.
+    step(n, 'fail', restoring
+      ? t("Nessun X3 scelto. Se nella finestra non compariva: accendi l'X3 o premi un tasto per svegliarlo e riprova subito; se serve, stacca e riattacca il cavo.")
+      : t("Nessun X3 scelto. Se nella finestra non compariva: accendi l'X3 o premi un tasto per svegliarlo, prova un altro cavo e un'altra porta. Se ancora non compare, è il segno di un'unità con la USB bloccata: non installare CamTag."));
+    throw new Stop();
+  }
+  step(n, 'run', t("Mi collego all'X3…"));
+  let desc;
+  try { desc = await openLoader(); }
+  catch (e) {
+    await disconnect();
+    step(n, 'fail', t("L'X3 compare ma non risponde ({}). Stacca e riattacca il cavo, poi riprova.", e.message));
+    throw new Stop();
+  }
+  if (loader.chip.CHIP_NAME !== 'ESP32-C3') {
+    await disconnect();
+    step(n, 'fail', t('Questo non è un X3: il chip è {}.', loader.chip.CHIP_NAME));
+    throw new Stop();
+  }
+  const size = 1 << ((await loader.readFlashId()) >> 16 & 0xff);
+  if (size !== FLASH) {
+    await disconnect();
+    step(n, 'fail', t('Memoria da {} MB invece di 16: questo non è un X3.', size / 1048576));
+    throw new Stop();
+  }
+  step(n, 'ok', t('Trovato: {}, memoria da 16 MB.', desc));
+}
+// Trasporto e stub sulla porta scelta. Buffer della porta grande: con quello di
+// partenza (255 byte) Chrome perde i dati che arrivano mentre la pagina è occupata.
+async function openLoader() {
+  transport = new esptool.Transport(port, false);
+  // Con tracing acceso la porta segnala i suoi errori (buffer pieno, flusso chiuso):
+  // nel registro vanno solo quelli, non il traffico.
+  transport.trace = msg => { if (/^(Recoverable|Unrecoverable|Serial port done|readLoop exited)/.test(msg)) log('[usb] ' + msg); };
+  loader = new esptool.ESPLoader({ transport, baudrate: 115200, romBaudrate: 115200, terminal,
+                                   serialOptions: { bufferSize: 1 << 20 } });
+  const desc = await loader.main('default_reset');
+  if (loader.chip.CHIP_NAME === 'ESP32-C3') await disableWatchdogs();
+  return desc;
+}
+// Via USB-Serial/JTAG i watchdog RTC e SWD dell'ESP32-C3 non vengono nutriti e
+// riavviano il chip a metà lavoro: esptool li spegne appena collegato
+// (disable_watchdogs in targets/esp32c3.py), esptool-js 0.7.1 no. Stessi registri.
+async function disableWatchdogs() {
+  const RTC = 0x60008000;
+  await loader.writeReg(RTC + 0xa8, 0x50d83aa1);        // RTC_CNTL_WDTWPROTECT: sblocca
+  await loader.writeReg(RTC + 0x90, 0);                 // RTC_CNTL_WDTCONFIG0: WDT spento
+  await loader.writeReg(RTC + 0xa8, 0);                 // blocca
+  await loader.writeReg(RTC + 0xb0, 0x8f1d312a);        // RTC_CNTL_SWD_WPROTECT: sblocca
+  await loader.writeReg(RTC + 0xac, (await loader.readReg(RTC + 0xac)) | 0x80000000);  // SWD_AUTO_FEED_EN
+  await loader.writeReg(RTC + 0xb0, 0);                 // blocca
+  log('[watchdog] RTC WDT spento, SWD nutrito da sé');
+}
+// Se una lettura si inceppa lo stub resta ad aspettare: si riavvia l'X3 e ci si
+// ricollega sulla stessa porta, senza chiedere di nuovo all'utente.
+async function reopen() {
+  try { await loader?.after('custom_reset', undefined, 'D0|R1|W200|R0'); } catch {}
+  try { await transport?.disconnect(); } catch {}
+  await new Promise(r => setTimeout(r, 500));
+  await openLoader();
+}
+async function disconnect() {
+  try { await transport?.disconnect(); } catch {}
+  transport = loader = null;
+}
+// Dopo un errore l'X3 resterebbe nello stub di esptool, fermo: lo si riavvia.
+async function release() {
+  try { await loader?.after('custom_reset', undefined, 'D0|R1|W200|R0'); } catch {}
+  await disconnect();
+}
+
+// ---------- Controlli e backup ----------
+let backup = null;  // { url, name, md5 }
+async function checks() {
+  await connect(1);
+
+  step(2, 'run', t('Leggo le protezioni del chip…'));
+  const info = await loader.getSecurityInfo(false);
+  log('[sicurezza] ' + JSON.stringify({ flags: '0x' + info.flags.toString(16).padStart(8, '0'), flashCryptCnt: info.flashCryptCnt, keyPurposes: info.keyPurposes }));
+  if (info.flags !== 0 || info.flashCryptCnt !== 0) {
+    step(2, 'fail', t('Il chip ha protezioni attive (flag 0x{}, cifratura {}): non installare CamTag su questo X3.', info.flags.toString(16).padStart(8, '0'), info.flashCryptCnt));
+    throw new Stop();
+  }
+  step(2, 'ok', t('Nessuna protezione: flag 0x00000000, secure boot e cifratura della flash spenti.'));
+
+  step(3, 'run', t('Leggo tutta la memoria (16 MB): qualche minuto, non staccare il cavo.'));
+  bar(3, 0);
+  const t0 = Date.now();
+  // Un blocco da 64 KB alla volta. Prima l'X3 ne calcola l'MD5: se è quello di un
+  // blocco cancellato (tutto 0xFF, più di metà della flash di un X3 nuovo) il
+  // blocco si riempie qui senza leggerlo. È più veloce, e sono proprio i byte
+  // 0xFF a far perdere dati a Chrome (vedi readflash.js). Gli altri si leggono,
+  // e lo stub ne conferma l'MD5. Alla fine l'MD5 di tutta la memoria calcolato
+  // dall'X3 verifica comunque l'insieme.
+  // Se un blocco si inceppa si riavvia l'X3 e lo si rilegge; dopo 4 volte di
+  // fila sullo stesso blocco ci si arrende.
+  const BLOCK = 0x10000, erased = md5(new Uint8Array(BLOCK).fill(0xff));
+  const data = new Uint8Array(FLASH);
+  let retries = 0, skipped = 0, mark = 0;
+  for (let pos = 0; pos < FLASH; pos += BLOCK) {
+    for (let tries = 0; ; ) {
+      try {
+        if (await loader.flashMd5sum(pos, BLOCK) === erased) { data.fill(0xff, pos, pos + BLOCK); skipped++; }
+        else {
+          transport.tracing = true;   // solo per gli errori della porta, vedi openLoader
+          await readFlash(loader, transport, pos, BLOCK, md5, null, data.subarray(pos, pos + BLOCK));
+          transport.tracing = false;
+        }
+        break;
+      } catch (e) {
+        transport.tracing = false;
+        log(`[backup] inceppata a 0x${(pos + (e.got || 0)).toString(16)}: ${e.message}`);
+        if (++tries >= 4) throw e;
+        retries++;
+        step(3, 'run', t("Lettura inceppata a {} MB: riavvio l'X3 e riprendo…", (pos / 1048576).toFixed(1)));
+        await reopen();
+        step(3, 'run', t('Leggo tutta la memoria (16 MB): qualche minuto, non staccare il cavo.'));
+      }
+    }
+    bar(3, (pos + BLOCK) / FLASH);
+    if (pos + BLOCK >= mark + 2 * 1048576) { mark = pos + BLOCK; log(`[backup] ${mark / 1048576} MB in ${Math.round((Date.now() - t0) / 1000)} s`); }
+  }
+  log(`[backup] blocchi cancellati non letti: ${skipped} di ${FLASH / BLOCK}`);
+  if (retries) log(`[backup] riprese: ${retries}`);
+  if (stats.ackResent) log(`[backup] conferme rimandate: ${stats.ackResent}`);
+  log(`[backup] letti ${data.length} byte in ${Math.round((Date.now() - t0) / 1000)} s`);
+  bar(3, null);
+  if (data.length !== FLASH) { step(3, 'fail', t('Lettura incompleta: {} byte invece di 16 MB. Stacca e riattacca il cavo e ricomincia.', data.length)); throw new Stop(); }
+  step(3, 'run', t("Confronto la copia con la memoria dell'X3…"));
+  const mine = md5(data), chip = await loader.flashMd5sum(0, FLASH);
+  log(`[backup] md5 copia ${mine}, md5 calcolato dall'X3 ${chip}`);
+  if (mine !== chip) {
+    step(3, 'fail', t("La copia non coincide con la memoria dell'X3: non installare. Stacca e riattacca il cavo e ricomincia."));
+    throw new Stop();
+  }
+  const day = new Date().toISOString().slice(0, 10);
+  backup = { url: URL.createObjectURL(new Blob([data], { type: 'application/octet-stream' })), name: `backup-x3-${day}.bin`, md5: mine };
+  step(3, 'run', t("Copia identica alla memoria dell'X3 (MD5 {}). Salvala sul computer: è l'unico modo per riportare l'X3 com'era.", mine));
+  $('#s3more').hidden = false;
+}
+
+function saveBackup() {
+  const a = document.createElement('a');
+  a.href = backup.url; a.download = backup.name; a.click();
+  $('#saved').disabled = false;
+}
+$('#saveBtn').onclick = saveBackup;
+$('#saved').onchange = () => {
+  const ok = $('#saved').checked;
+  if (ok) step(3, 'ok', t('Backup salvato: {} (MD5 {}).', backup.name, backup.md5));
+  else step(3, 'run');
+  refresh();
+};
+
+// ---------- Installazione ----------
+async function install() {
+  await connect(4);  // dopo un errore di scrittura il collegamento si rifà
+  step(4, 'run', t('Scrivo CamTag {}: non staccare il cavo.', imageVersion));
+  bar(4, 0);
+  await loader.writeFlash({
+    fileArray: [{ data: image, address: 0 }], flashMode: 'keep', flashFreq: 'keep', flashSize: 'keep',
+    eraseAll: false, compress: true, reportProgress: (_i, done, total) => bar(4, done / total), calculateMD5Hash: md5,
+  });
+  bar(4, null);
+  step(4, 'run', t("Scrittura verificata, riavvio l'X3…"));
+  await loader.after('custom_reset', undefined, 'D0|R1|W200|R0');
+  await disconnect();
+  step(4, 'ok', t("Fatto: CamTag {} è sull'X3. Al primo avvio chiede la lingua (A o B inglese, C o D italiano). Se lo schermo non cambia entro 10 secondi, premi RESET, poi tieni premuto power per 3-5 secondi.", imageVersion));
+  $('#s4more').hidden = false;
+  done = true;
+}
+
+// ---------- Pulsanti ----------
+let done = false;
+const hasSerial = 'serial' in navigator;
+$('#noSerial').hidden = hasSerial;
+function refresh() {
+  $('#startBtn').disabled = busy || !hasSerial || !$('#risk').checked || !!backup;
+  $('#installBtn').disabled = busy || done || !image || !backup;
+  $('#installBtn').classList.toggle('primary', !$('#installBtn').disabled);
+  $('#restoreBtn').disabled = busy || !hasSerial || $('#restoreFile').files[0]?.size !== FLASH;
+  $('#saveBtn').disabled = busy;
+}
+$('#risk').onchange = refresh;
+async function run(fn, onError) {
+  busy = true; refresh();
+  try { await fn(); }
+  catch (e) {
+    if (!(e instanceof Stop)) { console.error(e); await onError(e); }
+    else await release();
+  } finally { busy = false; refresh(); }
+}
+$('#startBtn').onclick = () => run(async () => {
+  for (const n of [1, 2, 3, 4]) if (n < 4 || image) step(n, '', '');
+  $('#startBtn').textContent = t('Ricomincia i controlli');
+  await checks();
+}, async e => {
+  const n = [1, 2, 3].find(n => $('#s' + n).dataset.s === 'run') || 1;
+  step(n, 'fail', t("Errore: {}. Se l'X3 resta fermo, premi RESET, poi tieni premuto power per 3-5 secondi; poi ricomincia.", e.message));
+  await release();
+});
+const startInstall = () => run(install, async e => {
+  bar(4, null);
+  step(4, 'fail', t('Scrittura non riuscita ({}). Non staccare niente e premi di nuovo "Installa". Se non riesce, il backup riporta l\'X3 com\'era.', e.message));
+  await release();
+});
+// Senza la spunta "Ho salvato il backup" si chiede prima: chi dice di averlo già
+// salvato va avanti, e la spunta si mette da sé.
+$('#installBtn').onclick = () => $('#saved').checked ? startInstall() : $('#askSaved').showModal();
+$('#askSave').onclick = saveBackup;
+$('#askNo').onclick = () => $('#askSaved').close();
+$('#askGo').onclick = () => {
+  $('#askSaved').close();
+  $('#saved').disabled = false; $('#saved').checked = true;
+  $('#saved').onchange();
+  startInstall();
+};
+
+// ---------- Ripristino ----------
+$('#restoreFile').onchange = () => {
+  const f = $('#restoreFile').files[0];
+  $('#restoreMsg').textContent = !f ? '' : f.size === FLASH
+    ? t('{}: 16 MB, pronto. Riscrive tutta la memoria dell\'X3.', f.name)
+    : t('{} non è un backup completo dell\'X3: deve essere di 16 MB esatti.', f.name);
+  refresh();
+};
+$('#restoreBtn').onclick = () => run(async () => {
+  const f = $('#restoreFile').files[0];
+  const data = new Uint8Array(await f.arrayBuffer());
+  const msg = s => { $('#restoreMsg').textContent = s; log('[ripristino] ' + s); };
+  const rb = $('#restoreBar');
+  // Collegamento con i messaggi nel riquadro del ripristino, non nei passi.
+  if (!loader) {
+    msg(t("Scegli l'X3 nella finestra del browser."));
+    try { await connect(1, true); } catch (e) { msg($('#s1 .msg').textContent); throw e; }
+  }
+  msg(t('Riscrivo {}: non staccare il cavo.', f.name));
+  rb.hidden = false; rb.value = 0;
+  await loader.writeFlash({
+    fileArray: [{ data, address: 0 }], flashMode: 'keep', flashFreq: 'keep', flashSize: 'keep',
+    eraseAll: false, compress: true, reportProgress: (_i, done, total) => { rb.value = done / total; }, calculateMD5Hash: md5,
+  });
+  rb.hidden = true;
+  await loader.after('custom_reset', undefined, 'D0|R1|W200|R0');
+  await disconnect();
+  msg(t("Ripristinato: l'X3 è com'era quando hai salvato il backup. Se lo schermo non cambia entro 10 secondi, premi RESET, poi tieni premuto power per 3-5 secondi."));
+}, async e => {
+  $('#restoreBar').hidden = true;
+  $('#restoreMsg').textContent = t('Ripristino non riuscito ({}). Non staccare niente e riprova.', e.message);
+  await release();
+});
+
+$('#copyLog').onclick = async () => {
+  const b = $('#copyLog');
+  try { await navigator.clipboard.writeText(logEl.textContent); b.textContent = t('Copiato'); }
+  catch { getSelection().selectAllChildren(logEl); b.textContent = t('Selezionato: copia con Cmd+C o Ctrl+C'); }
+  setTimeout(() => { b.textContent = t('Copia il registro'); }, 2500);
+};
+addEventListener('beforeunload', e => { if (busy) e.preventDefault(); });
+refresh();
+</script>
+</body>
+</html>

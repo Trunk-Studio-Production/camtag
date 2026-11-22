@@ -25,7 +25,8 @@ costruttori di lenti e filtri nei dati vanno bene.
   schermata Bluetooth con i credits e mandata nella risposta a `HELLO`: lo
   configuratore web la mostra accanto a `FW_VERSION`; si ferma solo se il protocollo è diverso. Si cambiano
   insieme, a ogni nuovo firmware: il workflow Pages compila il firmware, lo pubblica
-  in `companion/firmware/camtag.bin` (per "Aggiorna firmware") e si ferma se la
+  in `companion/firmware/camtag.bin` (per "Aggiorna firmware"), l'immagine completa
+  in `camtag-factory.bin` (per `install/`) e si ferma se la
   versione nel binario (`CAMTAG_FW_TAG`) non è `FW_VERSION`.
   `Lang.h` ha le scritte del firmware in inglese e italiano (`tr()`): una frase
   nuova va lì con le due lingue, e se il simulatore la disegna anche in `DEV_TEXT`.
@@ -58,6 +59,21 @@ costruttori di lenti e filtri nei dati vanno bene.
   nel localStorage `camtag.ui.v1`: sono del browser, non entrano in `project.json`.
   Nei testi per l'utente si chiama sempre **configuratore web** (in inglese
   *web configurator*), mai "strumento" o "app".
+- `companion/install/` — prima installazione e ripristino via USB dal browser
+  (Web Serial, esptool-js 0.7.1 da jsdelivr; Chrome o Edge): i tre controlli,
+  backup di 16 MB (una lettura + MD5 calcolato dal chip, `md5.js`), poi
+  `firmware/camtag-factory.bin` scritto da 0x0 (è `firmware.factory.bin` della
+  build: bootloader, partizioni, firmware; sovrascrive anche l'NVS) e riavvio.
+  esptool-js 0.7.1 non spegne i watchdog del C3 via USB (lo fa la pagina, come
+  esptool) e la sua `readFlash` è inservibile su 16 MB (c'è `readflash.js`).
+  Chrome apre la porta con `PARMRK`: sul Mac ogni 0xFF in arrivo occupa due
+  posti in una coda da 1024 byte che butta il resto senza errori. Per questo
+  il backup va a blocchi da 64 KB, salta quelli cancellati (riconosciuti
+  dall'MD5 che calcola l'X3) e legge gli altri a pacchetti da 384 byte, uno
+  alla volta: non alzare questi numeri. Provato in Chrome e Brave sul Mac (22/11/2026):
+  backup in 43 s, installazione in 4 s, ripristino dei 16 MB in 41 s.
+  Testi nel dizionario di `i18n.js`. In locale: copia anche
+  `firmware.factory.bin` in `companion/firmware/camtag-factory.bin`.
 - `companion/manuale/` (italiano) e `companion/manual/` (inglese) — manuale
   d'uso (pulsante "Manuale", nella lingua dell'interfaccia): `index.html` disegna
   l'X3 in SVG attorno a PNG presi dal simulatore. I PNG non si aggiornano da
@@ -104,6 +120,7 @@ cd device && ../.venv/bin/pio run -e x3                  # compila
 cd device && ../.venv/bin/pio run -e x3 -t upload        # carica (vedi sotto)
 python3 -m http.server 8766    # dalla radice; poi apri http://localhost:8766/companion/
 # per provare "Aggiorna firmware" in locale: cp device/.pio/build/x3/firmware.bin companion/firmware/camtag.bin
+# per provare install/ in locale: cp device/.pio/build/x3/firmware.factory.bin companion/firmware/camtag-factory.bin
 ```
 
 Sessioni cloud (environment su claude.ai/code): l'hook SessionStart in
@@ -157,6 +174,8 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   volta): dal sonno profondo li sveglierebbe solo in parte, quindi da spento
   **accende solo il power**, e da acceso i tasti si leggono a intervalli nel
   sonno leggero.
+- X3 bloccato (es. rimasto nello stub di esptool dopo un'installazione
+  interrotta): RESET, poi power tenuto 3-5 s. Lo dicono la pagina `install/` e i README.
 - Lo spegnimento porta GPIO13 basso come fa CrossPoint; l'e-paper resta visibile.
   Sull'X3 GPIO13 basso **stacca la batteria** (misurato: dopo lo spento il
   chip riparte da alimentazione tornata, con l'orologio a zero), al contrario
@@ -386,8 +405,9 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   controlla l'anteprima; verifica che i BMP esportati abbiano le dimensioni giuste.
 - **Mai caricare firmware su un X3 nuovo senza i tre controlli del README**
   ("Rischi e controlli prima di caricare": compare sulla USB,
-  `get-security-info` pulito, flash letta due volte uguale, che è anche il
-  backup). Un'unità con la USB bloccata può restare inutilizzabile: se un
+  `get-security-info` pulito, flash letta due volte uguale, o una volta e
+  uguale all'MD5 calcolato dal chip come fa `companion/install/`; la lettura è
+  anche il backup). Un'unità con la USB bloccata può restare inutilizzabile: se un
   controllo non passa, fermati. Il README deve dire sempre chiaro che il
   caricamento è a rischio di chi lo fa.
   Il caricamento lo fa l'utente, o lo fai tu solo se lo chiede esplicitamente.

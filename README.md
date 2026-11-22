@@ -36,9 +36,10 @@ them in the simulator, buttons included.
 
 - An **[Xteink X3](https://www.xteink.com)**: a small e-paper reader, the
   hardware CamTag runs on. CamTag replaces its firmware.
-- A **USB-C data cable and a computer** for the first install, from the
-  command line. After that, cards and updates travel over Bluetooth.
-- A way to mount it on the camera: we don't ship a mount yet.
+- A **USB-C data cable and a computer with Chrome or Edge** for the first
+  install. After that, cards and updates travel over Bluetooth.
+- A way to mount it: adhesive velcro on the cover that comes with the X3
+  works well, or whatever you use for your other accessories.
 
 > **⚠️ Unofficial firmware: you flash it at your own risk.** CamTag replaces the
 > X3's firmware and, in the worst case, can leave it unusable beyond repair.
@@ -48,8 +49,9 @@ them in the simulator, buttons included.
 ## Getting started
 
 1. Make your cards in the [web configurator](https://trunk-studio-production.github.io/camtag/).
-2. Run the [three checks](#risks-and-checks-before-flashing), keep the backup,
-   and flash CamTag on the X3.
+2. Connect the X3 and open **[Install via USB](https://trunk-studio-production.github.io/camtag/companion/install/)**
+   in Chrome or Edge: it runs the [safety checks](#risks-and-checks-before-flashing),
+   saves a full backup and installs CamTag.
 3. Send the cards over Bluetooth (hold **X** on the X3) or via microSD.
 
 The [user manual](https://trunk-studio-production.github.io/camtag/companion/manual/)
@@ -225,6 +227,17 @@ simulator shows them at about half scale, close to the real size.
 **Flashing CamTag can make the X3 unusable.** Read this whole section before
 plugging in the cable.
 
+The **[install page](https://trunk-studio-production.github.io/camtag/companion/install/)** does all of this from the browser
+(Chrome or Edge on a computer): it runs the three checks below, stops if one
+fails, saves the backup and installs CamTag only after you've saved it. For
+the backup it reads the whole memory once and compares it with the MD5 the
+X3 computes of its own memory, which proves the copy as well as two reads.
+It can also restore a backup. The commands below do the same from the
+terminal.
+
+If the X3 gets stuck during the procedure (screen frozen, buttons not
+responding): press **RESET**, then hold **power** for 3–5 seconds.
+
 ### What can go wrong
 
 - CamTag is unofficial firmware, with no connection to Xteink. Flashing
@@ -303,7 +316,8 @@ Keep the X3 awake and connected until flashing has finished.
 
 ### Restore
 
-- Full backup, which puts the X3 back exactly as it was:
+- Full backup, which puts the X3 back exactly as it was: "Restore from a
+  backup" on the [install page](https://trunk-studio-production.github.io/camtag/companion/install/), or
   `~/.platformio/penv/bin/python -m esptool --chip esp32c3 write-flash 0 backup-x3-originale.bin`.
 - Original Xteink firmware or CrossPoint: from the web flasher at
   crosspointreader.com. CamTag's partition table is the same as CrossPoint's.
@@ -424,9 +438,9 @@ orientation and the card on screen, and waits for the X3 if it turns off:
 
 ### Next steps
 
-1. **Simpler first install**: today it needs a clone of the repository and
-   PlatformIO from the command line, which is too much for most camera
-   assistants. The three safety checks must stay.
+1. **Install from the browser** (`companion/install/`): tried with Chrome on
+   a Mac on an X3 with the original firmware (backup, install, restore); to
+   try on other units and on Windows and Linux.
 2. **Feedback from the beta testers** on set, and the rotation thresholds on a
    real camera.
 3. **Consumption when off** during the first three days, and from there the
@@ -436,10 +450,9 @@ orientation and the card on screen, and waits for the X3 if it turns off:
    and how often a full refresh is needed (`FULL_REFRESH_EVERY`). The
    spontaneous restart after rest, seen once, didn't happen again in 39 h of
    log. Heat above about 50 °C and direct sunlight for months damage the
-   panel: the mount matters.
+   panel.
 5. **Filter catalog** (`data/filters.json`) verified against the
    manufacturers' data sheets: today it is provisional.
-6. **3D-printed mount** for attaching it to the camera.
 
 ## License
 

@@ -367,6 +367,7 @@
     <button id="bleStart" class="primary">Invia le card</button>
     <button id="bleClose">Chiudi</button>
   </div>
+  <p class="hint"><a href="install/" target="_blank" rel="noopener" title="Prima installazione o ripristino di un X3 con il cavo USB">Installa via USB</a></p>
   <p class="credits">Per il firmware <span id="fwWanted"></span> · Sviluppato da Iacopo Boccalari · Trunk Studio · <a href="https://trunkstudio.it" target="_blank" rel="noopener">trunkstudio.it</a></p>
 </dialog>
 
@@ -2803,7 +2804,7 @@ function bleShowFw(fw, version) {
   const cmp = fw ? fwCompare(fw, FW_VERSION) : -1;
   el.textContent = cmp === 0 ? t("Firmware dell'X3: {}.", fw)
     : cmp < 0 ? `${t("Firmware dell'X3: {}, compatibile. La più recente è la {}.", fw || t('precedente alla 0.1.0'), FW_VERSION)} ${
-      t(version >= BLE.firmwareFrom ? 'Per installarla: "Aggiorna firmware".' : 'Per arrivarci serve una volta il cavo USB (README); poi si aggiorna da qui.')}`
+      t(version >= BLE.firmwareFrom ? 'Per installarla: "Aggiorna firmware".' : 'Per arrivarci serve una volta il cavo USB («Installa via USB»); poi si aggiorna da qui.')}`
     : t("Firmware dell'X3: {}, compatibile.", fw);
 }
 
@@ -2903,7 +2904,7 @@ async function bleSession(work, onFail) {
           throw new Error(link.version > BLE.version
             ? t("Il firmware dell'X3 ({}) è più recente di questo configuratore web, fatto per la {}: ricarica la pagina.", fwName, FW_VERSION)
             : ota ? t("Il firmware dell'X3 ({}) non parla con questo configuratore web, fatto per la {}: premi \"Aggiorna firmware\".", fwName, FW_VERSION)
-            : t("Il firmware dell'X3 ({}) non parla con questo configuratore web, fatto per la {}: aggiornalo una volta con il cavo USB (README).", fwName, FW_VERSION));
+            : t("Il firmware dell'X3 ({}) non parla con questo configuratore web, fatto per la {}: aggiornalo una volta con il cavo USB («Installa via USB»).", fwName, FW_VERSION));
         }
         bleShowFw(fw, link.version);
         mtu = +h[4] || 23;
@@ -3060,7 +3061,7 @@ async function bleFirmware(file) {
     if (!version) throw new Error(t('Il file non è un firmware CamTag per l\'X3.'));
     if (!file && version !== FW_VERSION) console.warn('[ble] firmware pubblicato', version, 'invece di', FW_VERSION);
     await link.open({ firmware: true });
-    if (link.version < BLE.firmwareFrom) throw new Error(t("Il firmware dell'X3 ({}) non si aggiorna via Bluetooth: la prima volta serve il cavo USB (README).", link.fw || t('precedente alla 0.1.0')));
+    if (link.version < BLE.firmwareFrom) throw new Error(t("Il firmware dell'X3 ({}) non si aggiorna via Bluetooth: la prima volta serve il cavo USB («Installa via USB»).", link.fw || t('precedente alla 0.1.0')));
     if (link.fw && fwCompare(link.fw, version) >= 0 && !confirm(t("L'X3 ha già il firmware {}. Installare comunque la {}?", link.fw, version))) {
       bleUi(t("Il firmware dell'X3 non è cambiato."));
       return;

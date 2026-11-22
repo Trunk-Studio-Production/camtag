@@ -1,7 +1,9 @@
 # Pubblica il configuratore web su GitHub Pages a ogni push su main.
 # companion/ e data/ (la pagina legge ../data/*.json), più il firmware compilato
 # dallo stesso commit in companion/firmware/camtag.bin, che il configuratore web
-# manda all'X3 con "Aggiorna firmware"; in radice un rimando a companion/.
+# manda all'X3 con "Aggiorna firmware", e l'immagine completa in
+# companion/firmware/camtag-factory.bin per la prima installazione via USB
+# (companion/install/); in radice un rimando a companion/.
 name: Pages
 
 on:
@@ -50,12 +52,16 @@ jobs:
           web=$(grep -o "^const FW_VERSION = '[^']*'" companion/index.html | cut -d"'" -f2)
           echo "firmware $bin, configuratore web $web"
           test -n "$bin" && test "$bin" = "$web"
+          # L'immagine completa (bootloader + partizioni + firmware) per install/
+          fac=$(grep -ao 'CAMTAG_FW=[0-9A-Za-z.-]*' device/.pio/build/x3/firmware.factory.bin | head -1 | cut -d= -f2)
+          test "$fac" = "$web"
       - name: Prepara il sito
         run: |
           mkdir -p _site
           cp -R companion data _site/
           mkdir -p _site/companion/firmware
           cp device/.pio/build/x3/firmware.bin _site/companion/firmware/camtag.bin
+          cp device/.pio/build/x3/firmware.factory.bin _site/companion/firmware/camtag-factory.bin
           cat > _site/index.html <<'HTML'
           <!doctype html>
           <meta charset="utf-8">

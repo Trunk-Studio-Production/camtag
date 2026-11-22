@@ -37,9 +37,10 @@ simulatore, tasti compresi.
 
 - Un **[Xteink X3](https://www.xteink.com)**: un piccolo lettore e-paper,
   l'hardware su cui gira CamTag. CamTag ne sostituisce il firmware.
-- Un **cavo USB-C dati e un computer** per la prima installazione, da riga di
-  comando. Dopo, card e aggiornamenti viaggiano via Bluetooth.
-- Un modo per montarlo sulla camera: un supporto nostro ancora non c'è.
+- Un **cavo USB-C dati e un computer con Chrome o Edge** per la prima
+  installazione. Dopo, card e aggiornamenti viaggiano via Bluetooth.
+- Un modo per montarlo: il velcro adesivo sulla cover che arriva con l'X3
+  funziona bene, o quello che usi per gli altri accessori.
 
 > **⚠️ Firmware non ufficiale: lo carichi a tuo rischio.** CamTag sostituisce il
 > firmware dell'X3 e, nel caso peggiore, può lasciarlo inutilizzabile senza
@@ -49,8 +50,9 @@ simulatore, tasti compresi.
 ## Per cominciare
 
 1. Crea le card nel [configuratore web](https://trunk-studio-production.github.io/camtag/).
-2. Fai i [tre controlli](#rischi-e-controlli-prima-di-caricare), tieni il
-   backup e carica CamTag sull'X3.
+2. Collega l'X3 e apri **[Installa via USB](https://trunk-studio-production.github.io/camtag/companion/install/)**
+   con Chrome o Edge: fa i [controlli di sicurezza](#rischi-e-controlli-prima-di-caricare),
+   salva un backup completo e installa CamTag.
 3. Manda le card via Bluetooth (tieni **X** sull'X3) o con la microSD.
 
 Il [manuale d'uso](https://trunk-studio-production.github.io/camtag/companion/manuale/)
@@ -222,6 +224,17 @@ simulatore le mostra a circa metà scala, vicino alla dimensione reale.
 **Caricare CamTag può rendere l'X3 inutilizzabile.** Leggi questa parte per
 intero prima di collegare il cavo.
 
+La **[pagina di installazione](https://trunk-studio-production.github.io/camtag/companion/install/)** fa tutto questo dal browser
+(Chrome o Edge su un computer): esegue i tre controlli qui sotto, si ferma se
+uno non passa, salva il backup e installa CamTag solo dopo che l'hai salvato.
+Per il backup legge tutta la memoria una volta e la confronta con l'MD5 che
+l'X3 calcola della propria memoria: prova la copia quanto due letture.
+Ripristina anche un backup. I comandi qui sotto fanno lo stesso dal
+terminale.
+
+Se durante la procedura l'X3 resta bloccato (schermo fermo, tasti che non
+rispondono): premi **RESET**, poi tieni premuto **power** per 3-5 secondi.
+
 ### Cosa può andare storto
 
 - CamTag è un firmware non ufficiale, senza alcun legame con Xteink. Il
@@ -301,7 +314,8 @@ Tieni l'X3 sveglio e collegato finché il caricamento non ha finito.
 
 ### Ripristino
 
-- Backup completo, che riporta l'X3 esattamente com'era:
+- Backup completo, che riporta l'X3 esattamente com'era: "Ripristina da un
+  backup" nella [pagina di installazione](https://trunk-studio-production.github.io/camtag/companion/install/), oppure
   `~/.platformio/penv/bin/python -m esptool --chip esp32c3 write-flash 0 backup-x3-originale.bin`.
 - Firmware originale Xteink o CrossPoint: dal flasher web su crosspointreader.com.
   La tabella partizioni di CamTag è la stessa di CrossPoint.
@@ -420,9 +434,9 @@ schermo, e aspetta l'X3 se si spegne:
 
 ### Prossimi passi
 
-1. **Prima installazione più semplice**: oggi servono un clone del repository
-   e PlatformIO da riga di comando, troppo per la maggior parte degli
-   assistenti operatore. I tre controlli di sicurezza devono restare.
+1. **Installazione dal browser** (`companion/install/`): provata con Chrome
+   su Mac su un X3 con il firmware originale (backup, installazione,
+   ripristino); da provare su altre unità e su Windows e Linux.
 2. **Feedback dei beta tester** sul set, e soglie della rotazione su camera
    vera.
 3. **Consumo da spento** nei primi tre giorni, e da lì il tempo prima del
@@ -432,10 +446,9 @@ schermo, e aspetta l'X3 se si spegne:
    e ogni quanto serve il refresh completo (`FULL_REFRESH_EVERY`). Il riavvio
    da solo dopo il riposo, visto una volta, non si è più ripresentato in 39 h
    di registro. Caldo oltre i 50 °C circa e sole diretto per mesi rovinano il
-   pannello: conta il supporto.
+   pannello.
 5. **Catalogo dei filtri** (`data/filters.json`) verificato sulle schede dei
    costruttori: oggi è provvisorio.
-6. **Supporto** stampato in 3D per il montaggio sulla camera.
 
 ## Licenza
 
