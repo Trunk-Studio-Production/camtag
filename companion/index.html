@@ -384,7 +384,9 @@
     .stagecol.full #previewMode { flex: 1; min-height: 0; justify-content: center; }
     .stagecol.full canvas#preview { cursor: auto; }
     #bleDlg .acts button { flex: 1 1 100%; }
-    #bleDlg .acts .primary { order: -1; }
+    /* In colonna: Invia, Importa, poi Aggiorna firmware (raro e delicato) in fondo. */
+    #bleDlg .acts .primary { order: -2; }
+    #bleDlg .acts #bleGet { order: -1; }
   }
   @media (max-width: 359px) { .bar h1 { display: none; } }
   /* Telefono orizzontale: resta fissa solo la barra. */
