@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#121212">
 <title>CamTag Cards</title>
@@ -117,7 +117,7 @@
   canvas#preview { display: block; max-width: 100%; max-height: var(--prev-max-h, 72vh); height: auto; width: auto; image-rendering: auto; background: #fff; }
   .frame.actual { overflow: auto; max-height: calc(var(--prev-max-h, 72vh) + 28px); }
   .frame.actual canvas#preview { max-width: none; max-height: none; image-rendering: pixelated; }
-  .fbtn, .full-only { display: none; }
+  .fbtn, .full-only, #prevTog { display: none; }
 
   /* ---------- Componenti ---------- */
   .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--panel); }
@@ -286,6 +286,8 @@
     #list li.sel .scr { border-color: var(--accent); box-shadow: none; }
     #addBtn { flex: none; width: auto; border-radius: 999px; }
   }
+  /* Telefono: niente zoom con le dita (lo zoom dell'anteprima è il tutto schermo). */
+  @media (max-width: 699px) { html { touch-action: pan-x pan-y; } }
   /* ---------- Sotto 700 px: anteprima compatta e striscia fisse, l'editor scorre ---------- */
   @media (max-width: 699px) {
     header.bar { gap: 6px; padding: 0 12px; }
@@ -296,6 +298,8 @@
     .work:has(.stagecol.full) { z-index: 100; }
     body:has(.stagecol.full) { overflow: hidden; }
     .stagecol { order: 1; }
+    .work.nopreview .stagecol { display: none; }
+    #prevTog { display: block; flex: none; width: auto; border-radius: 999px; padding: 6px 12px; }
     .screens { order: 2; }
     /* Il simulatore serve da computer: sul telefono resta solo l'anteprima. */
     #modeRow, .pbar, #previewNote { display: none; }
@@ -396,6 +400,7 @@
     <section class="panel screens">
       <h2>Schermate</h2>
       <div class="scr-row">
+        <button id="prevTog" aria-expanded="true" title="Nascondi o mostra l'anteprima"></button>
         <ul id="list"></ul>
         <button id="addBtn" title="Aggiungi una schermata">+<span class="l"> Aggiungi</span></button>
       </div>
@@ -2737,6 +2742,18 @@ function fitStage() {
   st.style.setProperty('--prev-max-h', `${Math.max(96, Math.floor(avail))}px`);
   st.style.setProperty('--sim-scale', Math.max(0.4, Math.min(1, (avail + 28) / 560, st.clientWidth / 560)).toFixed(3));
 }
+// Sul telefono l'anteprima fissa si può richiudere (ui.prevHidden), per lasciare più
+// spazio all'editor; di partenza è aperta.
+function showPreview(on) {
+  ui.prevHidden = !on; saveUi();
+  $('.work').classList.toggle('nopreview', !on);
+  const b = $('#prevTog');
+  b.textContent = on ? t('▴ Anteprima') : t('▾ Anteprima');
+  b.setAttribute('aria-expanded', String(on));
+  fitStage();
+}
+$('#prevTog').onclick = () => showPreview(!!ui.prevHidden);
+showPreview(!ui.prevHidden);
 function setFull(on) {
   $('#stage').classList.toggle('full', on); fitStage();
   if (on) $('#fullClose').focus({ preventScroll: true });
