@@ -86,7 +86,10 @@ costruttori di lenti e filtri nei dati vanno bene.
   l'X3 in SVG attorno a PNG presi dal simulatore. I PNG non si aggiornano da
   soli: se cambiano le schermate, il disegno o i tasti, rigenerali in tutte e due
   le lingue con `manuale/schermate.js` (istruzioni in testa al file) e correggi
-  il testo di entrambi i manuali.
+  il testo di entrambi i manuali. Le sezioni "Preparare le card" (primi passi
+  nel configuratore web, solo le basi) e Bluetooth mostrano il configuratore web
+  da telefono (`phone-*.png`): se cambia la sua interfaccia, rifalli con `node companion/manuale/telefono.mjs` (Chrome headless,
+  stesso progetto di prova: `manualDemoState` in `schermate.js`).
 - `data/lenses.json` — database lenti (schema in `data/README.md`), dati solo
   dalle schede dei costruttori, con la fonte per ogni lente. `mounts` = attacchi
   offerti (sigle in `MOUNTS`, uguali in `data/validate.py`). Mai modificarlo per

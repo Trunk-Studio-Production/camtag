@@ -17,20 +17,7 @@ async function makeManualShots(lang = 'it', putUrl = null) {
     for (let i = 0; i < 50 && !lensDb; i++) await new Promise(r => setTimeout(r, 100));
     if (!lensDb) throw new Error('database lenti non caricato');
 
-    // Progetto di prova: sei prime, un kit filtri con ND, diottria e vetri, una crew.
-    state = migrate(freshState());
-    state.lang = state.deviceLang = lang;
-    state.production = 'DEMO';
-    for (const f of ['18', '25', '35', '47', '75', '125']) addDbLens(lensById.get(`arri-signature-prime-${f}`), 'LPL');
-    state.filters = {
-      ndFormat: 'density', ndType: 'IRND', nd: [0.3, 0.6, 0.9, 1.2, 1.8], ndCombos: [],
-      dio: [{ v: 0.5, split: false }, { v: 1, split: false }, { v: 2, split: false }],
-      effects: [{ id: null, name: 'Black Pro-Mist', strengths: [{ s: '1/8' }, { s: '1/4' }] }, { id: null, name: 'Pola', strengths: [{ s: '' }] }],
-      stages: [null, 'c:Black Pro-Mist|1/4', null, null], previewNd: 2, previewDio: 1,
-    };
-    state.cards = [DEFAULTS.crew()];
-    state.off = { ...freshOff(), text: 'CAMERA A' };
-    fitStart();
+    state = manualDemoState(lang);
 
     const cv = $('#simScreen');
     const shot = async (name, o = {}) => {
@@ -103,4 +90,26 @@ async function makeManualShots(lang = 'it', putUrl = null) {
   a.href = URL.createObjectURL(await zip.generateAsync({ type: 'blob' }));
   a.download = `manuale-schermate-${lang}.zip`; a.click();
   return files.map(([n]) => n);
+}
+
+// Progetto di prova del manuale, usato anche da telefono.mjs: sei prime, un kit
+// filtri con ND, diottria e vetri, una crew. Lo restituisce senza salvarlo.
+function manualDemoState(lang = 'it') {
+  const keep = state;
+  state = migrate(freshState());
+  state.lang = state.deviceLang = lang;
+  state.production = 'DEMO';
+  for (const f of ['18', '25', '35', '47', '75', '125']) addDbLens(lensById.get(`arri-signature-prime-${f}`), 'LPL');
+  state.filters = {
+    ndFormat: 'density', ndType: 'IRND', nd: [0.3, 0.6, 0.9, 1.2, 1.8], ndCombos: [],
+    dio: [{ v: 0.5, split: false }, { v: 1, split: false }, { v: 2, split: false }],
+    effects: [{ id: null, name: 'Black Pro-Mist', strengths: [{ s: '1/8' }, { s: '1/4' }] }, { id: null, name: 'Pola', strengths: [{ s: '' }] }],
+    stages: [null, 'c:Black Pro-Mist|1/4', null, null], previewNd: 2, previewDio: 1,
+  };
+  state.cards = [DEFAULTS.crew()];
+  state.off = { ...freshOff(), text: 'CAMERA A' };
+  fitStart();
+  const demo = state;
+  state = keep;
+  return demo;
 }

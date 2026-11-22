@@ -439,20 +439,30 @@ schermo, e aspetta l'X3 se si spegne:
 
 ### Prossimi passi
 
-1. **Installazione dal browser** (`companion/install/`): provata con Chrome
+1. **Urgente: X e Y cambiano tipo di pagina, non pagina.** Con molte lens
+   chart arrivare ai filtri o alle note richiede troppi clic. X e Y passano da
+   un tipo all'altro (lenti → filtri → note → …); le pagine interne di un tipo
+   (più lens chart, più pagine di note) si sfogliano con A–D, come oggi già
+   succede dentro la lens chart. Le schede manuali vanno nel tipo del loro
+   contenuto (una lente singola sta con le lenti, dopo le pagine della lens
+   chart; più note fanno un tipo solo). L'elenco dei filtri è un tipo a sé,
+   subito dopo i filtri, perché sulla schermata filtri A–D cambiano diottria
+   e ND. Il tipo deve arrivare al firmware con la card (es. nel nome del
+   file): cambia il formato, quindi simulatore e firmware insieme.
+2. **Installazione dal browser** (`companion/install/`): provata con Chrome
    su Mac su un X3 con il firmware originale (backup, installazione,
    ripristino); da provare su altre unità e su Windows e Linux.
-2. **Feedback dei beta tester** sul set, e soglie della rotazione su camera
+3. **Feedback dei beta tester** sul set, e soglie della rotazione su camera
    vera.
-3. **Consumo da spento** nei primi tre giorni, e da lì il tempo prima del
+4. **Consumo da spento** nei primi tre giorni, e da lì il tempo prima del
    bianco (`OFF_BLANK_S`). Serve anche una configurazione di compilazione
    senza `CAMTAG_DEBUG`: oggi `x3` lo ha sempre acceso.
-4. **Schermo** (`docs/schermo.md`): il riposo che scatta con la USB collegata
+5. **Schermo** (`docs/schermo.md`): il riposo che scatta con la USB collegata
    e ogni quanto serve il refresh completo (`FULL_REFRESH_EVERY`). Il riavvio
    da solo dopo il riposo, visto una volta, non si è più ripresentato in 39 h
    di registro. Caldo oltre i 50 °C circa e sole diretto per mesi rovinano il
    pannello.
-5. **Catalogo dei filtri** (`data/filters.json`) verificato sulle schede dei
+6. **Catalogo dei filtri** (`data/filters.json`) verificato sulle schede dei
    costruttori: oggi è provvisorio.
 
 ## Licenza

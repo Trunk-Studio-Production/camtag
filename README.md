@@ -443,20 +443,30 @@ orientation and the card on screen, and waits for the X3 if it turns off:
 
 ### Next steps
 
-1. **Install from the browser** (`companion/install/`): tried with Chrome on
+1. **Urgent: X and Y switch page type, not page.** With many lens charts,
+   getting to the filters or the notes takes too many presses. X and Y move
+   from one type to the next (lenses → filters → notes → …); the pages inside
+   a type (several lens charts, several note pages) are flipped with A–D, as
+   already happens inside the lens chart. Manual cards go with the type of
+   their content (a single lens sits with the lenses, after the lens chart
+   pages; several notes make one type). The filter list is a type of its
+   own, right after the filters, since on the filter screen A–D change
+   diopter and ND. The type must reach the firmware with the card (e.g. in
+   the file name): the format changes, so simulator and firmware together.
+2. **Install from the browser** (`companion/install/`): tried with Chrome on
    a Mac on an X3 with the original firmware (backup, install, restore); to
    try on other units and on Windows and Linux.
-2. **Feedback from the beta testers** on set, and the rotation thresholds on a
+3. **Feedback from the beta testers** on set, and the rotation thresholds on a
    real camera.
-3. **Consumption when off** during the first three days, and from there the
+4. **Consumption when off** during the first three days, and from there the
    time before going white (`OFF_BLANK_S`). A build configuration without
    `CAMTAG_DEBUG` is also needed: today `x3` always has it on.
-4. **Screen** (`docs/schermo.md`): the rest that kicks in with USB connected,
+5. **Screen** (`docs/schermo.md`): the rest that kicks in with USB connected,
    and how often a full refresh is needed (`FULL_REFRESH_EVERY`). The
    spontaneous restart after rest, seen once, didn't happen again in 39 h of
    log. Heat above about 50 °C and direct sunlight for months damage the
    panel.
-5. **Filter catalog** (`data/filters.json`) verified against the
+6. **Filter catalog** (`data/filters.json`) verified against the
    manufacturers' data sheets: today it is provisional.
 
 ## License

@@ -79,6 +79,15 @@
   .fig svg { display: block; width: 100%; height: auto; }
   .fig figcaption { font-size: 13px; color: var(--muted); text-align: center; margin-top: 10px; max-width: 32em; }
   .figs2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 18px 0; }
+  ul.parts { padding-left: 1.2em; }
+  ul.parts > li { margin: 0 0 8px; }
+  /* Configuratore web visto da telefono (phone-*.png, da telefono.mjs) */
+  .phones { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 210px)); justify-content: center; gap: 24px; margin: 22px 0; }
+  .phone { margin: 0; display: flex; flex-direction: column; align-items: center; }
+  .phone .frame { width: 100%; padding: 6px; border-radius: 28px; background: #0b0b0a; border: 1px solid #3a3a36;
+                  box-shadow: inset 0 0 0 2px #1c1c1a, 0 12px 32px rgba(0, 0, 0, .4); }
+  .phone img { display: block; width: 100%; height: auto; border-radius: 22px; }
+  .phone figcaption { font-size: 13px; color: var(--muted); text-align: center; margin-top: 10px; }
 
   /* Numbered steps */
   ol.steps { list-style: none; padding: 0; counter-reset: st; }
@@ -150,7 +159,7 @@
     section.s { padding-top: 44px; }
     td:first-child { white-space: normal; }
   }
-  @media (max-width: 479px) { .figs2 { grid-template-columns: 1fr; } }
+  @media (max-width: 479px) { .figs2 { grid-template-columns: 1fr; } .phones { grid-template-columns: minmax(0, 220px); } }
 
   /* ---------- Print: white pages, no contents ---------- */
   @media print {
@@ -159,6 +168,7 @@
     nav.toc { display: none; }
     .wrap { display: block; padding: 0; }
     .fig { background: #fff; break-inside: avoid; }
+    .phones { break-inside: avoid; }
     section.s { break-before: page; padding-top: 0; }
     .lede, .s .intro { color: #333; }
     a { color: inherit; }
@@ -178,7 +188,7 @@
       <div>
         <div class="eyebrow">User manual · firmware 0.4.2</div>
         <h1>CamTag <em>on the camera</em></h1>
-        <p class="lede">The e-paper badge for the camera department: lens chart, filters, crew and notes always in view, even when it's off. Here you'll find the buttons, when to press them and what you'll see on the screen.</p>
+        <p class="lede">The e-paper badge for the camera department: lens chart, filters, crew and notes always in view, even when it's off. Here you'll find how to prepare the cards, the buttons, when to press them and what you'll see on the screen.</p>
         <div class="meta">
           <span class="chip">Xteink X3</span>
           <span class="chip">8 buttons, no touch</span>
@@ -401,9 +411,41 @@
     </section>
 
     <!-- 9 -->
+    <section class="s" id="configurator" data-title="Preparing the cards">
+      <header><div class="num">09</div><h2>Preparing the cards</h2>
+        <p class="intro">You prepare the cards in the <strong>web configurator</strong>, a page that opens in the browser of your phone or computer, with nothing to install: <a href="../">trunk-studio-production.github.io/camtag</a>. Here are the basics; every option has its explanation behind the ⓘ.</p></header>
+      <h3>How it's laid out</h3>
+      <ul class="parts">
+        <li>At the top, the <strong>preview</strong>: the screen as it will look on the X3. ⟳ turns it between landscape and portrait, ⤢ opens it full screen. On a phone it closes and reopens with <strong>Preview</strong>, the first button of the strip.</li>
+        <li>Below it, the <strong>strip of screens</strong>: Lens chart, Filters, Filter list, the cards you add and Off. The order is the one you'll see on the X3 with <kbd>X</kbd> and <kbd>Y</kbd>; struck-through screens aren't sent (turn them on with <strong>Include</strong>).</li>
+        <li>Further down, the <strong>editor</strong> of the chosen screen.</li>
+        <li>On a computer, next to Preview, there's the <strong>Simulator</strong>: try the buttons and the rotation as on the X3, before sending the cards.</li>
+      </ul>
+      <h3>First steps</h3>
+      <ol class="steps">
+        <li><strong>The lenses.</strong> Open <strong>Lens chart</strong> and type the title, usually the production name. In <strong>Lens database</strong> search for brand, series or focal length (for example “signature 35”), tap the series to see its focal lengths, then <strong>+</strong> for one lens or <strong>+ all</strong> for the whole series. If the series comes in more than one mount, it asks which. Beyond 11 lenses the pages split by themselves.</li>
+        <li><strong>The filters.</strong> In <strong>Filters</strong> tick the NDs and diopters in your kit and add the other glasses from the <strong>Glass catalog</strong>. In <strong>Matte box and starting values</strong> choose how many stages the matte box has and what's mounted: on set you change it from the X3 (<a href="#filters">Filter screen</a>, <a href="#editing">Editing the stages</a>).</li>
+        <li><strong>The other cards.</strong> With <strong>+</strong> (on a phone, the green button right after Preview) add <strong>Crew</strong>, <strong>Notes</strong>, <strong>Single lens</strong> or <strong>Patch</strong>, an image such as a logo or a QR code. Reorder them with ↑ and ↓ at the top of the editor.</li>
+        <li><strong>When it's off.</strong> In <strong>Off</strong> choose what stays on the screen when you turn the X3 off: some text (a name, a contact) or an image.</li>
+        <li><strong>Send the cards</strong> to the X3 with <strong>Bluetooth</strong>, as the <a href="#bluetooth">next section</a> explains.</li>
+      </ol>
+      <div class="phones">
+        <figure class="phone"><div class="frame"><img src="phone-lenses.png" alt="Searching the lens database, with the focal lengths of a series" width="780" height="1688" loading="lazy"></div>
+          <figcaption>Lenses come from the database, one at a time or the whole series.</figcaption></figure>
+        <figure class="phone"><div class="frame"><img src="phone-filters.png" alt="The filters editor with the kit NDs and the filter screen preview" width="780" height="1688" loading="lazy"></div>
+          <figcaption>NDs, diopters and glasses in the kit, with the preview.</figcaption></figure>
+        <figure class="phone"><div class="frame"><img src="phone-add.png" alt="The + button menu with Crew, Notes, Single lens and Patch" width="780" height="1688" loading="lazy"></div>
+          <figcaption>With <strong>+</strong> you add the other cards.</figcaption></figure>
+      </div>
+      <div class="note"><b class="t">Where your work is kept</b><p>The web configurator saves by itself, but only in this browser. To keep a copy use <strong>Project ▾ › Save project</strong>, which downloads a file to reopen with <strong>Import project…</strong>. The project also travels with the cards: you get it back from the X3 with <strong>Bluetooth → Import from X3</strong>.</p></div>
+      <h3>Languages</h3>
+      <p>In the web configurator's toolbar, the language button (<strong>EN</strong> or <strong>IT</strong>) sets three separate things: the language of the <strong>web configurator</strong>, the one the <strong>cards</strong> are drawn in, and the one for the <strong>X3 messages</strong>. The last one reaches the X3 with the next card upload; with <em>Don't change</em> the X3 keeps the one chosen at first start. Cards and X3 in different languages are fine: sending works anyway.</p>
+    </section>
+
+    <!-- 10 -->
     <section class="s" id="bluetooth" data-title="Cards via Bluetooth">
-      <header><div class="num">09</div><h2>Sending cards via Bluetooth</h2>
-        <p class="intro">You prepare the cards in the web configurator and they reach the X3 from your phone or computer, without removing the microSD.</p></header>
+      <header><div class="num">10</div><h2>Sending cards via Bluetooth</h2>
+        <p class="intro">Once the cards are ready in the web configurator, they reach the X3 from your phone or computer, without removing the microSD.</p></header>
       <div class="row top">
         <figure class="fig" data-dev='{"screen":"bluetooth","k":0.85,"hi":[{"keys":"X","text":"hold: receive"}]}'>
           <figcaption>While receiving, the X3 shows its name: that's the one to choose.</figcaption>
@@ -414,6 +456,14 @@
           <li>When the transfer is done, the X3 shows the first card with <span class="msg">CARDS UPDATED</span>.</li>
         </ol>
       </div>
+      <div class="phones">
+        <figure class="phone"><div class="frame"><img src="phone-home.png" alt="The web configurator on a phone, with the Bluetooth button in the bar" width="780" height="1688" loading="lazy"></div>
+          <figcaption>Tap <strong>Bluetooth</strong> in the top bar.</figcaption></figure>
+        <figure class="phone"><div class="frame"><img src="phone-ble.png" alt="The Bluetooth window with Send cards, Update firmware and Import from X3" width="780" height="1688" loading="lazy"></div>
+          <figcaption>Then <strong>Send cards</strong>, and choose the X3's name.</figcaption></figure>
+        <figure class="phone"><div class="frame"><img src="phone-send.png" alt="The Bluetooth window while sending, with the progress bar" width="780" height="1688" loading="lazy"></div>
+          <figcaption>The bar shows how far the transfer has got.</figcaption></figure>
+      </div>
       <p>The new cards replace the old ones only once the transfer is complete: if the connection drops, the previous cards stay on the X3. Cards identical to those already on the X3 aren't sent again, so a small tweak arrives in a few seconds. <kbd>X</kbd> or <kbd>Y</kbd> exit receiving; after 3 minutes without a transfer it exits by itself.</p>
       <h3>Getting the project back from the X3</h3>
       <p>The web configurator project travels along with the cards. On another phone, or if the browser has lost your work, put the X3 in receive mode and tap <strong>Bluetooth → Import from X3</strong>: the web configurator gets the project back and the cards on the X3 don't change.</p>
@@ -423,8 +473,6 @@
           <li><strong>iPhone and iPad</strong>: Safari doesn't offer Bluetooth to web pages. You need a browser that adds it, such as <a href="https://apps.apple.com/app/id6468414672" target="_blank" rel="noopener">BLE Link</a> or <a href="https://apps.apple.com/app/id1492822055" target="_blank" rel="noopener">Bluefy</a> (App Store).</li>
           <li>The page has to be opened from the web configurator's <strong>https://</strong> address.</li>
         </ul></div>
-      <h3>Languages</h3>
-      <p>In the web configurator's toolbar, the language button (<strong>EN</strong> or <strong>IT</strong>) sets three separate things: the language of the <strong>web configurator</strong>, the one the <strong>cards</strong> are drawn in, and the one for the <strong>X3 messages</strong>. The last one reaches the X3 with the next card upload; with <em>Don't change</em> the X3 keeps the one chosen at first start. Cards and X3 in different languages are fine: sending works anyway.</p>
       <h3 id="firmware">Updating the firmware</h3>
       <div class="row top">
         <figure class="fig" data-dev='{"screen":"firmware","k":0.85,"hi":[{"keys":"ABCD","text":"update"},{"keys":"X","text":"cancel"}]}'>
@@ -437,15 +485,21 @@
           <li>Keep the phone close to the X3 for about half a minute. At the end the X3 restarts with the new firmware.</li>
         </ol>
       </div>
+      <div class="phones">
+        <figure class="phone"><div class="frame"><img src="phone-fwbtn.png" alt="The Bluetooth window with the Update firmware button" width="780" height="1688" loading="lazy"></div>
+          <figcaption>In the Bluetooth window tap <strong>Update firmware</strong>.</figcaption></figure>
+        <figure class="phone"><div class="frame"><img src="phone-fw.png" alt="The web configurator waiting for confirmation on the X3" width="780" height="1688" loading="lazy"></div>
+          <figcaption>The phone waits for you to confirm on the X3.</figcaption></figure>
+      </div>
       <p>Cards, project and settings are kept. If you don't confirm within a minute the X3 cancels by itself, and with the battery below 30% it refuses the update: charge it first. If the connection drops halfway, or the new firmware doesn't start, the X3 goes back to the previous one by itself.</p>
       <p>It works from 0.4.0 onwards: an X3 with older firmware has to be updated once with the USB cable, as the README explains.</p>
       <h3>With the microSD</h3>
       <p>Alternatively, download the zip from the web configurator (<strong>Project ▾ › Download cards (.zip)</strong>) and copy its <code>camtag/</code> folder to the root of the microSD, replacing the one that's there.</p>
     </section>
 
-    <!-- 10 -->
+    <!-- 11 -->
     <section class="s" id="messages" data-title="Messages and status">
-      <header><div class="num">10</div><h2>Messages and status</h2>
+      <header><div class="num">11</div><h2>Messages and status</h2>
         <p class="intro">When there's no card to show, the X3 says so in a box in the middle of the screen.</p></header>
       <div class="row top">
         <figure class="fig" data-dev='{"screen":"nocard","k":0.8}'>
@@ -473,9 +527,9 @@
       <p>When it's off, the remaining percentage is on the off screen. Charging stops by itself when the battery is full.</p>
     </section>
 
-    <!-- 11 -->
+    <!-- 12 -->
     <section class="s" id="troubleshooting" data-title="If something goes wrong">
-      <header><div class="num">11</div><h2>If something goes wrong</h2></header>
+      <header><div class="num">12</div><h2>If something goes wrong</h2></header>
       <div class="table"><table>
         <thead><tr><th>What happens…</th><th>Try this</th></tr></thead>
         <tbody>
