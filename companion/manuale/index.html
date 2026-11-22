@@ -247,8 +247,9 @@
               <dt>filtri</dt><dd>A|B diottria, C|D ND</dd>
               <dt>A o B <span class="hold">lungo</span></dt><dd>modifica gli stadi del mattebox</dd></dl></div>
         <div class="card"><h3><kbd>RESET</kbd> Riavvio</h3>
-          <dl><dt>breve</dt><dd>riavvia l'X3, se non risponde</dd></dl>
-          <p style="margin:10px 0 0;font-size:13px;color:var(--muted)">Le card e le impostazioni restano.</p></div>
+          <dl><dt>breve</dt><dd>spegne l'X3 di colpo</dd>
+              <dt>poi power <span class="hold">lungo</span></dt><dd>lo riaccende: questo è il riavvio</dd></dl>
+          <p style="margin:10px 0 0;font-size:13px;color:var(--muted)">Dopo Reset lo schermo resta com'era: sembra bloccato, ma è spento. Le card e le impostazioni restano.</p></div>
       </div>
     </section>
 
@@ -263,7 +264,7 @@
         <div>
           <ul>
             <li><strong>Power</strong>, in alto a destra: blocca i tasti, e con la pressione lunga spegne e accende.</li>
-            <li><strong>Reset</strong>, in alto a sinistra: riavvia.</li>
+            <li><strong>Reset</strong>, in alto a sinistra: da solo spegne l'X3 di colpo. Per riavviarlo premi Reset e poi tieni premuto il power per 3-5 secondi.</li>
             <li><strong>X</strong> sul lato sinistro e <strong>Y</strong> sul destro: cambiano tipo di schermata (lenti, filtri, note…).</li>
             <li><strong>Due bilancieri</strong> in basso, <kbd>A</kbd>|<kbd>B</kbd> a sinistra e <kbd>C</kbd>|<kbd>D</kbd> a destra: lavorano sulla schermata che hai davanti (pagine dello stesso tipo, ND e diottria).</li>
           </ul>
@@ -291,7 +292,7 @@
           <tr><td><kbd>A</kbd> <kbd>B</kbd></td><td>Pagina indietro nello stesso tipo. Filtri: diottria − / +</td><td>Filtri: modifica gli stadi</td></tr>
           <tr><td><kbd>C</kbd> <kbd>D</kbd></td><td>Pagina avanti nello stesso tipo. Filtri: ND − / +</td><td>—</td></tr>
           <tr><td><kbd>PWR</kbd></td><td>Blocca / sblocca i tasti</td><td>Spegne / accende (1 s)</td></tr>
-          <tr><td><kbd>RESET</kbd></td><td>Riavvia</td><td>—</td></tr>
+          <tr><td><kbd>RESET</kbd></td><td>Spegne di colpo. Per riavviare: Reset, poi power lungo (3-5 s)</td><td>—</td></tr>
         </tbody>
       </table></div>
     </section>
@@ -561,7 +562,7 @@
           <thead><tr><th>Messaggio</th><th>Cosa fare</th></tr></thead>
           <tbody>
             <tr><td><span class="msg">NESSUNA CARD</span></td><td>Fai una pressione lunga su X e mandale via Bluetooth.</td></tr>
-            <tr><td><span class="msg">NESSUNA MICROSD</span></td><td>Inserisci la microSD e premi Reset.</td></tr>
+            <tr><td><span class="msg">NESSUNA MICROSD</span></td><td>Inserisci la microSD, premi Reset e poi tieni premuto il power per 3-5 secondi.</td></tr>
             <tr><td><span class="msg">BMP NON VALIDO</span></td><td>Una card è rovinata: rimandale dal configuratore web.</td></tr>
             <tr><td><span class="msg">CARD AGGIORNATE</span></td><td>Invio riuscito, nulla da fare.</td></tr>
             <tr><td><span class="msg">BATTERIA SCARICA</span></td><td>Si è spento per la batteria: mettilo in carica.</td></tr>
@@ -592,7 +593,8 @@
           <tr><td>L'aggiornamento del firmware non parte</td><td>L'X3 deve essere in ricezione e la batteria sopra il 30% (o in carica). Sull'X3 conferma con A, B, C o D entro un minuto.</td></tr>
           <tr><td>All'accensione chiede la lingua</td><td>Succede finché non ne scegli una: <kbd>A</kbd> o <kbd>B</kbd> per l'inglese, <kbd>C</kbd> o <kbd>D</kbd> per l'italiano.</td></tr>
           <tr><td>L'X3 scrive nella lingua sbagliata</td><td>Nel configuratore web: pulsante EN/IT → <em>Scritte dell'X3</em>, scegli la lingua e invia di nuovo le card.</td></tr>
-          <tr><td>Non risponde per niente</td><td>Premi Reset, in alto a sinistra. Le card restano.</td></tr>
+          <tr><td>Non risponde per niente</td><td>Premi Reset, in alto a sinistra, poi tieni premuto il power per 3-5 secondi. Le card restano.</td></tr>
+          <tr><td>Dopo Reset è tutto fermo</td><td>È spento: Reset da solo stacca la batteria e lo schermo tiene l'ultima immagine. Tieni premuto il power per 3-5 secondi.</td></tr>
         </tbody>
       </table></div>
     </section>

@@ -251,7 +251,7 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   `off.bmp`, lingua invariata (`loadSettings`).
 - Etichette dei tasti (`kKeyTabs`/`drawKeyLabels`, nel configuratore web `KEY_TABS`,
   stesse frazioni lungo i bordi): linguette bianche con bordo nero e nome dritto
-  per chi legge (A|B e C|D, X, Y, PWR, RESET, che è un tasto vero e riavvia),
+  per chi legge (A|B e C|D, X, Y, PWR, RESET, un tasto vero che però a batteria spegne soltanto: GPIO13 cade e stacca la batteria; il riavvio è RESET e poi power tenuto, e i testi lo dicono così),
   sulla schermata senza card e da spento (non sul bianco). La schermata senza
   card (`showMessage`, nel simulatore `drawMessageScreen`) ha il messaggio in un
   riquadro ben in vista al centro.

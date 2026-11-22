@@ -2832,7 +2832,7 @@ function offEditor(ed) {
   const o = state.off, oc = offCard();
   ed.append(editorHead('Spento', info('Quello che l\'X3 mostra da spento (power tenuto premuto un secondo). Il dispositivo ci disegna sopra la fascia in basso che dice che è spento e come si riaccende, la batteria al momento dello spegnimento, il nome CAMTAG e le etichette dei tasti, se li tieni. Dopo tre giorni da spento lo schermo passa al bianco con la sola fascia, che lo conserva meglio.')));
   ed.append(toggle('Etichette dei tasti', o.keys, v => { o.keys = v; changed(); },
-    { tip: 'Un riquadro con il nome di ogni tasto (A B C D, X, Y, PWR, RESET) sul bordo dove sta il tasto, dritto per chi legge. Utile a chi usa l\'X3 per la prima volta. Le vedi anche sulla schermata che l\'X3 mostra quando non ha card; il tasto RESET riavvia l\'X3 se si blocca.' }));
+    { tip: 'Un riquadro con il nome di ogni tasto (A B C D, X, Y, PWR, RESET) sul bordo dove sta il tasto, dritto per chi legge. Utile a chi usa l\'X3 per la prima volta. Le vedi anche sulla schermata che l\'X3 mostra quando non ha card; se l\'X3 si blocca, premi RESET e poi tieni premuto PWR: RESET da solo lo spegne soltanto.' }));
   ed.append(toggle('Nome CAMTAG', o.logo, v => { o.logo = v; changed(); },
     { tip: 'Senza immagine e senza scritta sta al centro; con un\'immagine o una scritta va in alto, in un riquadro.' }));
   if (oc) {
