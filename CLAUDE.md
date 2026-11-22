@@ -67,6 +67,9 @@ costruttori di lenti e filtri nei dati vanno bene.
   accetta `*grassetto*` e `_corsivo_`, a bordo parola, spiegati in chiaro sotto il testo (`richRuns`;
   anche `**grassetto**`; il corsivo è l'Inter dritto inclinato dal browser, nel
   repo non c'è il file italic).
+  Feedback: modulo Google (`FEEDBACK`, url per rispondere + campo `entry.NNN`
+  "Dati tecnici" precompilato con versioni, lingue e tipo di schermo, mai dati
+  personali); link discreto in fondo all'editor e nei credits, nascosto senza url.
   Nei testi per l'utente si chiama sempre **configuratore web** (in inglese
   *web configurator*), mai "strumento" o "app".
 - `companion/install/` — prima installazione e ripristino via USB dal browser

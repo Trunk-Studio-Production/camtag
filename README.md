@@ -79,7 +79,7 @@ explains every button and screen.
 - **Using CamTag on a production?** We'd love a photo of it on the camera:
   [send it](https://github.com/Trunk-Studio-Production/camtag/issues/new?template=on-set.yml).
   <!-- INSTAGRAM: add the account here when it exists ("or tag us on Instagram"). -->
-- **Bugs and ideas**: [open an issue](https://github.com/Trunk-Studio-Production/camtag/issues/new/choose).
+- **Bugs and ideas**: [leave feedback](https://docs.google.com/forms/d/e/1FAIpQLScKDtH_sSsTYCXE1RcCu_j1RstG9DVZ3qSJUx8GG6IBqvmS4Q/viewform) with a short form, no account needed (the web configurator has the same link at the bottom), or [open an issue](https://github.com/Trunk-Studio-Production/camtag/issues/new/choose) if you use GitHub.
 - **Want to work on the code?** The technical part is at the bottom, under [For developers](#for-developers).
 
 Made in Italy by [Trunk Studio Production](https://github.com/Trunk-Studio-Production),

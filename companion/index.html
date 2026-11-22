@@ -287,6 +287,9 @@
   #bleDlg .usb .btn { flex: none; }
   #bleDlg .credits { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
   #bleDlg .credits a { color: inherit; }
+  /* Feedback: discreto, in fondo all'editor. */
+  .feedback { margin: 28px 0 0; text-align: center; font-size: 12px; color: var(--muted); }
+  .feedback a { color: inherit; }
   #newBuild { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 1100; display: flex; align-items: center; gap: 10px;
     max-width: calc(100vw - 32px); padding: 8px 8px 8px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink);
     font-size: 13px; box-shadow: 0 6px 24px rgba(0, 0, 0, .4); }
@@ -2817,7 +2820,7 @@ function renderEditor() {
     const c = state.cards[sel.i];
     if (!c) { ed.append(h('div', { class: 'empty' }, 'Seleziona una schermata')); return; }
     cardEditor(ed, c, sel.i);
-  } finally { growAll(); }
+  } finally { const fb = feedbackLink(); if (fb) ed.append(fb); growAll(); }
 }
 // Le textarea crescono con il testo (note, scritta da spento): tutto il testo
 // resta in vista, senza una seconda barra di scorrimento dentro la pagina.
@@ -3014,6 +3017,27 @@ const FW_VERSION = '0.5.1';
 // build.txt. In locale resta il segnaposto.
 const BUILD = '__BUILD__';
 const BUILT = !BUILD.startsWith('__');
+// Modulo Google per il feedback: url = indirizzo per rispondere (…/viewform), tech = il
+// campo "Dati tecnici" (entry.NNN, dal link precompilato del modulo). Senza url il
+// link non compare. Nei dati tecnici solo versioni, lingua e tipo di schermo: niente
+// di personale nell'indirizzo.
+const FEEDBACK = { url: 'https://docs.google.com/forms/d/e/1FAIpQLScKDtH_sSsTYCXE1RcCu_j1RstG9DVZ3qSJUx8GG6IBqvmS4Q/viewform', tech: 'entry.1926618409' };
+let x3Fw = null;  // firmware dell'X3 visto nell'ultimo HELLO di questa sessione
+function feedbackHref() {
+  const u = new URL(FEEDBACK.url);
+  if (FEEDBACK.tech) {
+    u.searchParams.set('usp', 'pp_url');
+    u.searchParams.set(FEEDBACK.tech, [`web ${BUILT ? BUILD : 'locale'}`, `firmware ${FW_VERSION}`,
+      x3Fw ? `X3 ${x3Fw}` : null, `ui ${uiLang}`, `card ${state.lang}`, phoneMq.matches ? 'telefono' : 'computer'].filter(Boolean).join(' · '));
+  }
+  return u.href;
+}
+function feedbackLink(cls) {
+  if (!FEEDBACK.url) return null;
+  const a = h('a', { href: FEEDBACK.url, target: '_blank', rel: 'noopener' }, 'Lascia un feedback');
+  a.addEventListener('click', () => { a.href = feedbackHref(); });
+  return h(cls === 'span' ? 'span' : 'p', { class: cls === 'span' ? '' : 'feedback' }, cls === 'span' ? ' · ' : 'Idee o problemi? ', a);
+}
 const BLE = {
   service: 'c4a70001-1b2e-4f3a-9d6e-3a7c5e0b2f10',
   ctrl: 'c4a70002-1b2e-4f3a-9d6e-3a7c5e0b2f10',
@@ -3244,7 +3268,7 @@ async function bleSession(work, onFail) {
         if (h[1] !== 'CAMTAG') throw new Error(t('Il dispositivo non è un CamTag.'));
         const fw = h[5] === 'FW' ? h[6] : null;
         link.version = +h[2];
-        link.fw = fw;
+        link.fw = fw; x3Fw = fw;
         const ota = link.version >= BLE.firmwareFrom;
         if (link.version !== BLE.version && !BLE.oldVersions.includes(link.version) && !(firmware && ota)) {
           const fwName = fw || t('precedente alla 0.1.0');
@@ -3467,6 +3491,7 @@ async function bleBattery() {
 
 $('#fwWanted').textContent = FW_VERSION;
 $('#buildId').textContent = `web ${BUILT ? BUILD : t('locale')}`;
+{ const fb = feedbackLink('span'); if (fb) $('#bleDlg .credits > .dev-only').before(fb); }
 // Alcuni browser per iPhone (Bluefy) tengono a lungo la pagina vecchia: si
 // confronta il commit con build.txt, senza cache, all'apertura e al ritorno sulla
 // pagina. Il pulsante ricarica con ?v=<commit>, un indirizzo che la cache non ha.

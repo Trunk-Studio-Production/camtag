@@ -318,6 +318,8 @@ const I18N_EN = {
   'Nessuna riga': 'No rows',
   '+ Aggiungi una riga': '+ Add a row',
   'Testo': 'Text',
+  'Idee o problemi?': 'Ideas or problems?',
+  'Lascia un feedback': 'Leave feedback',
   'grassetto': 'bold',
   'corsivo': 'italic',
   'Inverti colori': 'Invert colors',

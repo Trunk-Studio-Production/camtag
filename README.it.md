@@ -81,7 +81,7 @@ spiega ogni tasto e ogni schermata.
 - **Usi CamTag su una produzione?** Ci piacerebbe una foto in macchina:
   [mandala](https://github.com/Trunk-Studio-Production/camtag/issues/new?template=on-set.yml).
   <!-- INSTAGRAM: aggiungere l'account quando esiste ("o taggaci su Instagram"). -->
-- **Bug e idee**: [apri una issue](https://github.com/Trunk-Studio-Production/camtag/issues/new/choose).
+- **Bug e idee**: [lascia un feedback](https://docs.google.com/forms/d/e/1FAIpQLScKDtH_sSsTYCXE1RcCu_j1RstG9DVZ3qSJUx8GG6IBqvmS4Q/viewform) con un modulo breve, senza account (lo stesso link è in fondo al configuratore web), o [apri una issue](https://github.com/Trunk-Studio-Production/camtag/issues/new/choose) se usi GitHub.
 - **Vuoi mettere mano al codice?** La parte tecnica è in fondo, in [Per sviluppatori](#per-sviluppatori).
 
 Fatto in Italia da [Trunk Studio Production](https://github.com/Trunk-Studio-Production),
