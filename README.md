@@ -15,6 +15,19 @@ inline) and keep the image below as the fallback. -->
 no device needed. Build your cards in the [web configurator](https://trunk-studio-production.github.io/camtag/) and play with
 them in the simulator, buttons included.
 
+## What it is
+
+CamTag is **firmware**, the program that runs a device, for the
+**[Xteink X3](https://www.xteink.com)**: a small pocket e-paper reader, made
+for reading books, with a screen of about 3.7 inches, physical buttons, a
+battery, Bluetooth and an accelerometer. CamTag replaces the original firmware
+and turns it into a badge for the camera; the cards it shows are prepared in
+the [web configurator](https://trunk-studio-production.github.io/camtag/), in
+the browser.
+
+CamTag is an independent, open-source project, not affiliated with Xteink: you
+buy the X3 from them.
+
 ## What it does
 
 - **Lens chart, built for you.** Pick your set from a database of 1,500+ cine
@@ -34,8 +47,8 @@ them in the simulator, buttons included.
 
 ## What you need
 
-- An **[Xteink X3](https://www.xteink.com)**: a small e-paper reader, the
-  hardware CamTag runs on. CamTag replaces its firmware.
+- An **[Xteink X3](https://www.xteink.com)**, to install CamTag on in place of
+  the original firmware.
 - A **USB-C data cable and a computer with Chrome or Edge** for the first
   install. After that, cards and updates travel over Bluetooth.
 - A way to mount it: adhesive velcro on the cover that comes with the X3
