@@ -37,7 +37,7 @@ costruttori di lenti e filtri nei dati vanno bene.
   scrive il registro dei consumi (`/camtag-batteria.csv`, specifica in `docs/batteria.md`).
   Problemi aperti dello schermo: `docs/schermo.md`.
 - `companion/index.html` — configuratore web a file singolo: lens chart e filtri
-  generati in automatico più schede manuali (crew, note, lente singola, patch);
+  generati in automatico più schede manuali (lista, note, lente singola, patch);
   esporta uno zip di BMP 1 bit o manda gli stessi file all'X3 via Web Bluetooth
   (`bleSend`; `bleGet` riprende il progetto dall'X3). Dipendenze esterne: JSZip da cdnjs (i font
   Inter sono nel repo). `i18n.js` ha il dizionario italiano→inglese (`I18N_EN`,
@@ -64,8 +64,9 @@ costruttori di lenti e filtri nei dati vanno bene.
   `.dev-only`; oggi "Registro batteria" e il `.bin` scelto con Maiusc su
   "Aggiorna firmware". Le funzioni che servono solo a chi prova il firmware
   vanno lì. Lo zip delle card si scarica dal menu Progetto. Il testo delle note
-  accetta `**grassetto**` e `*corsivo*` (`richRuns`; il corsivo è l'Inter dritto
-  inclinato dal browser, nel repo non c'è il file italic).
+  accetta `*grassetto*` e `_corsivo_` come WhatsApp, a bordo parola (`richRuns`;
+  anche `**grassetto**`; il corsivo è l'Inter dritto inclinato dal browser, nel
+  repo non c'è il file italic).
   Nei testi per l'utente si chiama sempre **configuratore web** (in inglese
   *web configurator*), mai "strumento" o "app".
 - `companion/install/` — prima installazione e ripristino via USB dal browser
@@ -213,9 +214,10 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
 - Nomi riservati: `NN_lenschart[-2…]` (pagine da 11 lenti al massimo) e `NN_filters`.
 - Tipo della card (`navType`, uguale nel firmware): la parola dopo `NN_` fino al
   primo `_` o `-`; `lenschart` vale `lens`. Le schede manuali si chiamano
-  `NN_<tipo>_<titolo>` (`lens`, `notes`, `crew`, `patch`); un nome fatto a mano
+  `NN_<tipo>_<titolo>` (`lens`, `notes`, `list`, `patch`); un nome fatto a mano
   è un tipo a sé, salvo che la parola coincida. L'esportazione (`exportPlan`,
-  `cardOrder`) mette i tipi di fila: lenti (lens chart, poi schede lente),
+  `cardOrder`) mette i tipi di fila (liste e note, se il tipo ha più pagine,
+  portano "2/3" in alto a destra come la lens chart: `cardPage`): lenti (lens chart, poi schede lente),
   `filters`, `filterlist`, poi gli altri nell'ordine della lista; ↑↓ spostano
   la scheda nel suo tipo e, dal capo, il tipo intero.
 - `NN_filterlist` (facoltativa, `state.auto.filterlist`, spenta di partenza):

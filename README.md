@@ -215,7 +215,7 @@ Screens:
   cycle only through these), ND format, glass kit (several grades per family
   at once) and mattebox stages, from 1 to 3 (`+` opens 4, 5 and 6, for bigger
   matte boxes or a glass mounted outside; see `docs/filtri.md`).
-- **Manual cards**: crew, notes, single lens, patch (image).
+- **Manual cards**: list (item and value rows: crew, contacts…), notes, single lens, patch (image).
 
 "Project ▾ › Download cards (.zip)" creates `camtag.zip`: copy the `camtag/` folder to the root of
 the microSD.
@@ -223,7 +223,7 @@ the microSD.
 **Simulator** (button above the preview): the X3 drawn with all buttons
 clickable (also from the keyboard: A–D, X and Y, P = power). X (previous) and Y
 (next) cycle through the kinds of page (lenses, filters, filter list, notes,
-crew, images); A–D page through the same kind, except on the filters, where
+lists, images); A–D page through the same kind, except on the filters, where
 they change diopter and ND. You can rotate it, lock
 rotation (Y held) and turn it off (power held), and it behaves as the firmware
 is meant to. Screens are at full resolution (792×528 and 528×792); the

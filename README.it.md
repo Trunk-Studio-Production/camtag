@@ -212,7 +212,7 @@ Schermate:
   "fuori dal coro" va in negativo; si può forzare per ogni lente.
 - **Filtri** (automatica): kit ND e diottrie (i tasti +/− del dispositivo
   scorrono solo questi), formato ND, kit dei vetri (più gradazioni per famiglia in un colpo) e stadi del mattebox, da 1 a 3 (il `+` apre 4, 5 e 6, per mattebox più grandi o un vetro montato fuori; vedi `docs/filtri.md`).
-- **Schede manuali**: crew, note, lente singola, patch (immagine).
+- **Schede manuali**: lista (righe voce e valore: crew, contatti…), note, lente singola, patch (immagine).
 
 "Progetto ▾ › Scarica le card (.zip)" crea `camtag.zip`: la cartella `camtag/` va copiata nella
 radice della microSD.
@@ -220,7 +220,7 @@ radice della microSD.
 **Simulatore** (pulsante sopra l'anteprima): l'X3 disegnato con tutti i tasti
 cliccabili (anche da tastiera: A–D, X e Y, P = power). X (precedente) e Y
 (successivo) cambiano tipo di pagina in ciclo (lenti, filtri, elenco filtri,
-note, crew, immagini); A–D sfogliano le pagine dello stesso tipo, tranne sui
+note, liste, immagini); A–D sfogliano le pagine dello stesso tipo, tranne sui
 filtri, dove cambiano diottria e ND. Si può ruotare, bloccare la
 rotazione (Y tenuto premuto) e spegnere (power tenuto premuto), e si comporta
 come è previsto per il firmware. Le schermate sono a risoluzione piena (792×528 e 528×792); il

@@ -93,7 +93,7 @@ async function makeManualShots(lang = 'it', putUrl = null) {
 }
 
 // Progetto di prova del manuale, usato anche da telefono.mjs: sei prime, un kit
-// filtri con ND, diottria e vetri, una crew. Lo restituisce senza salvarlo.
+// filtri con ND, diottria e vetri, una lista (la crew). Lo restituisce senza salvarlo.
 function manualDemoState(lang = 'it') {
   const keep = state;
   state = migrate(freshState());
@@ -106,7 +106,7 @@ function manualDemoState(lang = 'it') {
     effects: [{ id: null, name: 'Black Pro-Mist', strengths: [{ s: '1/8' }, { s: '1/4' }] }, { id: null, name: 'Pola', strengths: [{ s: '' }] }],
     stages: [null, 'c:Black Pro-Mist|1/4', null, null], previewNd: 2, previewDio: 1,
   };
-  state.cards = [DEFAULTS.crew()];
+  state.cards = [DEFAULTS.list()];
   state.off = { ...freshOff(), text: 'CAMERA A' };
   fitStart();
   const demo = state;

@@ -174,7 +174,7 @@
   .srow .seg { display: flex; min-width: 0; }
   .srow .seg button { min-width: 0; white-space: normal; line-height: 1.2; padding-inline: 6px; }  /* stretti: vanno a capo invece di uscire */
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  /* Righe Ruolo / Nome (crew): due campi affiancati e la ✕. */
+  /* Righe Voce / Valore (lista): due campi affiancati e la ✕. */
   .rows-ed { margin-top: 10px; }
   .rrow { --bw: 30px; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) var(--bw); gap: 6px; align-items: center; padding: 3px 0; }
   .rrow input { width: 100%; min-width: 0; }
@@ -297,7 +297,7 @@
     .work { display: flex; flex-direction: column; gap: 10px; min-width: 0; position: sticky; top: calc(var(--bar-h) + var(--gap)); }
     .screens, .stagecol { position: static; }
     .screens { max-height: none; overflow: visible; padding: 0; border: 0; background: none; }
-    .screens h2, .screens > .hint, .scr .d, #addBtn .l { display: none; }
+    .screens h2, .scr .d, #addBtn .l { display: none; }
     .scr-row { display: flex; gap: 6px; overflow-x: auto; padding: 3px; scrollbar-width: none; }
     .scr-row::-webkit-scrollbar { display: none; }
     #list { display: flex; gap: 6px; margin: 0; }
@@ -399,7 +399,7 @@
 </div>
 <div class="pop menu" id="langMenu" role="menu"></div>
 <div class="pop menu" id="addMenu" role="menu">
-  <button data-add="crew" role="menuitem">Crew</button>
+  <button data-add="list" role="menuitem">Lista</button>
   <button data-add="notes" role="menuitem">Note</button>
   <button data-add="lens" role="menuitem">Lente singola</button>
   <button data-add="patch" role="menuitem">Patch</button>
@@ -442,7 +442,6 @@
         <ul id="list"></ul>
       </div>
       <button id="addBtn" title="Aggiungi una schermata">+<span class="l"> Aggiungi</span></button>
-      <p class="hint">Lens chart e Filtri si generano da soli. L'ordine qui è l'ordine sul dispositivo.</p>
     </section>
 
     <section class="stagecol" id="stage">
@@ -518,11 +517,12 @@ const LENS_TYPES = { prime: 'Prime', macro: 'Macro', zoom: 'Zoom', anamorphic: '
 
 const DEFAULTS = {
   lens:  () => ({ formats: 'both', type: 'lens', brand: tc('MARCA'), series: tc('Serie'), focal: '35', tstop: '1.8', mod: '0.35 m', front: '95 mm', thread: '', notes: '' }),
-  crew:  () => ({ formats: 'both', type: 'crew', title: 'CAMERA DEPT', rows: ['DOP', '1st AC', '2nd AC', 'DIT', 'Gaffer'].map(role => ({ role, name: tc('Nome Cognome') })) }),
+  // Lista Voce / Valore: di partenza una crew, ma va bene per contatti, canali radio…
+  list:  () => ({ formats: 'both', type: 'list', title: 'CAMERA DEPT', rows: ['DOP', '1st AC', '2nd AC', 'DIT', 'Gaffer'].map(item => ({ item, value: tc('Nome Cognome') })) }),
   notes: () => ({ formats: 'both', type: 'notes', title: tc('NOTE'), body: tc('CH 1 Camera\nCH 2 Elettrici\n\nScena 12 — Steadicam') }),
   patch: () => ({ formats: 'both', type: 'patch', img: null, fit: 'contain', dither: 'atkinson', threshold: 128, contrast: 0, pivot: 128, invert: false, caption: '' }),
 };
-const TYPE_LABEL = { lens: 'Lente', crew: 'Crew', notes: 'Note', patch: 'Patch' };
+const TYPE_LABEL = { lens: 'Lente', list: 'Lista', notes: 'Note', patch: 'Patch' };
 // Lingua delle card (state.lang) e delle scritte dell'X3 (state.deviceLang: lang= in
 // settings.ini; vuota = "non cambiare"): vedi i18n.js. Il simulatore disegna le
 // scritte del firmware nella lingua dell'X3, o in quella delle card se non è scelta.
@@ -532,14 +532,14 @@ const devText = k => DEV_TEXT[state.deviceLang || cardLang()][k];
 
 function freshState() {
   return {
-    version: 9, device: 'x3', lang: uiLang, deviceLang: '', production: '', lensByMount: false, lensSplit: false, lensSeries: 'mix', zoomsLast: true, lensFront: true, lensMount: false,
+    version: 10, device: 'x3', lang: uiLang, deviceLang: '', production: '', lensByMount: false, lensSplit: false, lensSeries: 'mix', zoomsLast: true, lensFront: true, lensMount: false,
     auto: { lenschart: true, filters: true, filterlist: false },
     lenses: [],
     filters: { ndFormat: 'density', ndType: 'ND', nd: [0.3, 0.6, 0.9, 1.2, 1.5, 1.8], ndCombos: [], dio: [],
       effects: [{ id: 'tiffen-black-pro-mist', name: 'Black Pro-Mist', strengths: ['1/8', '1/4', '1/2', '1', '2'].map(s => ({ s })) }],
       // Nel mattebox di partenza: ND 0.3 nello stadio 1 (previewNd = indice in ndSteps) e Black Pro-Mist 1/8.
       stages: [null, 'tiffen-black-pro-mist|1/8', null], previewNd: 1, previewDio: 0 },
-    cards: [DEFAULTS.crew()],
+    cards: [DEFAULTS.list()],
     off: freshOff(),
   };
 }
@@ -573,17 +573,24 @@ function migrate(s) {
   normalizeStages(s.filters);  // i vetri vanno al loro posto dopo, con lo stato pronto (fitStart)
   // v6: font, soglia del testo e separatore decimale non sono più opzioni (Inter, 128, punto).
   delete s.typo; delete s.decimal;
-  // v9: crew a righe Ruolo / Nome, prima un testo "Ruolo: Nome" per riga.
-  for (const c of s.cards) if (c.type === 'crew' && !Array.isArray(c.rows)) {
-    c.rows = String(c.lines ?? '').split('\n').map(l => l.trim()).filter(Boolean).map(l => {
-      const i = l.indexOf(':'); return i < 0 ? { role: '', name: l } : { role: l.slice(0, i).trim(), name: l.slice(i + 1).trim() };
-    });
+  // v10: note come su WhatsApp. Prima *corsivo* e ***tutti e due***: diventano
+  // _corsivo_ e *_tutti e due_*; **grassetto** vale ancora.
+  if (!(s.version >= 10)) for (const c of s.cards) if (c.type === 'notes' && c.body)
+    c.body = c.body.replace(/(\*\*\*|\*\*|\*)([^\s*](?:.*?[^\s*])??)\1/g, (m, k, t) => (k === '*' ? `_${t}_` : k === '***' ? `*_${t}_*` : m));
+  // v10: la scheda crew diventa lista (tipo list), righe Voce / Valore. Prima della v9
+  // era un testo "Ruolo: Nome" per riga, nella v9 righe { role, name }.
+  for (const c of s.cards) if (c.type === 'crew') {
+    c.type = 'list';
+    c.rows = Array.isArray(c.rows) ? c.rows.map(r => ({ item: r.role ?? '', value: r.name ?? '' }))
+      : String(c.lines ?? '').split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+        const i = l.indexOf(':'); return i < 0 ? { item: '', value: l } : { item: l.slice(0, i).trim(), value: l.slice(i + 1).trim() };
+      });
     delete c.lines;
   }
   // v8: lingue. I progetti di prima erano in italiano.
   if (!(s.lang in LANGS)) s.lang = 'it';
   if (!(s.deviceLang in LANGS)) s.deviceLang = '';
-  s.device = 'x3'; s.version = 9;
+  s.device = 'x3'; s.version = 10;
   return s;
 }
 
@@ -1369,7 +1376,7 @@ function drawHintsPreview(ctx, W, H) {
 }
 
 // ============================================================================
-// Schede manuali (lente singola, crew, note, patch)
+// Schede manuali (lente singola, lista, note, patch)
 // ============================================================================
 function drawFocal(ctx, big, x, maxW, maxSize, y, centredOnY) {
   let s = maxSize, bw, mw;
@@ -1427,29 +1434,44 @@ function drawLens(ctx, W, H, c) {
   }
 }
 
-function drawCrew(ctx, W, H, c) {
+// Pagina della scheda tra quelle del suo tipo sul dispositivo ("2/3"), se sono più
+// di una: A–D le sfogliano, e il numero dice dove sei. Solo liste e note.
+function cardPage(c) {
+  const same = cardOrder().map(i => state.cards[i]).filter(x => x.type === c.type && !x.off), i = same.indexOf(c);
+  return same.length > 1 && i >= 0 ? `${i + 1}/${same.length}` : '';
+}
+
+function drawList(ctx, W, H, c) {
   const pad = Math.round(W * 0.045);
   const barH = Math.round(H * 0.15);
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, barH);
-  ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-  fitFont(ctx, (c.title || '').toUpperCase(), 800, W - pad * 2, barH * 0.5);
+  ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle';
+  // Numero di pagina a destra nella barra, come sulla lens chart.
+  let right = W - pad;
+  const pg = cardPage(c);
+  if (pg) {
+    ctx.textAlign = 'right'; ctx.font = `700 ${Math.round(barH * 0.32)}px ${FONT}`; ctx.fillText(pg, right, barH / 2);
+    right -= Math.ceil(ctx.measureText(pg).width) + pad;
+  }
+  ctx.textAlign = 'left';
+  fitFont(ctx, (c.title || '').toUpperCase(), 800, right - pad, barH * 0.5);
   ctx.fillText((c.title || '').toUpperCase(), pad, barH / 2);
-  const rows = (c.rows || []).map(r => [(r.role || '').trim(), (r.name || '').trim()]).filter(([r, n]) => r || n);
+  const rows = (c.rows || []).map(r => [(r.item || '').trim(), (r.value || '').trim()]).filter(([k, v]) => k || v);
   if (!rows.length) return;
   const cols = rows.length > 6 && W > H ? 2 : 1;
   const perCol = Math.ceil(rows.length / cols);
   const colW = (W - pad * (cols + 1)) / cols;
   const rowH = Math.min((H - barH - pad) / perCol, H * 0.2);
   ctx.fillStyle = '#000';
-  rows.forEach(([role, name], i) => {
+  rows.forEach(([item, value], i) => {
     const col = Math.floor(i / perCol), r = i % perCol;
     const x = pad + col * (colW + pad), y = barH + pad * 0.5 + r * rowH;
     if (r > 0) ctx.fillRect(x, y, colW, 2);
     ctx.textBaseline = 'alphabetic';
     ctx.font = `600 ${Math.round(rowH * 0.24)}px ${FONT}`;
-    ctx.fillText(role.toUpperCase(), x, y + rowH * 0.36);
-    fitFont(ctx, name, 800, colW, rowH * 0.42);
-    ctx.fillText(name, x, y + rowH * 0.84);
+    ctx.fillText(item.toUpperCase(), x, y + rowH * 0.36);
+    fitFont(ctx, value, 800, colW, rowH * 0.42);
+    ctx.fillText(value, x, y + rowH * 0.84);
   });
 }
 
@@ -1457,9 +1479,16 @@ function drawNotes(ctx, W, H, c) {
   const pad = Math.round(W * 0.05);
   ctx.fillStyle = '#000'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   let top = pad;
+  // Numero di pagina in alto a destra, sulla riga del titolo (o da solo).
+  const pg = cardPage(c), pgSize = Math.round(H * 0.05);
+  ctx.font = `700 ${pgSize}px ${FONT}`;
+  const pgW = pg ? Math.ceil(ctx.measureText(pg).width) + pad : 0;
+  const drawPg = base => { if (!pg) return; ctx.font = `700 ${pgSize}px ${FONT}`; ctx.textAlign = 'right'; ctx.fillText(pg, W - pad, base); ctx.textAlign = 'left'; };
+  if (pg && !c.title) { drawPg(top + pgSize * 0.8); top += pgSize + pad * 0.5; }
   if (c.title) {
-    const s = fitFont(ctx, c.title.toUpperCase(), 900, W - pad * 2, H * 0.12);
+    const s = fitFont(ctx, c.title.toUpperCase(), 900, W - pad * 2 - pgW, H * 0.12);
     ctx.fillText(c.title.toUpperCase(), pad, top + s * 0.8);
+    drawPg(top + s * 0.8);
     top += s * 0.8 + pad * 0.5;
     ctx.fillRect(pad, top, W - pad * 2, 4);
     top += pad * 0.6;
@@ -1474,18 +1503,25 @@ function drawNotes(ctx, W, H, c) {
     for (const r of l) { ctx.font = richFont(r, size); ctx.fillText(r.t, x, top + size * (i + 1) * 1.25 - size * 0.25); x += ctx.measureText(r.t).width; }
   });
 }
-// Testo delle note con un po' di markdown: **grassetto**, *corsivo*, ***tutti e due***
-// (anche uno dentro l'altro). Un segno senza chiusura resta com'è. Il corsivo è
-// l'Inter dritto inclinato dal browser: nel repo c'è solo il font dritto.
-const RICH = /(\*\*\*|\*\*|\*)([^\s*](?:.*?[^\s*])??)\1/;
+// Testo delle note come su WhatsApp: *grassetto*, _corsivo_, *_tutti e due_* (anche
+// uno dentro l'altro); **grassetto** vale anche lui, per chi viene dal Markdown. Il
+// segno conta solo a bordo parola: apre a inizio riga o dopo un carattere che non è
+// lettera o cifra, chiude prima di uno che non lo è, e accanto al testo non ha spazi
+// (2*3*4, file_nome_v2 e un segno senza chiusura restano com'è). Il corsivo è l'Inter
+// dritto inclinato dal browser: nel repo c'è solo il font dritto.
+// Una regola per segno: dentro, il testo non comincia e non finisce con lo stesso
+// segno (né con uno spazio), e dopo la chiusura non c'è un altro segno uguale.
+const richRe = (m, x) => new RegExp(`(^|[^\\p{L}\\p{N}])(${m})([^\\s${x}](?:.*?[^\\s${x}])??)${m}(?![\\p{L}\\p{N}${x}])`, 'u');
+const RICH = [richRe('\\*\\*', '*'), richRe('\\*', '*'), richRe('_', '_')];
 function richRuns(text, b = false, i = false) {
   const out = [];
   while (text) {
-    const m = RICH.exec(text);
+    const m = RICH.map(re => re.exec(text)).filter(Boolean).sort((p, q) => p.index + p[1].length - q.index - q[1].length)[0];
     if (!m) { out.push({ t: text, b, i }); break; }
-    if (m.index) out.push({ t: text.slice(0, m.index), b, i });
-    const k = m[1].length;
-    out.push(...richRuns(m[2], b || k >= 2, i || k !== 2));
+    const start = m.index + m[1].length;
+    if (start) out.push({ t: text.slice(0, start), b, i });
+    const it = m[2] === '_';
+    out.push(...richRuns(m[3], b || !it, i || it));
     text = text.slice(m.index + m[0].length);
   }
   return out;
@@ -1622,7 +1658,7 @@ function renderScreen(s, layout, opts = {}) {
     return renderOff(layout);
   } else {
     const c = s.card;
-    ({ lens: drawLens, crew: drawCrew, notes: drawNotes, patch: drawPatch })[c.type](ctx, W, H, c);
+    ({ lens: drawLens, list: drawList, notes: drawNotes, patch: drawPatch })[c.type](ctx, W, H, c);
     const photo = c.type === 'patch' && c.img && c.dither !== 'none';
     const bits = toBits(ctx, W, H, photo ? c.dither : 'threshold', c.type === 'patch' ? c.threshold : TEXT_T);
     if (c.type === 'patch' && c.invert) {
@@ -2098,7 +2134,7 @@ function editorHead(title, ...acts) { return h('div', { class: 'ed-head' }, h('h
 const includeSwitch = key => toggle('Includi', state.auto[key], v => { state.auto[key] = v; changed(); }, { title: 'Includi nell\'esportazione' });
 function cardTitle(c) {
   if (c.type === 'lens') return `${c.focal}mm ${c.brand}`;
-  if (c.type === 'crew') return c.title || 'Crew';
+  if (c.type === 'list') return c.title || 'Lista';
   if (c.type === 'notes') return c.title || 'Note';
   return c.caption || 'Immagine';
 }
@@ -2652,12 +2688,12 @@ function cardEditor(ed, c, idx) {
     pair(field(c, 'CF (fuoco minimo)', 'mod'), field(c, 'Ø frontale', 'front'));
     ed.append(field(c, 'Filettatura filtri (opzionale, es. M82)', 'thread'));
     ed.append(field(c, 'Nota in basso (opzionale)', 'notes'));
-  } else if (c.type === 'crew') {
+  } else if (c.type === 'list') {
     ed.append(field(c, 'Titolo', 'title'));
     rowsEditor(ed, c);
   } else if (c.type === 'notes') {
     const body = fillArea(field(c, 'Testo', 'body', 'textarea'));
-    body.querySelector('.lab').append(info('Formattazione: **grassetto**, *corsivo*.'));
+    body.querySelector('.lab').append(info('Come su WhatsApp: *grassetto* e _corsivo_, anche insieme (*_così_*).'));
     ed.append(field(c, 'Titolo', 'title'), body);
   } else {
     imageControls(ed, c);
@@ -2665,7 +2701,7 @@ function cardEditor(ed, c, idx) {
   }
 }
 
-// Righe Ruolo / Nome della scheda crew (c.rows), una per persona: si aggiungono
+// Righe Voce / Valore della lista (c.rows): si aggiungono
 // in fondo e si tolgono una per una. Scrivendo non si ridisegna l'editor (il fuoco resta).
 function rowsEditor(ed, c) {
   const box = h('div', { class: 'rows-ed' });
@@ -2675,12 +2711,12 @@ function rowsEditor(ed, c) {
     el.addEventListener('input', () => { r[k] = el.value; changed(); });
     return el;
   };
-  box.append(h('div', { class: 'rrow head' }, h('span', {}, 'Ruolo'), h('span', {}, 'Nome'), h('span')));
-  c.rows.forEach((r, i) => box.append(h('div', { class: 'rrow' }, input(r, 'role', 'Ruolo'), input(r, 'name', 'Nome'),
+  box.append(h('div', { class: 'rrow head' }, h('span', {}, 'Voce'), h('span', {}, 'Valore'), h('span')));
+  c.rows.forEach((r, i) => box.append(h('div', { class: 'rrow' }, input(r, 'item', 'Voce'), input(r, 'value', 'Valore'),
     h('button', { class: 'small danger', title: 'Togli la riga', 'aria-label': 'Togli la riga', onclick: () => { c.rows.splice(i, 1); changed(true); } }, '✕'))));
   if (!c.rows.length) box.append(h('p', { class: 'empty' }, 'Nessuna riga'));
   const add = h('button', { class: 'small', onclick: () => {
-    c.rows.push({ role: '', name: '' }); changed(true);
+    c.rows.push({ item: '', value: '' }); changed(true);
     const last = [...$('#editor')?.querySelectorAll('.rows-ed .rrow:not(.head) input') || []].at(-2); last?.focus();
   } }, '+ Aggiungi una riga');
   ed.append(box, h('div', { class: 'rows-add' }, add));
@@ -2778,9 +2814,9 @@ function renderEditor() {
     cardEditor(ed, c, sel.i);
   } finally { growAll(); }
 }
-// Le textarea crescono con il testo (crew, note, scritta da spento): tutto il testo
+// Le textarea crescono con il testo (note, scritta da spento): tutto il testo
 // resta in vista, senza una seconda barra di scorrimento dentro la pagina.
-// Sul telefono la textarea principale di una scheda (crew, note: .fill) arriva almeno
+// Sul telefono la textarea principale di una scheda (note: .fill) arriva almeno
 // in fondo allo schermo, contando la parte fissa com'è ora: chiudendo l'anteprima
 // si allunga. innerHeight, non visualViewport: con la tastiera aperta non si accorcia.
 function growArea(ta) {
