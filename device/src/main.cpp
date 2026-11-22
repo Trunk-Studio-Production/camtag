@@ -50,6 +50,8 @@
 #include <esp_sleep.h>
 #include <esp_system.h>
 #include <esp_timer.h>
+#include <soc/gpio_periph.h>
+#include <soc/usb_serial_jtag_reg.h>
 
 #include <algorithm>
 #include <cmath>
@@ -74,10 +76,23 @@ constexpr uint32_t AWAKE_MS = 5000;
 // Dopo un avvio resta sveglio almeno così: il tempo che serve alla USB per farsi
 // riconoscere dal computer (con la USB collegata a un computer non va mai a riposo).
 constexpr uint32_t BOOT_AWAKE_MS = 15000;
+// Il computer può mancare per un attimo anche con il cavo collegato (isPlugged() conta
+// i pacchetti che manda ogni millisecondo): prima del riposo deve mancare da almeno così.
+constexpr uint32_t USB_GONE_MS = 3000;
 // A riposo guarda i tasti ogni REST_POLL_MS: una pressione più corta può sfuggire.
 constexpr uint32_t REST_POLL_MS = 25;
 constexpr uint32_t REST_IMU_MS = 1000;   // a riposo: ogni quanto guarda il verso
 constexpr uint32_t REST_USB_MS = 5000;   // a riposo: ogni quanto guarda se è in carica
+constexpr uint32_t REST_HOST_MS = 500;   // a riposo: ogni quanto sente se sul cavo c'è un computer
+// Visto un computer sul cavo resta sveglio così, il tempo perché riconosca la USB
+// (misurato: da 0,13 a 0,35 s). Se non la riconosce (computer che dorme, hub senza
+// computer, caricatore che tiene basso il filo dei dati) torna a riposo e riprova
+// dopo un minuto, poi ogni due, con un'attesa più corta: un hub lasciato attaccato
+// mentre il portatile va e viene è un uso normale, e al ritorno non deve aspettare tanto.
+constexpr uint32_t USB_TRY_MS = 2000;
+constexpr uint32_t USB_RETRY_TRY_MS = 700;
+constexpr uint32_t USB_RETRY_MIN_MS = 60000;
+constexpr uint32_t USB_RETRY_MAX_MS = 120000;
 constexpr uint32_t POWER_HOLD_MS = 1000;     // power tenuto: spegne
 constexpr uint32_t POWER_ON_HOLD_MS = 500;   // da spento, dopo l'avvio del chip: accende
 // Dimenticato acceso si spegne da solo: conta solo il tempo senza tasti.
@@ -169,7 +184,7 @@ uint8_t changesSinceFull = 0;
 bool fastShadow = false;  // sullo schermo restano ombre di aggiornamenti veloci
 uint32_t lastActivityMs = 0;  // tasti, rotazione, Bluetooth: tiene sveglio per AWAKE_MS
 uint32_t lastKeyMs = 0;       // solo i tasti: per lo spegnimento da dimenticato
-uint32_t bootAwakeUntilMs = 0;
+uint32_t awakeUntilMs = 0;    // sveglio almeno fino a qui: dopo l'avvio, o aspettando il computer
 uint32_t lastImuPollMs = 0;
 
 // Acceso / spento. In NVS "off": 0 acceso, kOffShown con la scheda di spento a
@@ -192,6 +207,11 @@ bool batteryFresh = false;   // c'è una lettura nuova da controllare (batteria 
 uint32_t screenUpdates = 0;  // aggiornamenti dello schermo dall'avvio
 uint32_t keyPresses = 0;
 bool chargeSeen = false;     // a riposo: carica già notata, non risvegliare di nuovo
+uint32_t usbHostMs = 0;      // ultima volta che il computer c'era (usbHost); 0 = non da questo risveglio
+bool usbLost = false;        // da allora è mancato almeno una volta
+uint32_t hostTriedMs = 0;    // ultimo risveglio per un computer visto sul cavo
+uint32_t hostRetryMs = 0;    // attesa prima del prossimo; 0 = subito (cavo staccato da allora)
+bool hostTrying = false;     // sveglio per quel motivo, il computer non ha ancora risposto
 bool gaugePending = true;    // capacità della batteria ancora da controllare nel gauge
 Canvas::Rotation pendingRot = Canvas::ROT_0;
 uint32_t pendingSinceMs = 0;
@@ -376,6 +396,62 @@ int batteryPercent() {
 // riconosciuto la USB, "in carica" che il gauge vede entrare corrente. Su un
 // caricatore senza dati, a batteria piena la carica si ferma e non si vede nulla.
 bool usbHost() { return HWCDC::isPlugged(); }
+
+// Appunti sull'ultimo riposo per le prove del cavo (scripts/taratura.py usb): aprire
+// la seriale riavvia l'X3, e questi restano in memoria fino all'avvio dopo, che li stampa.
+struct RestNote {
+  uint32_t magic;
+  uint32_t secs;    // durata del riposo
+  uint32_t probes;  // letture del cavo
+  uint32_t host;    // quante con un computer
+  int32_t hostMs;   // dal risveglio al computer che riconosce la USB; -1 = non l'ha fatto
+  char why[16];
+};
+constexpr uint32_t kRestNoteMagic = 0x43544147;
+RTC_NOINIT_ATTR RestNote restNote;
+
+// A riposo la USB non può funzionare (nel sonno leggero il suo orologio è fermo), e
+// un dispositivo che si presenta e poi non risponde fa rinunciare il computer finché
+// non si stacca il cavo. Quindi a riposo il pad USB è spento e senza resistenze, come
+// a cavo staccato, e all'uscita si riaccende: per il computer è un dispositivo appena
+// collegato, e lo riconosce da capo.
+constexpr auto kUsbDm = static_cast<gpio_num_t>(USB_INT_PHY0_DM_GPIO_NUM);
+uint32_t usbDmMux = 0;  // configurazione del pin D- da rimettere all'uscita dal riposo
+
+void usbPad(bool on) {
+  constexpr uint32_t kPulls = USB_SERIAL_JTAG_DP_PULLUP | USB_SERIAL_JTAG_DP_PULLDOWN | USB_SERIAL_JTAG_DM_PULLUP |
+                              USB_SERIAL_JTAG_DM_PULLDOWN;
+  uint32_t v =
+      REG_READ(USB_SERIAL_JTAG_CONF0_REG) & ~(kPulls | USB_SERIAL_JTAG_PAD_PULL_OVERRIDE | USB_SERIAL_JTAG_USB_PAD_ENABLE);
+  if (on) {
+    gpio_set_direction(kUsbDm, GPIO_MODE_DISABLE);
+    gpio_set_level(kUsbDm, 0);
+    REG_WRITE(GPIO_PIN_MUX_REG[kUsbDm], usbDmMux);
+    // Come HWCDC::begin: resistenze decise dalla periferica, pull-up su D+, pad acceso.
+    v |= USB_SERIAL_JTAG_DP_PULLUP | USB_SERIAL_JTAG_USB_PAD_ENABLE;
+  } else {
+    usbDmMux = REG_READ(GPIO_PIN_MUX_REG[kUsbDm]);
+    v |= USB_SERIAL_JTAG_PAD_PULL_OVERRIDE;
+  }
+  REG_WRITE(USB_SERIAL_JTAG_CONF0_REG, v);
+}
+
+// Con il pad spento: c'è un computer (o un hub) all'altro capo del cavo? Chi ospita
+// una USB tiene i due fili dei dati a massa con 15 kΩ. Si porta D- a 3,3 V per un
+// attimo e lo si lascia libero: con quella resistenza torna a zero in pochi
+// microsecondi, a cavo staccato o su un caricatore resta dov'è. Non serve corrente
+// di carica, quindi vale anche a batteria piena; per il computer D- alto per qualche
+// microsecondo non è un dispositivo (ne aspetta 100 ms fermi).
+bool usbHostPull() {
+  gpio_set_level(kUsbDm, 1);
+  gpio_set_direction(kUsbDm, GPIO_MODE_OUTPUT);
+  esp_rom_delay_us(10);
+  gpio_set_direction(kUsbDm, GPIO_MODE_INPUT);
+  esp_rom_delay_us(60);
+  const bool low = gpio_get_level(kUsbDm) == 0;
+  gpio_set_direction(kUsbDm, GPIO_MODE_DISABLE);  // ingresso spento: il filo libero non consuma
+  return low;
+}
 
 bool chargingNow() {
   int16_t ma = 0;
@@ -1406,9 +1482,22 @@ void holdPin(int8_t pin, int level) {
 
 bool canRest() {
   const uint32_t now = millis();
+  if (usbHost()) {
+    if (hostTrying) {
+      restNote.hostMs = static_cast<int32_t>(now - hostTriedMs);
+      LOGF("[usb] computer dopo %ld ms\n", static_cast<long>(restNote.hostMs));
+    } else if (usbLost && usbHostMs) {
+      // Per capire quanto dura quando manca con il cavo collegato (docs/schermo.md).
+      LOGF("[usb] computer non sentito per %lu ms\n", static_cast<unsigned long>(now - usbHostMs));
+    }
+    usbLost = hostTrying = false;
+    usbHostMs = now;
+    return false;
+  }
+  usbLost = true;
   return !receiving && fltSel < 0 && !fltSettleAt && !bannerUntilMs && !pendingSinceMs && !gaugePending &&
          !powerDownAt && !usbPending && uxQueueMessagesWaiting(keyQueue) == 0 && now - lastActivityMs > AWAKE_MS &&
-         static_cast<int32_t>(now - bootAwakeUntilMs) >= 0 && !usbHost();
+         static_cast<int32_t>(now - awakeUntilMs) >= 0 && now - usbHostMs > USB_GONE_MS;
 }
 
 // Nel sonno leggero l'ESP32-C3 isola i pin (protezione del framework contro i riavvii
@@ -1430,9 +1519,9 @@ bool anyKeyDown() {
   return g[0].button >= 0 || g[1].button >= 0;
 }
 
-// Sonno leggero finché non succede qualcosa: un tasto, il power, un altro verso, la
-// carica che comincia, la riga del registro, lo spegnimento da dimenticato. Il chip
-// dorme e si sveglia ogni REST_POLL_MS per circa un millisecondo.
+// Sonno leggero finché non succede qualcosa: un tasto, il power, un altro verso, un
+// computer sul cavo, la carica che comincia, la riga del registro, lo spegnimento da
+// dimenticato. Il chip dorme e si sveglia ogni REST_POLL_MS per circa un millisecondo.
 void rest() {
   const auto powerPin = static_cast<gpio_num_t>(BoardConfig::ACTIVE.input.power);
   const int powerDown = BoardConfig::ACTIVE.input.powerActiveHigh ? HIGH : LOW;
@@ -1443,11 +1532,15 @@ void rest() {
   xSemaphoreTake(adcLock, portMAX_DELAY);
   vTaskSuspend(keyScanTask);
   keepOutputsInRest();
+  usbPad(false);
+  hostTrying = false;
+  usbHostMs = 0;
+  restNote = {kRestNoteMagic, 0, 0, 0, -1, ""};
   gpio_wakeup_enable(powerPin, powerDown == LOW ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL);
   esp_sleep_enable_gpio_wakeup();
 
   restStartUs = static_cast<uint64_t>(esp_timer_get_time());
-  uint32_t imuAt = millis(), usbAt = imuAt;
+  uint32_t imuAt = millis(), usbAt = imuAt, hostAt = imuAt - REST_HOST_MS;
   const char* why = "tasto";
   // Con i tasti bloccati non c'è nulla da guardare tra un controllo del verso e
   // l'altro: il power sveglia da solo, e il chip dorme un secondo alla volta.
@@ -1470,9 +1563,24 @@ void rest() {
         break;
       }
     }
+    if (now - hostAt >= REST_HOST_MS) {
+      hostAt = now;
+      restNote.probes++;
+      if (!usbHostPull()) {
+        // Cavo staccato (o caricatore): al prossimo computer subito. Solo qui: un computer
+        // che riconosce la USB e poi tace non deve farlo svegliare di continuo.
+        hostRetryMs = 0;
+      } else {
+        restNote.host++;
+        if (!hostRetryMs || now - hostTriedMs >= hostRetryMs) {
+          why = "usb";
+          break;
+        }
+      }
+    }
     if (now - usbAt >= REST_USB_MS) {
       usbAt = now;
-      // In carica c'è un cavo: sveglio per un po', così la USB si fa riconoscere.
+      // Carica cominciata: sveglio, così la card mostra il fulmine.
       const bool charging = chargingNow();
       if (charging && !chargeSeen) {
         chargeSeen = true;
@@ -1498,6 +1606,7 @@ void rest() {
       break;
     }
   }
+  const uint64_t restBeganUs = restStartUs;
   restUs += static_cast<uint64_t>(esp_timer_get_time()) - restStartUs;
   restStartUs = 0;
 
@@ -1505,9 +1614,22 @@ void rest() {
   // gpio_wakeup_disable lascia il tipo LOW_LEVEL: come interrupt scatterebbe di continuo.
   gpio_set_intr_type(powerPin, GPIO_INTR_DISABLE);
   esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+  usbPad(true);
   vTaskResume(keyScanTask);
   xSemaphoreGive(adcLock);
-  lastActivityMs = millis();
+  const uint32_t now = millis();
+  if (!strcmp(why, "usb")) {
+    // Non è un tocco: sveglio solo il tempo che serve al computer, e se non risponde
+    // la prossima prova è più in là.
+    hostTrying = true;
+    hostTriedMs = now;
+    awakeUntilMs = now + (hostRetryMs ? USB_RETRY_TRY_MS : USB_TRY_MS);
+    hostRetryMs = hostRetryMs ? std::min(hostRetryMs * 2, USB_RETRY_MAX_MS) : USB_RETRY_MIN_MS;
+  } else {
+    lastActivityMs = now;
+  }
+  restNote.secs = static_cast<uint32_t>((static_cast<uint64_t>(esp_timer_get_time()) - restBeganUs) / 1000000);
+  strlcpy(restNote.why, why, sizeof(restNote.why));
   LOGF("[riposo] fine: %s\n", why);
 }
 
@@ -1635,6 +1757,13 @@ void setup() {
   LOGF("[camtag] firmware " CAMTAG_FW_VERSION "\n");
   LOGF("[camtag] device: %s riavvio=%d risveglio=%d\n", BoardConfig::ACTIVE.name, static_cast<int>(reset),
        static_cast<int>(wake));
+  if (restNote.magic == kRestNoteMagic) {
+    restNote.magic = 0;
+    restNote.why[sizeof(restNote.why) - 1] = 0;
+    LOGF("[usb] ultimo riposo: %lu s, fine %s, cavo %lu letture (%lu con computer), computer dopo %ld ms\n",
+         static_cast<unsigned long>(restNote.secs), restNote.why, static_cast<unsigned long>(restNote.probes),
+         static_cast<unsigned long>(restNote.host), static_cast<long>(restNote.hostMs));
+  }
 
   prefs.begin("camtag", false);
   const uint8_t savedLang = prefs.getUChar("lang", 255);
@@ -1672,7 +1801,7 @@ void setup() {
   }
   pendingRot = physical;
   lastActivityMs = lastKeyMs = millis();
-  bootAwakeUntilMs = millis() + BOOT_AWAKE_MS;
+  awakeUntilMs = millis() + BOOT_AWAKE_MS;
   LOGF("[camtag] verso %u\n", rotation);
 
   sdReady = SdMan.begin();

@@ -14,6 +14,7 @@ aspetta che torni.
     .venv/bin/python scripts/taratura.py reattivita
     .venv/bin/python scripts/taratura.py log [--file x3.log]
     .venv/bin/python scripts/taratura.py batteria [--azzera] [--leggi registro.csv] [--bianco N]
+    .venv/bin/python scripts/taratura.py usb [--prove N]
 
 `card` prova con le card vere sopra: verso della card e direzione dei bilancieri
 sulla lens chart nelle quattro posizioni, poi il blocco della rotazione.
@@ -37,6 +38,10 @@ sull'X3 dopo averlo salvato; `--leggi` rifà i conti su un file già salvato
 (anche quello scaricato via Bluetooth con "Registro batteria" nel configuratore web);
 `--bianco N` porta a N secondi l'attesa prima del bianco da spento, per provarla
 (0 rimette i tre giorni).
+
+`usb` prova il cavo collegato con l'X3 a riposo: fa staccare e riattaccare il cavo
+N volte (10), misura dopo quanto compare la porta e legge dall'X3 perché si è
+svegliato e in quanto il computer lo ha riconosciuto (docs/batteria.md).
 
 `--carica` compila e carica il firmware prima di cominciare.
 """
@@ -674,6 +679,113 @@ def show_log(x3, path):
         time.sleep(0.02)
 
 
+# --- Cavo collegato a riposo ---------------------------------------------------------
+# A riposo la USB è spenta: il firmware sente il computer sul filo dei dati e si
+# sveglia per farsi riconoscere. Aprire la seriale riavvia l'X3, quindi qui la porta si
+# guarda soltanto; gli appunti sull'ultimo riposo l'X3 li stampa all'avvio dopo ([usb]).
+USB_OK_S = 10     # entro quanto deve comparire la porta
+USB_REST_S = 22   # dopo aver staccato: 15 s svegli dall'avvio, più il riposo
+
+
+def port_now(x3):
+    found = [x3.fixed_port] if x3.fixed_port else glob.glob('/dev/cu.usbmodem*')
+    return found[0] if found and Path(found[0]).exists() else None
+
+
+def read_usb_note(x3, secs=10):
+    """Apre la seriale (l'X3 si riavvia) e legge gli appunti sull'ultimo riposo e la batteria."""
+    note, gauge = {}, {}
+    prev = x3.on_line
+
+    def on_line(line):
+        if prev:
+            prev(line)
+        m = re.match(r'\[usb\] ultimo riposo: (\d+) s, fine (.+?), cavo (\d+) letture \((\d+) con computer\), '
+                     r'computer dopo (-?\d+) ms', line)
+        if m:
+            note.update(secs=int(m.group(1)), why=m.group(2), probes=int(m.group(3)), host=int(m.group(4)),
+                        ms=int(m.group(5)))
+        m = re.match(r'\[batt\] ok=1 mV=(\d+) mA=(-?\d+) .*pct=(\d+)', line)
+        if m:
+            gauge.update(mv=int(m.group(1)), ma=int(m.group(2)), pct=int(m.group(3)))
+
+    x3.on_line = on_line
+    try:
+        x3.connect()
+        t0 = time.time()
+        while not gauge and time.time() - t0 < secs:
+            x3.pump()
+            time.sleep(0.02)
+    finally:
+        x3.on_line = prev
+        x3.close()
+    return note, gauge
+
+
+def test_usb(x3, trials):
+    print(f"""
+{B}Cavo collegato a riposo{X}: {trials} prove. Lascia l'X3 acceso, appoggiato sul tavolo, e
+non toccare i tasti. Stacca e attacca il cavo {B}dal lato del computer{X}, così l'X3
+resta fermo (se si muove si sveglia per il verso e la prova non vale).
+""")
+    results = []
+    i = 0
+    while i < trials:
+        if port_now(x3):
+            print(f'{B}{i + 1}/{trials}{X} stacca il cavo.')
+            while port_now(x3):
+                time.sleep(0.1)
+        for left in range(USB_REST_S, 0, -1):
+            sys.stdout.write(f'\r\033[K   staccato: aspetto che vada a riposo, {left} s (non toccarlo)')
+            sys.stdout.flush()
+            time.sleep(1)
+        print(f'\r\033[K{B}{i + 1}/{trials} ricollega il cavo adesso.{X}')
+        t0 = time.time()
+        while not port_now(x3) and time.time() - t0 < 30:
+            sys.stdout.write(f'\r\033[K   {time.time() - t0:4.1f} s')
+            sys.stdout.flush()
+            time.sleep(0.05)
+        dt = time.time() - t0 if port_now(x3) else None
+        sys.stdout.write('\r\033[K')
+        if dt is None:
+            print(f'   {BAD}porta non comparsa in 30 s{X}: premi un tasto dell\'X3 per continuare.')
+        note, gauge = read_usb_note(x3)
+        batt = f'batteria {gauge["pct"]}% {gauge["ma"]:+d} mA' if gauge else 'batteria ?'
+        if not note:
+            print(f'   {WARN}nessun riposo prima del cavo{X} (l\'X3 era sveglio, o il firmware è vecchio): rifaccio.')
+            continue
+        woke = (f'riposo di {note["secs"]} s finito per: {note["why"]}; cavo sentito {note["host"]} volte su '
+                f'{note["probes"]}; riconosciuto dopo {note["ms"]} ms' if note['ms'] >= 0 else
+                f'riposo di {note["secs"]} s finito per: {note["why"]}; cavo sentito {note["host"]} volte su '
+                f'{note["probes"]}; computer mai arrivato in quel risveglio')
+        # "carica": l'ha svegliato prima il gauge, ma era a riposo lo stesso.
+        if dt is not None and note['why'] not in ('usb', 'carica'):
+            print(f'   {WARN}non vale{X}: {woke}. Rifaccio.')
+            continue
+        i += 1
+        good = dt is not None and dt <= USB_OK_S
+        results.append((dt, note, gauge))
+        mark = f'{OK}{dt:.1f} s{X}' if good else f'{BAD}{"mai" if dt is None else f"{dt:.1f} s"}{X}'
+        print(f'   {mark}  {DIM}{woke}; {batt}{X}')
+
+    good = [r for r in results if r[0] is not None and r[0] <= USB_OK_S]
+    times = sorted(r[0] for r in results if r[0] is not None)
+    host = sorted(r[1]['ms'] for r in results if r[1]['ms'] >= 0)
+    print(f'\n{B}Risultato{X}: {OK if len(good) >= 0.9 * trials else BAD}{len(good)} su {trials}{X} entro {USB_OK_S} s '
+          f'(il tempo comprende la mano che attacca il cavo).')
+    if times:
+        print(f'   porta: da {times[0]:.1f} a {times[-1]:.1f} s, mediana {statistics.median(times):.1f} s')
+    if host:
+        print(f'   dal risveglio al computer: da {host[0]} a {host[-1]} ms, mediana {statistics.median(host):.0f} ms')
+    full = [r for r in results if r[2] and r[2]['ma'] <= 5]
+    if full:
+        print(f'   {len(full)} prove senza corrente di carica (batteria piena): vale anche per quel caso.')
+    false_host = [r for r in results if r[1]['host'] > 1]
+    if false_host:
+        print(f'   {WARN}in {len(false_host)} prove il cavo è stato sentito più di una volta{X} prima del risveglio: '
+              f'da guardare (letture sbagliate a cavo staccato, o un computer che non rispondeva).')
+
+
 # --- Reattività dei tasti -----------------------------------------------------------
 # Il firmware di debug ha un compito che legge la scala dei tasti ogni 5 ms anche mentre
 # lo schermo si aggiorna ([adc] giu/su), e segna ogni aggiornamento ([epd] ... da t a t).
@@ -940,7 +1052,8 @@ e spento. Poi ricollega la USB e rilancia questo comando.""")
 
 def main():
     ap = argparse.ArgumentParser(description='Prova guidata dell\'X3 con riscontro dal vivo.')
-    ap.add_argument('prova', choices=['tasti', 'versi', 'card', 'filtri', 'blocco', 'reattivita', 'log', 'batteria'])
+    ap.add_argument('prova', choices=['tasti', 'versi', 'card', 'filtri', 'blocco', 'reattivita', 'log', 'batteria',
+                                      'usb'])
     ap.add_argument('--carica', action='store_true', help='compila e carica il firmware prima di cominciare')
     ap.add_argument('--out', help='salva il risultato della prova dei versi in questo file JSON')
     ap.add_argument('--da', type=int, default=1, help='prove card e filtri: riparti da questa posizione (1-4)')
@@ -949,6 +1062,7 @@ def main():
     ap.add_argument('--azzera', action='store_true', help='batteria: cancella il registro sull\'X3 dopo averlo salvato')
     ap.add_argument('--leggi', help='batteria: rifà i conti su un registro già salvato (anche via Bluetooth), senza X3')
     ap.add_argument('--bianco', type=int, help='batteria: secondi da spento prima del bianco, per provarlo (0 = tre giorni)')
+    ap.add_argument('--prove', type=int, default=10, help='usb: quante volte staccare e riattaccare il cavo')
     args = ap.parse_args()
     if args.prova == 'batteria' and args.leggi:
         return test_battery(None, False, args.leggi)
@@ -960,6 +1074,8 @@ def main():
     try:
         if args.carica:
             upload(x3)
+        if args.prova == 'usb':
+            return test_usb(x3, args.prove)  # la seriale si apre solo dopo ogni prova
         x3.connect()
         if args.prova == 'tasti':
             test_keys(x3)

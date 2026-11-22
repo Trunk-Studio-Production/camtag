@@ -28,16 +28,101 @@ una pressione più corta di così può sfuggire.
   sveglia e la rotazione procede come sempre.
 - L'IMU tiene acceso solo l'accelerometro, in basso consumo a 21 Hz
   (`imuAccelOnly`): il giroscopio che l'SDK accende non serve.
+- Ogni mezzo secondo (`REST_HOST_MS`) sente se all'altro capo del cavo c'è un
+  computer, e in quel caso si sveglia per farsi riconoscere (vedi "Cavo USB a
+  riposo").
 - Ogni 5 s (`REST_USB_MS`) chiede al fuel gauge se la batteria è in carica: se
-  la carica è appena cominciata resta sveglio qualche secondo, il tempo perché
-  la USB si faccia riconoscere.
+  la carica è appena cominciata o finita si sveglia per aggiornare il fulmine
+  sulla card.
 - Con la USB collegata a un computer non va mai a riposo: nel sonno leggero la
-  porta sparirebbe. Dopo ogni avvio resta sveglio almeno 15 s (`BOOT_AWAKE_MS`).
-  Se dopo aver collegato il cavo la porta non compare, premi un tasto; se serve,
-  stacca e riattacca.
+  porta sparirebbe. Il computer deve mancare da almeno 3 s (`USB_GONE_MS`), e
+  dopo ogni avvio resta sveglio almeno 15 s (`BOOT_AWAKE_MS`).
 - Non va a riposo durante la ricezione Bluetooth, la modifica degli stadi, un
   riordino in sospeso o un banner a schermo.
 - La microSD resta alimentata (vedi "Da chiarire").
+
+### Cavo USB a riposo
+
+L'X3 non ha un pin che senta il cavo, e nel sonno leggero la USB del chip non
+funziona: il suo orologio è fermo. Fino alla 0.4.1 un cavo collegato a riposo
+si notava solo dalla corrente di carica, guardata ogni 5 s: a batteria piena
+mai, e nemmeno passando da un caricatore al computer (la carica era già stata
+notata). In più, tra un sonno e l'altro il chip riaccendeva il pad USB per un
+millisecondo ogni 25: il computer poteva vedere un dispositivo che si presenta
+e non risponde, e rinunciare finché il cavo non veniva staccato.
+
+Dalla 0.4.2:
+
+- **A riposo il pad USB è spento** e senza resistenze (`usbPad(false)`): per
+  il computer è un cavo senza niente attaccato. All'uscita dal riposo si
+  riaccende, e il computer vede un dispositivo appena collegato.
+- **Ogni mezzo secondo si sente il filo dei dati** (`usbHostPull`): chi ospita
+  una USB, computer o hub, tiene D+ e D- a massa con 15 kΩ. Il firmware porta
+  D- a 3,3 V per 10 µs, lo lascia libero e lo legge dopo 60 µs: con un computer
+  è tornato a zero, a cavo staccato o su un caricatore è rimasto alto. Non
+  serve corrente di carica, quindi **vale anche a batteria piena**. Con i tasti
+  bloccati il chip si sveglia una volta al secondo, e la lettura segue.
+- **Sentito un computer si sveglia** (`[riposo] fine: usb`) e gli lascia 2 s
+  (`USB_TRY_MS`) per riconoscere la USB: misurati da 0,13 a 0,35 s, poi resta
+  sveglio finché il computer c'è.
+- **Se il computer non risponde** (dorme, è un hub senza computer, o un
+  caricatore che tiene basso il filo dei dati) torna a riposo e riprova dopo
+  1 minuto, poi ogni 2 (`USB_RETRY_MIN_MS`, `USB_RETRY_MAX_MS`), aspettando
+  0,7 s (`USB_RETRY_TRY_MS`). Un hub senza computer dietro si legge come un
+  computer: l'X3 lasciato attaccato all'hub mentre il portatile va e viene è
+  un uso normale, e al ritorno aspetta al più 2 minuti. Vale anche per un
+  computer che lo riconosce e poi tace
+  per più di 3 s: non lo sveglia di continuo. Staccato il cavo si riparte da
+  capo: al prossimo computer si sveglia subito. Un tasto fa sempre da scorciatoia: da sveglio la
+  USB è accesa.
+- Su un caricatore non cambia nulla: la carica si vede dal gauge come prima.
+
+**Consumi.** La lettura dura circa un decimo di millisecondo e cade in un
+risveglio che c'è già (quello dei tasti): un decimo di millisecondo ogni mezzo
+secondo a 25 mA sono circa 0,005 mA, lo 0,2% dei 2,1 mA a riposo e sotto quello
+che il gauge distingue (passi di 1 mAh, tratti che già variano tra 1,9 e
+2,2 mA). Per questo il riposo non è stato rimisurato apposta: lo conferma il
+prossimo registro (`taratura.py batteria`), dove `sveglio_s` che cresce senza
+tasti e senza cavo vorrebbe dire letture sbagliate. Costa solo restare
+attaccati a un computer che non risponde o a un hub senza computer: 0,7 s
+svegli ogni 2 minuti, circa 0,15 mA di media in più.
+
+**Prova.** `taratura.py usb` fa staccare e riattaccare il cavo dieci volte con
+l'X3 a riposo, misura dopo quanto compare la porta e legge dall'X3 gli appunti
+sull'ultimo riposo, che il firmware tiene in memoria attraverso il riavvio
+della seriale e stampa all'avvio:
+
+```
+[usb] ultimo riposo: 21 s, fine usb, cavo 42 letture (1 con computer), computer dopo 310 ms
+```
+
+Più di una lettura "con computer" prima del risveglio vuol dire un computer
+che non rispondeva, o letture sbagliate a cavo staccato.
+
+**Provato sull'X3 (22/11/2026)**, attraverso una catena di hub, batteria al
+100% (a volte con +55 mA di carica, a volte senza):
+
+| Prova | Porta dopo | Cavo sentito | Computer dopo il risveglio |
+|---|---|---|---|
+| 1 | 2,8 s | 1 su 46 | 141 ms |
+| 2 | 3,4 s | 1 su 35 | 142 ms |
+| 3 | 4,6 s | 1 su 38 | 126 ms |
+| 4, hub staccato dal Mac | 16,1 s | 44 su 46 | 262 ms |
+| 5 | 2,6 s | 1 su 37 | 217 ms |
+| 6 | 4,1 s | 1 su 38 | 172 ms |
+| 7, altra presa dell'hub | 6,7 s | 1 su 31 | 353 ms |
+| 8, 9, 10 | riuscite come le altre (tempi non registrati) | | |
+
+Nove su dieci entro 10 s; l'unica fuori tempo è la 4, fatta apposta in modo
+diverso. I secondi comprendono la mano che attacca il cavo. A cavo staccato nessuna
+lettura sbagliata; a batteria piena e senza corrente di carica funziona
+uguale. Nella prova 4 il cavo è rimasto attaccato all'hub e si è staccato
+l'hub dal computer: l'hub da solo si legge come un computer (44 letture su
+46), l'X3 ha provato, non ha avuto risposta ed è tornato a riposo; si è
+risvegliato prima della riprova grazie a due letture libere, forse l'hub che
+si riaccende. Da lì le riprove più fitte di adesso. Rifatto con quelle, hub
+staccato per più di 90 s (quindi dopo almeno una riprova a vuoto): al
+ricollegamento la linguetta USB è comparsa in pochi secondi.
 
 ### Tasti bloccati
 
@@ -179,6 +264,11 @@ tensione, come controllo.
   tensione scende non si è ancora visto.
 - **Risvegli inutili dal riposo**: nessuno nelle 39 h del 21-22/11 (`sveglio_s`
   cresce solo insieme ai tasti); si vedono da `sveglio_s` che cresce senza tasti.
+  Da riguardare con la 0.4.2, che a riposo sente il cavo (vedi "Cavo USB a riposo").
+- **Computer che dorme con l'X3 collegato**: l'X3 va a riposo e riprova a
+  presentarsi ogni 2 minuti. Se questo svegli il computer non è stato provato,
+  per scelta: il cavo serve ai dati di rado. Se capita, si allungano i tempi o
+  si tolgono le riprove (`USB_RETRY_*`).
 - **Pin nel sonno leggero**: il framework isola i pin; le uscite che devono
   restare ferme sono escluse in `keepOutputsInRest`. Riavvii inattesi a riposo
   comparirebbero come righe `A` senza una `S` prima. Nel registro del 21-22/11

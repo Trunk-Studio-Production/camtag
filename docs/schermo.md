@@ -80,10 +80,23 @@ all'inizio del riposo (`wakeDisplay`/`sleepDisplay` in `main.cpp`).
 Confermato sull'X3 il 21/11/2026, dopo ore d'uso: il negativo non torna, anche
 con i 4 s di pannello solo spento.
 
-**Riavvio da solo (da capire).** Alle 20:19:23 l'X3 è andato a riposo con il
-cavo attaccato; poco dopo la porta USB ha cambiato nome e lo schermo ha fatto
-un completo (con la 0.2.2 solo un avvio lo fa), senza che il cavo fosse
-toccato. Il motivo si è perso perché riaprire la seriale lo ha riavviato di nuovo.
+**Riavvio da solo (spiegazione probabile).** Alle 20:19:23 l'X3 è andato a
+riposo con il cavo attaccato; poco dopo la porta USB ha cambiato nome e lo
+schermo ha fatto un completo (con la 0.2.2 solo un avvio lo fa), senza che il
+cavo fosse toccato. Il motivo si è perso perché riaprire la seriale lo ha
+riavviato di nuovo. Con ogni probabilità è la stessa cosa del riposo con la
+USB qui sotto: a riposo la porta sparisce, al primo risveglio (allora il
+controllo della carica, ogni 5 s) ricompare, con un altro nome se il vecchio è
+ancora occupato, e `taratura.py` che la aspettava la riapre: aprire la seriale
+riavvia l'X3. Non è un riavvio del firmware.
+
+**Durante un'installazione o un ripristino via USB (visto una volta, 22/11/2026).**
+Il negativo è ricomparso mentre si riscriveva la memoria per tornare dal
+firmware CamTag a quello originale. Lì CamTag non gira: il chip è nel
+caricatore della ROM, i pin dello schermo sono liberi e nessuno rimette il
+controller in sonno profondo, quindi il pannello resta nello stato in cui il
+negativo affiora. Spiegazione probabile, non verificata; caso limite, e il
+primo aggiornamento del firmware che parte dopo lo toglie.
 
 **Strada scartata.** CrossPoint sull'X3 non usa il mezzo refresh dell'SDK:
 prima chiama `requestResync(1)`, che lo trasforma in un completo con un
@@ -91,11 +104,32 @@ passaggio di condizionamento (`reference/crosspoint/lib/hal/HalDisplay.cpp`).
 Provato a farlo anche qui e poi annullato senza caricarlo: aggiunge proprio il
 passaggio veloce finale sospettato, e la lens chart (mezzo refresh) è stabile.
 
-## Riposo con la USB collegata (aperto)
+## Riposo con la USB collegata (corretto nella 0.4.2, da confermare)
 
 Alle 18:36:51 l'X3 è andato a riposo anche collegato al Mac (`[riposo] inizio`)
 e la seriale si è persa (`Device not configured`): da lì il registro non ha
-visto più nulla. Secondo le regole dovrebbe restare sveglio con la USB
-(`usbHost()` = `HWCDC::isPlugged()` in `canRest`). Da capire perché
-`isPlugged()` era falso; finché non si risolve, per registrare a lungo premere
-un tasto ogni tanto o ricollegare la seriale.
+visto più nulla. Secondo le regole doveva restare sveglio con la USB
+(`usbHost()` = `HWCDC::isPlugged()` in `canRest`).
+
+**Perché `isPlugged()` può essere falso con il cavo collegato.** Non guarda il
+cavo: è `usb_serial_jtag_is_connected()` del framework, che a ogni millisecondo
+controlla se il computer ha mandato il suo pacchetto di cadenza (SOF) e diventa
+falso dopo 3 ms senza. Qualunque pausa del computer lo spegne: un reset della
+porta, un hub che esita, il computer che sospende la USB o va a dormire. E
+`canRest` lo guardava a ogni giro di `loop()`: bastava una lettura falsa, dopo
+5 s senza tasti, per andare a riposo, e a riposo la USB si spegne davvero. Da
+lì l'X3 poteva non tornare più: la carica era già stata notata (`chargeSeen`),
+quindi nessun risveglio fino al primo tasto.
+
+**Correzione (0.4.2).**
+- Prima del riposo il computer deve mancare da almeno 3 s (`USB_GONE_MS`): una
+  pausa breve non conta. Ogni pausa vista finisce nel registro della seriale
+  (`[usb] computer non sentito per N ms`), così si saprà quanto durano.
+- Se va a riposo lo stesso (computer zitto per più di 3 s), a riposo sente il
+  computer sul filo dei dati e si ripresenta da solo (`docs/batteria.md`, "Cavo
+  USB a riposo"): subito la prima volta, poi sempre più di rado.
+
+Che cosa abbia fermato il computer quella sera non si sa. Da confermare con un
+registro lungo (`taratura.py log --file …`): non deve più comparire
+`[riposo] inizio` con il cavo collegato, salvo dopo una riga
+`computer non sentito` di più di 3 s.

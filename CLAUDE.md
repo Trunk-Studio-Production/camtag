@@ -136,15 +136,18 @@ Usa sempre `.venv/bin/pio`: il PlatformIO globale (6.1.5, quello di VS Code)
 `~/.platformio/penv/bin/python -m esptool` (nel `.venv` non c'è).
 
 L'X3 compare su USB (`/dev/cu.usbmodem*`) solo da acceso e sveglio. Collegato a
-un computer resta sveglio (`usbHost`); se la porta non c'è fai premere un tasto,
-o tenere il power se è spento, e se serve staccare e riattaccare il cavo.
+un computer resta sveglio (`usbHost`, che deve mancare da 3 s prima del riposo);
+a riposo sente il computer sul filo dei dati e si sveglia da solo (dalla 0.4.2:
+`usbHostPull`, `docs/batteria.md` "Cavo USB a riposo"). Se la porta non c'è fai
+premere un tasto, o tenere il power se è spento.
 `CAMTAG_DEBUG` (che oggi `x3` ha sempre) accende i messaggi e i comandi sulla
 seriale. Aprire la seriale lo riavvia. Per le prove con l'utente usa
 `scripts/taratura.py` nel suo terminale (`tasti`, `versi`, `card` con le card
 sopra, `filtri` con la schermata filtri, `blocco` solo il blocco della rotazione,
 `reattivita` pressioni sentite da `keyScan` (`[adc]`) contro quelle eseguite, con
 gli aggiornamenti dello schermo (`[epd]`), `log` registro dal vivo, `batteria`
-scarica il registro dei consumi in `misure/` e fa i conti; `--carica`):
+scarica il registro dei consumi in `misure/` e fa i conti, `usb` il cavo collegato
+a riposo, dieci volte, senza aprire la seriale finché la porta non è comparsa; `--carica`):
 guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
 (righe `[filtri]` della seriale), e se l'X3 si spegne lo aspetta e rifà il passo.
 
@@ -430,8 +433,12 @@ la posizione naturale è `Canvas::ROT_270`).
 
 - Soglie della rotazione (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) su camera vera.
 - Ghosting (`FULL_REFRESH_EVERY`).
-- Aperti in `docs/schermo.md`: il riavvio da solo dopo il riposo e il riposo
-  che scatta con la USB.
+- Cavo USB collegato a riposo (0.4.2): provato sull'X3 con `taratura.py usb`
+  (22/11/2026, batteria piena, attraverso hub: 9 su 10 entro 10 s, porta in
+  2,6-6,7 s, nessuna lettura sbagliata). Un hub senza computer si legge come un computer: lì
+  valgono le riprove (1 minuto, poi ogni 2). Manca un registro per vedere
+  che il riposo resti a 2,1 mA. In `docs/schermo.md` resta da confermare il riposo che
+  scattava con la USB collegata.
 - Energia, provato sull'X3 (20/11/2026): riposo con tasti e rotazione, blocco
   dei tasti, spento e riaccensione con il power tenuto (prima e dopo il
   bianco), passaggio al bianco, registro. Il gauge ha già 642 mAh; la batteria
