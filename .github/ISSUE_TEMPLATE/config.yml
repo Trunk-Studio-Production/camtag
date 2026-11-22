@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Web configurator
+    url: https://trunk-studio-production.github.io/camtag/
+    about: Build your cards and try them in the simulator, no device needed.
+  - name: User manual
+    url: https://trunk-studio-production.github.io/camtag/companion/manual/
+    about: Every button and screen of CamTag on the X3.

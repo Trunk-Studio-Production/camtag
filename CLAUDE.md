@@ -72,6 +72,15 @@ costruttori di lenti e filtri nei dati vanno bene.
   esportabili), applicate sopra il database quando si disegna. Un valore
   modificato porta un `*` accanto, sulla lens chart e nel configuratore web.
 - `data/filters.json` — catalogo dei vetri (famiglie e gradazioni) **provvisorio, non verificato**.
+- Lancio: i README (`README.md`, `README.it.md`, allineati) aprono per chi
+  scopre il progetto (cosa fa, prova nel browser, cosa serve, contribuire); il
+  tecnico sta sotto "For developers". `docs/img/` ha immagini provvisorie fatte
+  dalle schermate del manuale (`scripts/promo_images.py`, anche la social
+  preview da caricare a mano su GitHub). Segnaposto nei README: commenti
+  `LAUNCH VIDEO` / `VIDEO DI LANCIO` e `INSTAGRAM`. Le issue form in
+  `.github/ISSUE_TEMPLATE/` (set di lenti, set di filtri, foto dal set, in
+  inglese) chiedono set interi e il link al costruttore: si verifica lì prima
+  di aggiungere.
 - `third_party/freeink-sdk/` — sottomodulo git bloccato su `77ae8c7`. **Non
   modificarlo**: se serve un cambiamento, aggira nel nostro codice o chiedi.
 - `reference/crosspoint/` — solo consultazione, escluso da git (come CrossPoint

@@ -1,0 +1,35 @@
+name: CamTag on set
+description: Share a photo of CamTag on a camera. We'd love to see it!
+title: "On set: <production or camera>"
+labels: ["on-set"]
+body:
+  - type: textarea
+    id: photo
+    attributes:
+      label: Photo
+      description: Drag one or more photos in here. CamTag on the camera, in use, ideally with the screen readable.
+    validations:
+      required: true
+  - type: input
+    id: what
+    attributes:
+      label: Production, camera, country
+      description: Whatever you can share.
+      placeholder: e.g. Feature film, ALEXA 35, Italy
+  - type: input
+    id: credit
+    attributes:
+      label: Credit
+      description: How you'd like to be credited (name, role, Instagram handle), or leave empty.
+  - type: textarea
+    id: notes
+    attributes:
+      label: How is it working for you?
+      description: Optional. What helps, what's missing, how you mounted it.
+  - type: checkboxes
+    id: rights
+    attributes:
+      label: Permission
+      options:
+        - label: I can share these photos, and CamTag may repost them (README, website, social accounts) with the credit above.
+          required: true

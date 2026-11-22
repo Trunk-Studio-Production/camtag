@@ -1,0 +1,102 @@
+name: Add a lens set
+description: A lens series is missing (or incomplete) in the web configurator's database.
+title: "Lens set: <brand> <series>"
+labels: ["lens-data"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! We add **whole series**, not single lenses: list every focal length the manufacturer makes in this series.
+
+        On set a wrong number is worse than no number, so every value must come from the **manufacturer's own published specs** (product page or data sheet PDF). Before adding the set we check each value against the links you give. No code or JSON needed: we do the rest.
+
+        A single lens of yours that differs from the data sheet (a different front ring, say) doesn't need an issue: change it in the web configurator with ✎.
+  - type: input
+    id: brand
+    attributes:
+      label: Manufacturer
+      placeholder: e.g. Cooke
+    validations:
+      required: true
+  - type: input
+    id: series
+    attributes:
+      label: Series
+      placeholder: e.g. S7/i
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: Kind of lenses
+      options:
+        - Spherical primes
+        - Spherical zooms
+        - Anamorphic primes
+        - Anamorphic zooms
+        - Macro
+        - Mixed (say which in the table)
+    validations:
+      required: true
+  - type: input
+    id: squeeze
+    attributes:
+      label: Anamorphic squeeze
+      description: Only for anamorphics.
+      placeholder: e.g. 1.5x
+  - type: dropdown
+    id: coverage
+    attributes:
+      label: Coverage, as declared by the manufacturer
+      options:
+        - Super 35
+        - Full frame / VistaVision
+        - Large format (bigger than full frame)
+        - 65 mm
+        - Micro Four Thirds
+        - It varies by lens (say so in the table)
+        - Not declared
+    validations:
+      required: true
+  - type: input
+    id: mounts
+    attributes:
+      label: Mounts offered by the manufacturer
+      description: Only mounts the manufacturer sells or fits itself, not third-party adapters.
+      placeholder: e.g. PL, LPL, E
+  - type: textarea
+    id: lenses
+    attributes:
+      label: The lenses
+      description: |
+        One row per lens, values exactly as published: T-stop (for zooms with ramping, both ends), close focus with its unit (m or ft, measured from the focal plane if the manufacturer says so), front diameter in mm, filter thread if any. Leave a cell empty when the manufacturer doesn't publish it: never estimate.
+      value: |
+        | Focal (mm) | T-stop | Close focus | Front Ø (mm) | Filter thread |
+        |---|---|---|---|---|
+        |  |  |  |  |  |
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources
+      description: |
+        Links to the manufacturer's product pages or data sheet PDFs where we can read these values (one per line). You can also drag a PDF in here.
+        For vintage or rental-only series the manufacturer no longer documents, give the best source you have and say what it is (rental house, archived page…).
+      placeholder: https://…
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Conflicts between sources, variants, discontinued lenses, anything we should know.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: The values come from the sources above, not from memory, my own measurements or a third-party lens database.
+          required: true
+        - label: I searched for this series in the web configurator and it's missing or incomplete.
+          required: true

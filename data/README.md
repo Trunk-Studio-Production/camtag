@@ -438,6 +438,9 @@ lente, nel formato
 
 ## Aggiungere o correggere una lente
 
+Chi non vuole toccare il JSON apre la issue "Add a lens set" (`.github/ISSUE_TEMPLATE/`):
+valori e link del costruttore, poi li riportiamo qui con questi passi.
+
 1. Usa solo la scheda del costruttore e metti l'URL in `sources`.
 2. Aggiorna `checked`; se lasci un `null`, spiega in `notes` il perché.
 3. Per una serie nuova scegli una sigla non ancora usata e aggiungila alla

@@ -1,38 +1,76 @@
 English · [Italiano](README.it.md)
 
-# CamTag — e-paper badge for the camera department (MVP on Xteink X3)
+# CamTag
 
-An e-paper badge for the camera department: it shows cards with lenses, crew,
-notes and images, you flip through them with the buttons, and it stays visible
-even when off.
+**An e-paper badge for the camera department.** Lens chart, filters, crew and
+notes on a small e-paper screen mounted on the camera: readable in full sun,
+still there when it's off, and it turns with the camera.
+
+<!-- LAUNCH VIDEO: when the 30–60 s on-set video is ready, drag the .mp4 into
+the GitHub editor on this line (it becomes a user-attachments link that plays
+inline) and keep the image below as the fallback. -->
+![CamTag screens: lens chart, filters screen, crew](docs/img/screens.png)
+
+**[▶ Try it in your browser](https://trunk-studio-production.github.io/camtag/)**:
+no device needed. Build your cards in the web configurator and play with
+them in the simulator, buttons included.
+
+## What it does
+
+- **Lens chart, built for you.** Pick your set from a database of 1,500+ cine
+  and photo lenses (210 series), with T-stop, close focus and front diameter
+  from the manufacturers' own data sheets. A rental unit that differs (a
+  different front ring, say) is a local edit, marked with `*`.
+- **Filters screen.** ND and diopter change with the rocker buttons, and the
+  mattebox stages show what's in front of the lens, stage by stage.
+- **Crew, notes, images.** Any other card you need on the camera.
+- **Turns with the camera.** The built-in accelerometer rotates the content
+  to any of four orientations, and you can lock it.
+- **Wireless.** Send cards (and firmware updates) from the browser over
+  Bluetooth, or copy them to the microSD.
+- **Battery.** About two and a half days of real use on set, almost two weeks
+  idle. When off, it keeps showing your off screen (camera name, logo).
+- **English and Italian**, for the device, the cards and the web configurator.
+
+## What you need
+
+- An **[Xteink X3](https://www.xteink.com)**: a small e-paper reader, the
+  hardware CamTag runs on. CamTag replaces its firmware.
+- A **USB-C data cable and a computer** for the first install, from the
+  command line. After that, cards and updates travel over Bluetooth.
+- A way to mount it on the camera: we don't ship a mount yet.
 
 > **⚠️ Unofficial firmware: you flash it at your own risk.** CamTag replaces the
 > X3's firmware and, in the worst case, can leave it unusable beyond repair.
 > There is no warranty of any kind. Before flashing, read
 > [Risks and checks before flashing](#risks-and-checks-before-flashing).
 
-## Structure
+## Getting started
 
-| Folder | Contents |
-|---|---|
-| `device/` | PlatformIO firmware for Xteink X3 (and X4), on top of FreeInk SDK |
-| `companion/` | Web configurator to create the cards and export them as 1-bit BMP |
-| `third_party/freeink-sdk/` | FreeInk SDK (display driver, buttons, battery, SD), submodule at `77ae8c7` |
-| `reference/crosspoint/` | CrossPoint, for reference only: not compiled and not in the repo |
-| `.venv/` | Recent PlatformIO, isolated from the rest of the system |
-| `data/` | Lens database (under construction) |
+1. Make your cards in the [web configurator](https://trunk-studio-production.github.io/camtag/).
+2. Run the [three checks](#risks-and-checks-before-flashing), keep the backup,
+   and flash CamTag on the X3.
+3. Send the cards over Bluetooth (hold **X** on the X3) or via microSD.
 
-### After cloning
+The [user manual](https://trunk-studio-production.github.io/camtag/companion/manual/)
+explains every button and screen.
 
-```bash
-git submodule update --init
-python3.13 -m venv .venv && .venv/bin/pip install platformio
-git clone --depth 1 https://github.com/crosspoint-reader/crosspoint-reader reference/crosspoint
-```
+## Contribute
 
-`.venv/` and `reference/` are not in the repo: recreate them this way.
+- **A lens or filter set is missing?**
+  [Add a lens set](https://github.com/Trunk-Studio-Production/camtag/issues/new?template=lens-set.yml)
+  or [add a filter set](https://github.com/Trunk-Studio-Production/camtag/issues/new?template=filter-set.yml):
+  no code or JSON needed, just the values and a link to the manufacturer's
+  page or data sheet. We check them against it and add the whole set.
+- **Using CamTag on a production?** We'd love a photo of it on the camera:
+  [send it](https://github.com/Trunk-Studio-Production/camtag/issues/new?template=on-set.yml).
+  <!-- INSTAGRAM: add the account here when it exists ("or tag us on Instagram"). -->
+- **Bugs and ideas**: [open an issue](https://github.com/Trunk-Studio-Production/camtag/issues/new/choose).
 
-## How it works (v0.3)
+Made in Italy by [Trunk Studio Production](https://github.com/Trunk-Studio-Production),
+tested on set by working camera assistants. Free software under the GPL v3.
+
+## How it works
 
 1. Create the cards in the web configurator.
 2. Send them to the X3 in one of two ways:
@@ -182,32 +220,12 @@ rotation (Y held) and turn it off (power held), and it behaves as the firmware
 is meant to. Screens are at full resolution (792×528 and 528×792); the
 simulator shows them at about half scale, close to the real size.
 
-## Firmware
-
-Build:
-
-```bash
-cd device && ../.venv/bin/pio run -e x3
-```
-
-Host tests, without an X3:
-
-```bash
-device/test/filters_test.sh      # filters screen: identical to the web configurator preview
-```
-
-`filters_test.sh` composes the pieces exported by the web configurator the way the
-firmware does and compares them pixel by pixel with the previews, along with
-the stage rules. The data is in `device/test/filters_fixture.zip`: if the
-filters export changes, regenerate it with `device/test/filters_fixture.js`
-(instructions in the file).
-
-### Risks and checks before flashing
+## Risks and checks before flashing
 
 **Flashing CamTag can make the X3 unusable.** Read this whole section before
 plugging in the cable.
 
-#### What can go wrong
+### What can go wrong
 
 - CamTag is unofficial firmware, with no connection to Xteink. Flashing
   replaces the original firmware, the bootloader and the partition table, and
@@ -228,7 +246,7 @@ plugging in the cable.
 - So far CamTag has been tested on a single X3: bought from a third-party
   shop, with original firmware V6.1.15, and not locked.
 
-#### Checks: if even one fails, do not flash
+### Checks: if even one fails, do not flash
 
 You need a USB-C data cable and the X3 **on**: when off it doesn't show up on
 USB. `esptool` is the one PlatformIO installs on the first build (if missing:
@@ -272,9 +290,10 @@ back to sleep: press power and check that it starts up as before.
 of your device and the only way back to the factory state. It contains your
 unit's data: do not publish it.
 
-#### Flashing
+### Flashing
 
-Only with all three checks passed and the backup safe:
+Only with all three checks passed and the backup safe, from a clone of this
+repository set up as in [After cloning](#after-cloning):
 
 ```bash
 cd device && ../.venv/bin/pio run -e x3 -t upload && ../.venv/bin/pio device monitor
@@ -296,7 +315,50 @@ opening the device, as described by
 [CrossPoint](https://github.com/crosspoint-reader/crosspoint-reader/blob/HEAD/docs/fix-bricked-xteink.md):
 a delicate operation, which may finish breaking it.
 
-## To verify on hardware
+## For developers
+
+### Structure
+
+| Folder | Contents |
+|---|---|
+| `device/` | PlatformIO firmware for Xteink X3 (and X4), on top of FreeInk SDK |
+| `companion/` | Web configurator to create the cards and export them as 1-bit BMP |
+| `third_party/freeink-sdk/` | FreeInk SDK (display driver, buttons, battery, SD), submodule at `77ae8c7` |
+| `reference/crosspoint/` | CrossPoint, for reference only: not compiled and not in the repo |
+| `.venv/` | Recent PlatformIO, isolated from the rest of the system |
+| `data/` | Lens database and filter catalog |
+
+#### After cloning
+
+```bash
+git submodule update --init
+python3.13 -m venv .venv && .venv/bin/pip install platformio
+git clone --depth 1 https://github.com/crosspoint-reader/crosspoint-reader reference/crosspoint
+```
+
+`.venv/` and `reference/` are not in the repo: recreate them this way.
+
+### Firmware
+
+Build:
+
+```bash
+cd device && ../.venv/bin/pio run -e x3
+```
+
+Host tests, without an X3:
+
+```bash
+device/test/filters_test.sh      # filters screen: identical to the web configurator preview
+```
+
+`filters_test.sh` composes the pieces exported by the web configurator the way the
+firmware does and compares them pixel by pixel with the previews, along with
+the stage rules. The data is in `device/test/filters_fixture.zip`: if the
+filters export changes, regenerate it with `device/test/filters_fixture.js`
+(instructions in the file).
+
+### To verify on hardware
 
 Tests are run from the terminal with `scripts/taratura.py` (firmware built
 with `CAMTAG_DEBUG`), which immediately shows each button pressed, the
@@ -352,7 +414,7 @@ orientation and the card on screen, and waits for the X3 if it turns off:
       update (`taratura.py reattivita`); now a task reads them even then and
       queues them, and they run as soon as the screen is done
 
-## Next steps
+### Next steps
 
 1. **Measured consumption** with the log on the microSD (`docs/batteria.md`),
    and from there the choices still open: how much the powered microSD costs

@@ -1,0 +1,52 @@
+name: Add a filter set
+description: A filter family (diffusion, contrast, effects, polarizers…) is missing or wrong in the web configurator's catalog.
+title: "Filter set: <brand> <family>"
+labels: ["filter-data"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! We add **whole families with all their grades** (e.g. Black Pro-Mist 1/8 to 2), and you can list several families from the same manufacturer in one issue.
+
+        The filter catalog is still provisional, so corrections are welcome too. Every family and grade must come from the **manufacturer's own catalog or product pages**: we check them against your links before adding them. No code or JSON needed.
+
+        ND and diopters don't need an issue: you pick their values directly in the web configurator.
+  - type: input
+    id: brand
+    attributes:
+      label: Manufacturer
+      placeholder: e.g. Tiffen
+    validations:
+      required: true
+  - type: textarea
+    id: families
+    attributes:
+      label: Families and grades
+      description: |
+        One family per line: name, grades as the manufacturer writes them, and the kind of filter (diffusion, contrast, effects, graduated, polarizer, color…).
+        If a family takes two mattebox stages (a rotating holder, say), write it.
+      placeholder: |
+        Black Pro-Mist: 1/8, 1/4, 1/2, 1, 2 (diffusion)
+        Rota Pola: one grade (polarizer, two stages)
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources
+      description: Links to the manufacturer's catalog or product pages where we can read these families and grades (one per line). You can also drag a PDF in here.
+      placeholder: https://…
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Discontinued grades, regional names, anything we should know.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: Families and grades come from the sources above, not from memory.
+          required: true
