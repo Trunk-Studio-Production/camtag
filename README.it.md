@@ -25,8 +25,7 @@ originale e lo trasforma in un badge per la camera; le card che mostra si
 preparano nel [configuratore web](https://trunk-studio-production.github.io/camtag/),
 dal browser.
 
-CamTag è un progetto indipendente e open source, non affiliato a Xteink: l'X3
-si compra da loro.
+CamTag è un progetto indipendente e open source, non affiliato a Xteink.
 
 ## Cosa fa
 
