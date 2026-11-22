@@ -114,7 +114,7 @@ try {
       detail: t('{} · {} di {} KB{}', '/camtag/02_filters.p.bmp', 238, 425, '') }); true`);
     await shot(dir, 'phone-send');
 
-    await js(`bleUi(t("Conferma sull'X3: premi A, B, C o D per installare la {}.", FW_VERSION), { busy: true, detail: t('X o Y annullano.') }); true`);
+    await js(`bleAttention(FW_VERSION, 60); clearInterval(bleAttnTimer); true`);
     await shot(dir, 'phone-fw');
   }
   ws.close();
