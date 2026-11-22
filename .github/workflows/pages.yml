@@ -75,6 +75,12 @@ jobs:
           mkdir -p _site/companion/firmware
           cp device/.pio/build/x3/firmware.bin _site/companion/firmware/camtag.bin
           cp device/.pio/build/x3/firmware.factory.bin _site/companion/firmware/camtag-factory.bin
+          # Il commit nella pagina (BUILD) e in build.txt, che la pagina rilegge senza
+          # cache per sapere se ne esiste una più nuova; i18n.js con lo stesso ?v.
+          sha=${GITHUB_SHA::7}
+          sed -i "s/__BUILD__/$sha/; s/src=\"i18n.js\"/src=\"i18n.js?v=$sha\"/" _site/companion/index.html
+          grep -q "const BUILD = '$sha'" _site/companion/index.html
+          echo "$sha" > _site/companion/build.txt
           cat > _site/index.html <<'HTML'
           <!doctype html>
           <meta charset="utf-8">

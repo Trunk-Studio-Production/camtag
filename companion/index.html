@@ -268,6 +268,10 @@
   #bleDlg .usb .btn { flex: none; }
   #bleDlg .credits { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
   #bleDlg .credits a { color: inherit; }
+  #newBuild { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 1100; display: flex; align-items: center; gap: 10px;
+    max-width: calc(100vw - 32px); padding: 8px 8px 8px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink);
+    font-size: 13px; box-shadow: 0 6px 24px rgba(0, 0, 0, .4); }
+  #newBuild[hidden] { display: none; }
   #bleDetail a { color: var(--accent); }
 
   /* ---------- 700–1099 px: due colonne; a sinistra, fisse, striscia e anteprima ---------- */
@@ -372,6 +376,7 @@
   <button data-add="patch" role="menuitem">Patch</button>
 </div>
 <div class="pop tip" id="tip" role="tooltip"></div>
+<div id="newBuild" role="status" hidden><span>C'è una versione più nuova del configuratore web.</span><button id="newBuildGo" class="primary">Aggiorna</button></div>
 
 <dialog id="bleDlg">
   <h3>CamTag via Bluetooth</h3>
@@ -394,7 +399,7 @@
     <p><b>Prima installazione</b><span>X3 nuovo o da ripristinare, con il cavo USB</span></p>
     <a class="btn" href="install/" target="_blank" rel="noopener">Installa via USB</a>
   </div>
-  <p class="credits">Per il firmware <span id="fwWanted"></span> · Sviluppato da Iacopo Boccalari · Trunk Studio · <a href="https://trunkstudio.it" target="_blank" rel="noopener">trunkstudio.it</a><span class="dev-only"> · <span>Modalità sviluppatore</span> (<a href="?dev=0">esci</a>)</span></p>
+  <p class="credits">Per il firmware <span id="fwWanted"></span> · <span id="buildId" title="Versione del configuratore web (commit)"></span> · Sviluppato da Iacopo Boccalari · Trunk Studio · <a href="https://trunkstudio.it" target="_blank" rel="noopener">trunkstudio.it</a><span class="dev-only"> · <span>Modalità sviluppatore</span> (<a href="?dev=0">esci</a>)</span></p>
 </dialog>
 
 <main>
@@ -2776,6 +2781,10 @@ const PROJECT_FILE = 'project.json';  // in /camtag, accanto alle card
 // Firmware che questo configuratore web si aspetta sull'X3: lo stesso di CAMTAG_FW_VERSION
 // in device/src/Version.h. L'X3 lo dice nella risposta a HELLO (docs/bluetooth.md).
 const FW_VERSION = '0.4.2';
+// Commit da cui è pubblicata la pagina: il workflow Pages lo scrive qui e in
+// build.txt. In locale resta il segnaposto.
+const BUILD = '__BUILD__';
+const BUILT = !BUILD.startsWith('__');
 const BLE = {
   service: 'c4a70001-1b2e-4f3a-9d6e-3a7c5e0b2f10',
   ctrl: 'c4a70002-1b2e-4f3a-9d6e-3a7c5e0b2f10',
@@ -3254,6 +3263,20 @@ async function bleBattery() {
 }
 
 $('#fwWanted').textContent = FW_VERSION;
+$('#buildId').textContent = `web ${BUILT ? BUILD : t('locale')}`;
+// Alcuni browser per iPhone (Bluefy) tengono a lungo la pagina vecchia: si
+// confronta il commit con build.txt, senza cache, all'apertura e al ritorno sulla
+// pagina. Il pulsante ricarica con ?v=<commit>, un indirizzo che la cache non ha.
+async function checkBuild() {
+  if (!BUILT) return;
+  const r = await fetch(`build.txt?t=${Date.now()}`, { cache: 'no-store' }).catch(() => null);
+  const b = r && r.ok ? (await r.text()).trim() : '';
+  if (!/^[0-9a-f]{7,40}$/.test(b) || b === BUILD) return;
+  $('#newBuildGo').onclick = () => { const u = new URL(location.href); u.searchParams.set('v', b); location.replace(u); };
+  $('#newBuild').hidden = false;
+}
+checkBuild();
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkBuild(); });
 $('#bleBtn').onclick = () => {
   $('#bleFw').hidden = true;
   const note = bleSupportNote();
