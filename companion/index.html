@@ -304,6 +304,9 @@
     #list li { flex: none; }
     .scr { display: flex; gap: 6px; max-width: 190px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); padding: 6px 12px; }
     #list li.sel .scr { border-color: var(--accent); box-shadow: none; }
+    /* "+" fuori dalla striscia, così resta in vista anche con tante schermate. */
+    .screens { display: flex; align-items: center; gap: 6px; }
+    .screens .scr-row { flex: 1; min-width: 0; }
     #addBtn { flex: none; width: auto; border-radius: 999px; }
   }
   /* Telefono: niente zoom con le dita (lo zoom dell'anteprima è il tutto schermo). */
@@ -321,14 +324,12 @@
     .work.nopreview .stagecol { display: none; }
     /* Freccia dell'anteprima fuori dalla striscia, così non scorre via con le schermate:
        in su chiude, in giù apre. */
-    .screens { display: flex; align-items: center; gap: 6px; }
-    .screens .scr-row { flex: 1; min-width: 0; }
     #prevTog { display: flex; align-items: center; justify-content: center; flex: none; width: 40px; height: 40px; padding: 0; border-radius: 999px; }
     #prevTog svg { transition: transform .15s; }
     #prevTog[aria-expanded="false"] svg { transform: rotate(180deg); }
-    /* "+" subito dopo l'anteprima, sempre in vista anche con tante schermate, e nel verde. */
-    #addBtn { order: -1; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-size: 20px; font-weight: 700;
-              line-height: 1; padding: 0 14px; }
+    /* "+" a destra della striscia, speculare alla freccia, nel verde. */
+    #addBtn { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0;
+              background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-size: 22px; font-weight: 700; line-height: 1; }
     .screens { order: 2; }
     /* Il simulatore serve da computer: sul telefono resta solo l'anteprima. */
     #modeRow, .pbar, #previewNote { display: none; }
@@ -439,8 +440,8 @@
       <button id="prevTog" aria-expanded="true" title="Nascondi o mostra l'anteprima" aria-label="Nascondi o mostra l'anteprima"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <div class="scr-row">
         <ul id="list"></ul>
-        <button id="addBtn" title="Aggiungi una schermata">+<span class="l"> Aggiungi</span></button>
       </div>
+      <button id="addBtn" title="Aggiungi una schermata">+<span class="l"> Aggiungi</span></button>
       <p class="hint">Lens chart e Filtri si generano da soli. L'ordine qui è l'ordine sul dispositivo.</p>
     </section>
 
@@ -1465,12 +1466,53 @@ function drawNotes(ctx, W, H, c) {
   }
   let size = Math.round(H * 0.1), lines;
   for (; size > 14; size -= 2) {
-    ctx.font = `600 ${size}px ${FONT}`;
-    lines = wrap(ctx, c.body, W - pad * 2);
+    lines = wrapRich(ctx, c.body, W - pad * 2, size);
     if (lines.length * size * 1.25 <= H - top - pad) break;
   }
-  ctx.font = `600 ${size}px ${FONT}`;
-  lines.forEach((l, i) => ctx.fillText(l, pad, top + size * (i + 1) * 1.25 - size * 0.25));
+  lines.forEach((l, i) => {
+    let x = pad;
+    for (const r of l) { ctx.font = richFont(r, size); ctx.fillText(r.t, x, top + size * (i + 1) * 1.25 - size * 0.25); x += ctx.measureText(r.t).width; }
+  });
+}
+// Testo delle note con un po' di markdown: **grassetto**, *corsivo*, ***tutti e due***
+// (anche uno dentro l'altro). Un segno senza chiusura resta com'è. Il corsivo è
+// l'Inter dritto inclinato dal browser: nel repo c'è solo il font dritto.
+const RICH = /(\*\*\*|\*\*|\*)([^\s*](?:.*?[^\s*])??)\1/;
+function richRuns(text, b = false, i = false) {
+  const out = [];
+  while (text) {
+    const m = RICH.exec(text);
+    if (!m) { out.push({ t: text, b, i }); break; }
+    if (m.index) out.push({ t: text.slice(0, m.index), b, i });
+    const k = m[1].length;
+    out.push(...richRuns(m[2], b || k >= 2, i || k !== 2));
+    text = text.slice(m.index + m[0].length);
+  }
+  return out;
+}
+function richFont(r, size) { return `${r.i ? 'italic ' : ''}${r.b ? 800 : 600} ${size}px ${FONT}`; }
+// Come wrap(), ma ogni riga è una lista di pezzi { t, b, i }.
+function wrapRich(ctx, text, maxW, size) {
+  const out = [];
+  const w = r => { ctx.font = richFont(r, size); return ctx.measureText(r.t).width; };
+  for (const para of String(text).split('\n')) {
+    if (!para.trim()) { out.push([]); continue; }
+    // Parole con i loro pezzi: uno spazio chiude la parola, un cambio di stile no.
+    const words = [[]];
+    for (const r of richRuns(para)) r.t.split(/(\s+)/).forEach((t, j) => {
+      if (j % 2) { if (words.at(-1).length) words.push([]); } else if (t) words.at(-1).push({ ...r, t });
+    });
+    let line = [], lineW = 0;
+    const space = r => w({ ...r, t: ' ' });
+    for (const word of words.filter(x => x.length)) {
+      const ww = word.reduce((a, r) => a + w(r), 0), sp = line.length ? space(word[0]) : 0;
+      if (line.length && lineW + sp + ww > maxW) { out.push(line); line = []; lineW = 0; }
+      if (line.length) { line.push({ ...word[0], t: ' ' }); lineW += space(word[0]); }
+      line.push(...word); lineW += ww;
+    }
+    out.push(line);
+  }
+  return out;
 }
 
 function drawPatch(ctx, W, H, c) {
@@ -2614,7 +2656,9 @@ function cardEditor(ed, c, idx) {
     ed.append(field(c, 'Titolo', 'title'));
     rowsEditor(ed, c);
   } else if (c.type === 'notes') {
-    ed.append(field(c, 'Titolo', 'title'), fillArea(field(c, 'Testo', 'body', 'textarea')));
+    const body = fillArea(field(c, 'Testo', 'body', 'textarea'));
+    body.querySelector('.lab').append(info('Formattazione: **grassetto**, *corsivo*.'));
+    ed.append(field(c, 'Titolo', 'title'), body);
   } else {
     imageControls(ed, c);
     ed.append(field(c, 'Inverti colori', 'invert', 'checkbox'), field(c, 'Didascalia (opzionale)', 'caption'));

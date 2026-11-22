@@ -53,7 +53,7 @@ costruttori di lenti e filtri nei dati vanno bene.
   Barra e anteprima restano fisse mentre l'editor scorre: tre colonne da 1100 px,
   due da 700 (striscia delle schermate e anteprima a sinistra), sotto i 700
   anteprima compatta in alto che si apre a tutto schermo e si richiude dalla
-  freccia a sinistra della striscia (`#prevTog`, fuori dallo scorrimento; `ui.prevHidden`, aperta di partenza; scorrendo giù l'editor si toglie da sola, `autoHid`, e torna all'inizio dell'editor o dalla freccia), senza zoom con le dita; `fitStage` tiene
+  freccia a sinistra della striscia (`#prevTog`, fuori dallo scorrimento come il + speculare a destra, `#addBtn`, che lo è da 1099 px in giù; `ui.prevHidden`, aperta di partenza; scorrendo giù l'editor si toglie da sola, `autoHid`, e torna all'inizio dell'editor o dalla freccia), senza zoom con le dita; `fitStage` tiene
   anteprima e simulatore dentro lo schermo (il simulatore si scala). Nell'editor
   le sezioni richiudibili si fanno con `section()` e le spiegazioni stanno dietro
   una ⓘ (`info()`): in chiaro restano solo avvisi e stati vuoti. Le preferenze
@@ -63,7 +63,9 @@ costruttori di lenti e filtri nei dati vanno bene.
   `?dev=0` la spegne) e la classe `devmode` sul body mostra gli elementi
   `.dev-only`; oggi "Registro batteria" e il `.bin` scelto con Maiusc su
   "Aggiorna firmware". Le funzioni che servono solo a chi prova il firmware
-  vanno lì. Lo zip delle card si scarica dal menu Progetto.
+  vanno lì. Lo zip delle card si scarica dal menu Progetto. Il testo delle note
+  accetta `**grassetto**` e `*corsivo*` (`richRuns`; il corsivo è l'Inter dritto
+  inclinato dal browser, nel repo non c'è il file italic).
   Nei testi per l'utente si chiama sempre **configuratore web** (in inglese
   *web configurator*), mai "strumento" o "app".
 - `companion/install/` — prima installazione e ripristino via USB dal browser

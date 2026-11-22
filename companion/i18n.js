@@ -319,6 +319,7 @@ const I18N_EN = {
   'Nessuna riga': 'No rows',
   '+ Aggiungi una riga': '+ Add a row',
   'Testo': 'Text',
+  'Formattazione: **grassetto**, *corsivo*.': 'Formatting: **bold**, *italic*.',
   'Inverti colori': 'Invert colors',
   'Didascalia (opzionale)': 'Caption (optional)',
   "Il file non è un'immagine leggibile.": 'The file is not a readable image.',
