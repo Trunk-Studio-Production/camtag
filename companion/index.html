@@ -220,6 +220,12 @@
   .db .it .meta { color: var(--muted); font-size: 12px; flex: 2; }
   .db .ask { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px; border-top: 1px solid var(--line); font-size: 13px; }
   .db .ask span { flex: 1 0 100%; }
+  /* Serve una scelta: la domanda in verde; gli attacchi grigi come gli altri pulsanti,
+     quelli già nel kit suggeriti con contorno e fondo verdi. */
+  .db .ask span { color: var(--accent); font-weight: 700; }
+  .db .ask .mnt { font-weight: 600; }
+  .db .ask .mnt.sugg { border-color: var(--accent); background: var(--accent-soft); }
+  .db .ask small { margin-left: 8px; color: var(--muted); font-size: 12px; font-weight: 400; }  /* perché uno è verde */
   .kit { border: 1px solid var(--line); border-radius: var(--r-s); padding: 8px; margin-top: 8px; }
   .kit-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 13px; }
   .kit-head .pill { margin-left: auto; margin-right: 8px; padding: 2px 9px; font-size: 12px; min-height: 0; }
@@ -763,7 +769,7 @@ let sel = { kind: 'lenschart' };
 let view = 'land';
 let page = 0;
 let lensDb = null, lensDbError = '';
-let dbSearch = { q: '', brand: '', type: '' };
+let dbSearch = { q: '', brand: '', type: '', mount: '' };
 const dbOpen = new Set();  // serie aperte nel database lenti ("Marca Serie"); le altre mostrano solo l'intestazione
 let filterDb = [];
 const imgCache = new Map();
@@ -2291,13 +2297,18 @@ function lensEditor(ed) {
   else {
     const brands = [...new Set(lensDb.map(l => l.brand))].sort();
     const q = h('input', { type: 'search', 'aria-label': 'Cerca nel database', value: dbSearch.q, placeholder: 'Cerca: marca, serie, sigla, focale (es. "supreme 35")' });
-    const fb = h('select', { 'aria-label': 'Marca' }, h('option', { value: '' }, 'Tutte le marche'), ...brands.map(b => h('option', { value: b, selected: dbSearch.brand === b }, b)));
-    const ft = h('select', { 'aria-label': 'Tipo' }, h('option', { value: '' }, 'Tutti i tipi'), ...Object.entries(LENS_TYPES).map(([k, v]) => h('option', { value: k, selected: dbSearch.type === k }, v)));
+    const fb = h('select', { 'aria-label': 'Marca' }, h('option', { value: '' }, 'Marca'), ...brands.map(b => h('option', { value: b, selected: dbSearch.brand === b }, b)));
+    const ft = h('select', { 'aria-label': 'Tipo' }, h('option', { value: '' }, 'Tipo'), ...Object.entries(LENS_TYPES).map(([k, v]) => h('option', { value: k, selected: dbSearch.type === k }, v)));
+    // Attacco: mostra solo le lenti che lo offrono e lo sceglie da solo quando entrano nel kit.
+    const mounts = MOUNTS.filter(x => lensDb.some(l => (l.mounts || []).includes(x)));
+    const fm = h('select', { 'aria-label': 'Attacco' }, h('option', { value: '' }, 'Attacco'), ...mounts.map(x => h('option', { value: x, selected: dbSearch.mount === x }, x)));
     const box = h('div', { class: 'db' });
     // searching = l'utente ha appena cambiato la ricerca: se resta una sola serie si apre da sola.
-    const run = searching => { dbSearch = { q: q.value, brand: fb.value, type: ft.value }; renderDbResults(box, q.value, fb.value, ft.value, searching === true); };
-    q.addEventListener('input', () => run(true)); fb.addEventListener('change', () => run(true)); ft.addEventListener('change', () => run(true));
-    db.push(q, h('div', { class: 'two mt' }, fb, ft), box);
+    const run = searching => { dbSearch = { q: q.value, brand: fb.value, type: ft.value, mount: fm.value }; renderDbResults(box, q.value, fb.value, ft.value, searching === true); };
+    // Cambiando la ricerca si chiude una domanda sull'attacco rimasta aperta.
+    const user = () => { mountAsk = null; run(true); };
+    q.addEventListener('input', user); for (const sel of [fb, ft, fm]) sel.addEventListener('change', user);
+    db.push(q, h('div', { class: 'three mt' }, fb, ft, fm), box);
     run();
   }
   // Inserimento manuale
@@ -2415,10 +2426,12 @@ function mountSelect(cur, onchange, known) {
 // Aggiunge lenti del database. Se una serie ha più attacchi chiede quale
 // (`mountAsk`, mostrata sotto la serie) prima di metterle nel kit; se il kit ha
 // già una lente della serie con un attacco che vale anche per queste, usa quello.
+// Prima ancora vale l'attacco scelto nel filtro del database (`dbSearch.mount`).
 let mountAsk = null;  // { name: serie, lenses, mounts }
 function addDbLenses(name, ls) {
   const keyOf = l => `${l.brand}|${l.series}`;
-  const kitMount = l => state.lenses.map(effective).find(x => keyOf(x) === keyOf(l) && x.mount && (l.mounts || []).includes(x.mount))?.mount;
+  const kitMount = l => (l.mounts || []).includes(dbSearch.mount) ? dbSearch.mount :
+    state.lenses.map(effective).find(x => keyOf(x) === keyOf(l) && x.mount && (l.mounts || []).includes(x.mount))?.mount;
   const ask = ls.filter(l => (l.mounts || []).length > 1 && !kitMount(l));
   if (!ask.length) { ls.forEach(l => addDbLens(l, kitMount(l))); mountAsk = null; return true; }
   mountAsk = { name, lenses: ls, mounts: [...new Set(ask.flatMap(l => l.mounts))] };
@@ -2433,6 +2446,7 @@ function renderDbResults(box, query, brand, type, searching = false) {
   const hits = lensDb.filter(l => {
     if (brand && l.brand !== brand) return false;
     if (type && l.type !== type) return false;
+    if (dbSearch.mount && !(l.mounts || []).includes(dbSearch.mount)) return false;
     const hay = searchFold(`${l.brand} ${l.series} ${l.name} ${l.seriesCode} ${LENS_TYPES[l.type] || ''} ${t(LENS_TYPES[l.type] || '')} ${focalText(l)} ${focalText(l)}mm ${(l.mounts || []).join(' ')}`);
     return terms.every(t => hay.includes(t));
   });
@@ -2456,10 +2470,12 @@ function renderDbResults(box, query, brand, type, searching = false) {
         h('span', {}, `${name} · ${ls[0].seriesCode}`)),
       h('button', { class: 'small', disabled: !missing.length, onclick: () => { addDbLenses(name, missing); keepScroll(() => changed(true)); } }, missing.length ? t('+ tutte ({})', missing.length) : 'aggiunte')));
     if (mountAsk?.name === name) {
-      const a = mountAsk, done = mount => { a.lenses.forEach(l => addDbLens(l, mount)); mountAsk = null; keepScroll(() => changed(true)); };
+      const used = new Set(state.lenses.map(lensMount).filter(Boolean));  // suggeriti: già nel kit
+      const a = mountAsk, sugg = a.mounts.filter(m => used.has(m)), done = mount => { a.lenses.forEach(l => addDbLens(l, mount)); mountAsk = null; keepScroll(() => changed(true)); };
       box.append(h('div', { class: 'ask' },
-        h('span', {}, a.lenses.length > 1 ? t('Con quale attacco? ({} lenti)', a.lenses.length) : t('Con quale attacco? ({} mm)', focalText(a.lenses[0]))),
-        ...a.mounts.map(m => h('button', { class: 'small primary', onclick: () => done(m) }, m)),
+        h('span', {}, a.lenses.length > 1 ? t('Con quale attacco? ({} lenti)', a.lenses.length) : t('Con quale attacco? ({} mm)', focalText(a.lenses[0])),
+          sugg.length ? h('small', {}, t('{} già nel kit', sugg.join(', '))) : null),
+        ...a.mounts.map(m => h('button', { class: 'small mnt' + (used.has(m) ? ' sugg' : ''), onclick: () => done(m) }, m)),
         h('button', { class: 'small', title: 'Aggiungi senza attacco', onclick: () => done(null) }, 'Non so'),
         h('button', { class: 'small', onclick: () => { mountAsk = null; keepScroll(() => changed(true)); } }, 'Annulla')));
     }
@@ -2599,8 +2615,8 @@ function filtersEditor(ed, list = false) {
     const brands = [...new Set(filterDb.map(x => x.brand || 'Generico'))].sort((a, b) => a.localeCompare(b, 'it'));
     const cats = [...new Set(filterDb.map(x => x.category))].sort((a, b) => a.localeCompare(b, 'it'));
     const q = h('input', { type: 'search', 'aria-label': 'Cerca nel catalogo', value: fltSearch.q, placeholder: 'Cerca: marca, nome, tipo, gradazione (es. "mist 1/4")' });
-    const fb = h('select', { 'aria-label': 'Marca' }, h('option', { value: '' }, 'Tutte le marche'), ...brands.map(b => h('option', { value: b, selected: fltSearch.brand === b }, b)));
-    const fc = h('select', { 'aria-label': 'Tipo' }, h('option', { value: '' }, 'Tutti i tipi'), ...cats.map(c => h('option', { value: c, selected: fltSearch.cat === c }, (n => n[0].toUpperCase() + n.slice(1))(t(c)))));
+    const fb = h('select', { 'aria-label': 'Marca' }, h('option', { value: '' }, 'Marca'), ...brands.map(b => h('option', { value: b, selected: fltSearch.brand === b }, b)));
+    const fc = h('select', { 'aria-label': 'Tipo' }, h('option', { value: '' }, 'Tipo'), ...cats.map(c => h('option', { value: c, selected: fltSearch.cat === c }, (n => n[0].toUpperCase() + n.slice(1))(t(c)))));
     const box = h('div', { class: 'db' });
     const run = searching => { fltSearch = { q: q.value, brand: fb.value, cat: fc.value }; renderFilterResults(box, searching === true); };
     q.addEventListener('input', () => run(true)); fb.addEventListener('change', () => run(true)); fc.addEventListener('change', () => run(true));

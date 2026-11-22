@@ -190,9 +190,7 @@ const I18N_EN = {
   'Cerca nel database': 'Search the database',
   'Cerca: marca, serie, sigla, focale (es. "supreme 35")': 'Search: brand, series, code, focal length (e.g. "supreme 35")',
   'Marca': 'Brand',
-  'Tutte le marche': 'All brands',
   'Tipo': 'Type',
-  'Tutti i tipi': 'All types',
   "{}: un valore o un'escursione": '{}: a value or a range',
   'Aggiungi una lente a mano': 'Add a lens manually',
   'Focale mm': 'Focal mm',
@@ -222,6 +220,7 @@ const I18N_EN = {
   'Con quale attacco? ({} mm)': 'Which mount? ({} mm)',
   'Aggiungi senza attacco': 'Add without a mount',
   'Non so': "Don't know",
+  '{} già nel kit': '{} already in the kit',
 
   // ---------- Editor: filtri ----------
   'Nessun vetro trovato': 'No glasses found',

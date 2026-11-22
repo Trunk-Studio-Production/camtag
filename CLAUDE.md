@@ -311,7 +311,10 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   altri accanto alla focale. L'attacco è della lente nel progetto (`l.mount`,
   `lensMount`): se la serie ne offre più d'uno lo si chiede quando la lente
   entra nel kit (`addDbLenses`), salvo che il kit abbia già una lente della
-  serie con un attacco valido; si cambia con ✎. Le lenti a focale fissa si chiamano "prime"
+  serie con un attacco valido; si cambia con ✎. Il menu Attacco del database
+  (facoltativo, `dbSearch.mount`) mostra solo le lenti che lo offrono e lo
+  sceglie da solo. Nella domanda nessun attacco è evidenziato come scelto:
+  quelli già nel kit sono suggeriti (verde, "PL già nel kit"). Le lenti a focale fissa si chiamano "prime"
   anche nei testi in italiano, mai "fissi". Niente
   colonna serie: in basso un riquadro con il nome per esteso del set principale
   e "Serie (SIGLA)" per le altre; la sigla piccola compare accanto alla focale
