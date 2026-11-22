@@ -2936,6 +2936,17 @@ menuButton($('#projBtn'), $('#projMenu'));
 // Lingue: l'interfaccia è del browser (si ricarica la pagina), le card e le
 // scritte dell'X3 sono del progetto. Il manuale si apre nella lingua dell'interfaccia.
 $('#helpBtn').href = uiLang === 'it' ? 'manuale/' : 'manual/';
+// Alcuni browser per iPhone con Web Bluetooth (BLE Link) non aprono nuove finestre e
+// ignorano i link con target _blank: se window.open non dà una finestra, il link si apre
+// nella stessa scheda (il lavoro resta nel localStorage). Gira dopo i click dei singoli
+// link, che possono ancora scrivere l'href (#fbBar).
+document.addEventListener('click', e => {
+  const a = e.target.closest?.('a[target="_blank"]');
+  if (!a || !a.href || e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  e.preventDefault();
+  const w = window.open(a.href, '_blank');
+  if (w) w.opener = null; else location.href = a.href;
+});
 $('#langBtn').textContent = uiLang.toUpperCase();
 function renderLangMenu() {
   const m = $('#langMenu'); m.innerHTML = '';
