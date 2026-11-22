@@ -950,22 +950,46 @@ void showCard(int index, bool forceFull, const char* banner = nullptr) {
   showCard(index, forceFull ? Refresh::Full : Refresh::Half, banner);
 }
 
-// Le pagine della lens chart si chiamano NN_lenschart, NN_lenschart-2, …
-bool isLensChart(const Card& c) {
+// Tipo di una card per i tasti: la parola dopo "NN_" nel nome, fino al primo "_" o "-"
+// (NN_lens_35mm-…, NN_lenschart-2, NN_notes_…); le pagine della lens chart sono del
+// tipo delle lenti. Una card con un nome diverso è un tipo a sé, salvo che la parola
+// coincida. Specifica: navType nel configuratore web.
+String navType(const Card& c) {
   const int us = c.base.indexOf('_');
-  if (us < 0) return false;
-  const String rest = c.base.substring(us + 1);
-  return rest == "lenschart" || rest.startsWith("lenschart-");
+  if (us < 0) return c.base;
+  int end = us + 1;
+  while (end < static_cast<int>(c.base.length()) && c.base[end] != '_' && c.base[end] != '-') end++;
+  const String w = c.base.substring(us + 1, end);
+  return w == "lenschart" ? String("lens") : w;
 }
 
-// Su una lens chart di più pagine A–D sfogliano solo quelle, in ciclo. I due tasti di
-// un bilanciere fanno la stessa cosa: avanza il bilanciere che chi guarda vede a destra
+// X e Y: prima pagina del tipo precedente o successivo, in ciclo, nell'ordine dei nomi.
+void stepType(int dir) {
+  std::vector<String> types;
+  for (const Card& c : cards) {
+    const String t = navType(c);
+    if (std::find(types.begin(), types.end(), t) == types.end()) types.push_back(t);
+  }
+  const int n = static_cast<int>(types.size());
+  const int at = static_cast<int>(std::find(types.begin(), types.end(), navType(cards[current])) - types.begin());
+  const String next = types[((at + dir) % n + n) % n];
+  for (int i = 0; i < static_cast<int>(cards.size()); i++)
+    if (navType(cards[i]) == next) {
+      bannerUntilMs = 0;
+      showCard(i, false);
+      return;
+    }
+}
+
+// Su un tipo di più pagine A–D sfogliano solo quelle, in ciclo. I due tasti di un
+// bilanciere fanno la stessa cosa: avanza il bilanciere che chi guarda vede a destra
 // o in basso, arretra quello a sinistra o in alto (A|B: sinistra a 0°, in alto a 90°,
 // a destra a 180°, in basso a 270°). Specifica: lensPageDir nel configuratore web.
-void stepLensChart(bool rockerAB, Canvas::Rotation rot) {
+void stepPage(bool rockerAB, Canvas::Rotation rot) {
+  const String type = navType(cards[current]);
   std::vector<int> pages;
   for (int i = 0; i < static_cast<int>(cards.size()); i++)
-    if (isLensChart(cards[i])) pages.push_back(i);
+    if (navType(cards[i]) == type) pages.push_back(i);
   const auto it = std::find(pages.begin(), pages.end(), current);
   if (pages.size() < 2 || it == pages.end()) return;
   const uint8_t q = kQuarterTurns[rot];
@@ -1888,11 +1912,10 @@ void shortPress(char k) {
   if (filtersOn() && filtersPress(k)) {
     // fatto dalla schermata filtri
   } else if (k == 'X' || k == 'Y') {
-    bannerUntilMs = 0;
-    showCard(current + (k == 'Y' ? 1 : -1), false);
-  } else if (isLensChart(cards[current])) {
+    stepType(k == 'Y' ? 1 : -1);
+  } else if (!isFilters(cards[current])) {
     // Con la rotazione bloccata vale il verso del contenuto, come per i filtri.
-    stepLensChart(k == 'A' || k == 'B', rotation);
+    stepPage(k == 'A' || k == 'B', rotation);
   }
 }
 

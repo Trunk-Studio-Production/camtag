@@ -213,8 +213,10 @@ Schermate:
 radice della microSD.
 
 **Simulatore** (pulsante sopra l'anteprima): l'X3 disegnato con tutti i tasti
-cliccabili (anche da tastiera: A–D, X e Y, P = power). Le pagine si sfogliano
-in ciclo con X (precedente) e Y (successiva); A e B non cambiano mai pagina. Si può ruotare, bloccare la
+cliccabili (anche da tastiera: A–D, X e Y, P = power). X (precedente) e Y
+(successivo) cambiano tipo di pagina in ciclo (lenti, filtri, elenco filtri,
+note, crew, immagini); A–D sfogliano le pagine dello stesso tipo, tranne sui
+filtri, dove cambiano diottria e ND. Si può ruotare, bloccare la
 rotazione (Y tenuto premuto) e spegnere (power tenuto premuto), e si comporta
 come è previsto per il firmware. Le schermate sono a risoluzione piena (792×528 e 528×792); il
 simulatore le mostra a circa metà scala, vicino alla dimensione reale.
@@ -433,6 +435,8 @@ schermo, e aspetta l'X3 se si spegne:
 - [x] Negativo delle schermate precedenti a schermo fermo: risolto mandando il
       controller in sonno profondo dopo gli aggiornamenti, confermato dopo ore
       d'uso ([`docs/schermo.md`](docs/schermo.md))
+- [ ] X e Y per tipo di pagina, A–D dentro il tipo (firmware 0.5.0): fatto nel
+      configuratore web e nel firmware, da provare sull'X3
 - [ ] Soglie della rotazione (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) su camera vera
 - [ ] Ghosting: ogni quanto serve un refresh completo (ora ogni 6 cambi)
 - [ ] Icona della batteria sulle card sotto il 20% e in carica

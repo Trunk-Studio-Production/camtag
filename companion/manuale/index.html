@@ -176,7 +176,7 @@
   <main>
     <div class="hero">
       <div>
-        <div class="eyebrow">Manuale d'uso · firmware 0.4.2</div>
+        <div class="eyebrow">Manuale d'uso · firmware 0.5.0</div>
         <h1>CamTag <em>sulla camera</em></h1>
         <p class="lede">Il badge e-paper del reparto camera: lens chart, filtri, crew e note sempre in vista, anche da spento. Qui trovi i tasti, quando premerli e cosa vedrai sullo schermo.</p>
         <div class="meta">
@@ -184,7 +184,7 @@
           <span class="chip">8 tasti, niente touch</span>
           <span class="chip">Lo schermo resta anche da spento</span>
         </div>
-        <div class="note"><b class="t">Novità della 0.4.0</b><p>Il firmware dell'X3 si aggiorna via Bluetooth dal configuratore web, senza cavo e senza computer (<a href="#firmware">Aggiornare il firmware</a>).</p></div>
+        <div class="note"><b class="t">Novità della 0.5.0</b><p>X e Y cambiano tipo di schermata (lenti, filtri, note…) e A–D ne sfogliano le pagine: dalla lens chart ai filtri basta un tasto (<a href="#sfogliare">Sfogliare le schermate</a>).</p></div>
       </div>
       <figure class="fig" data-dev='{"screen":"lens-port","k":0.95}'></figure>
     </div>
@@ -195,14 +195,14 @@
         <p class="intro">Tutto quello che serve sul set, in una pagina. I dettagli sono nelle sezioni che seguono.</p></header>
       <div class="cards">
         <div class="card"><h3><kbd>X</kbd><kbd>Y</kbd> Lati</h3>
-          <dl><dt>X</dt><dd>schermata precedente</dd><dt>Y</dt><dd>schermata successiva</dd>
+          <dl><dt>X</dt><dd>tipo di schermata precedente</dd><dt>Y</dt><dd>tipo successivo</dd>
               <dt>X <span class="hold">lungo</span></dt><dd>ricevi le card via Bluetooth</dd>
               <dt>Y <span class="hold">lungo</span></dt><dd>blocca / sblocca la rotazione</dd></dl></div>
         <div class="card"><h3><kbd>PWR</kbd> Power</h3>
           <dl><dt>breve</dt><dd>blocca / sblocca i tasti</dd>
               <dt><span class="hold">lungo 1 s</span></dt><dd>spegne e accende</dd></dl></div>
         <div class="card"><h3><kbd>A|B</kbd><kbd>C|D</kbd> In basso</h3>
-          <dl><dt>lens chart</dt><dd>A|B pagina indietro, C|D avanti</dd>
+          <dl><dt>lenti, note…</dt><dd>A|B pagina indietro, C|D avanti</dd>
               <dt>filtri</dt><dd>A|B diottria, C|D ND</dd>
               <dt>A o B <span class="hold">lungo</span></dt><dd>modifica gli stadi del mattebox</dd></dl></div>
         <div class="card"><h3><kbd>RESET</kbd> Riavvio</h3>
@@ -223,8 +223,8 @@
           <ul>
             <li><strong>Power</strong>, in alto a destra: blocca i tasti, e con la pressione lunga spegne e accende.</li>
             <li><strong>Reset</strong>, in alto a sinistra: riavvia.</li>
-            <li><strong>X</strong> sul lato sinistro e <strong>Y</strong> sul destro: cambiano schermata.</li>
-            <li><strong>Due bilancieri</strong> in basso, <kbd>A</kbd>|<kbd>B</kbd> a sinistra e <kbd>C</kbd>|<kbd>D</kbd> a destra: lavorano sulla schermata che hai davanti (pagine della lens chart, ND e diottria).</li>
+            <li><strong>X</strong> sul lato sinistro e <strong>Y</strong> sul destro: cambiano tipo di schermata (lenti, filtri, note…).</li>
+            <li><strong>Due bilancieri</strong> in basso, <kbd>A</kbd>|<kbd>B</kbd> a sinistra e <kbd>C</kbd>|<kbd>D</kbd> a destra: lavorano sulla schermata che hai davanti (pagine dello stesso tipo, ND e diottria).</li>
           </ul>
           <p>I bilancieri si premono un capo alla volta: <kbd>A</kbd> è il capo sinistro del primo, <kbd>B</kbd> il destro.</p>
         </div>
@@ -245,10 +245,10 @@
       <div class="table"><table>
         <thead><tr><th>Tasto</th><th>Breve</th><th>Lunga</th></tr></thead>
         <tbody>
-          <tr><td><kbd>X</kbd></td><td>Schermata precedente</td><td>Ricezione via Bluetooth</td></tr>
-          <tr><td><kbd>Y</kbd></td><td>Schermata successiva</td><td>Blocca / sblocca la rotazione</td></tr>
-          <tr><td><kbd>A</kbd> <kbd>B</kbd></td><td>Lens chart: pagina indietro. Filtri: diottria − / +</td><td>Filtri: modifica gli stadi</td></tr>
-          <tr><td><kbd>C</kbd> <kbd>D</kbd></td><td>Lens chart: pagina avanti. Filtri: ND − / +</td><td>—</td></tr>
+          <tr><td><kbd>X</kbd></td><td>Tipo di schermata precedente</td><td>Ricezione via Bluetooth</td></tr>
+          <tr><td><kbd>Y</kbd></td><td>Tipo di schermata successivo</td><td>Blocca / sblocca la rotazione</td></tr>
+          <tr><td><kbd>A</kbd> <kbd>B</kbd></td><td>Pagina indietro nello stesso tipo. Filtri: diottria − / +</td><td>Filtri: modifica gli stadi</td></tr>
+          <tr><td><kbd>C</kbd> <kbd>D</kbd></td><td>Pagina avanti nello stesso tipo. Filtri: ND − / +</td><td>—</td></tr>
           <tr><td><kbd>PWR</kbd></td><td>Blocca / sblocca i tasti</td><td>Spegne / accende (1 s)</td></tr>
           <tr><td><kbd>RESET</kbd></td><td>Riavvia</td><td>—</td></tr>
         </tbody>
@@ -291,25 +291,25 @@
     <!-- 4 -->
     <section class="s" id="sfogliare" data-title="Sfogliare le schermate">
       <header><div class="num">04</div><h2>Sfogliare le schermate</h2>
-        <p class="intro">Le schermate sono nell'ordine del configuratore web: la lens chart, i filtri, poi le schede (crew, note, lenti, immagini).</p></header>
+        <p class="intro">Le schermate sono raggruppate per tipo: le lenti (le pagine della lens chart e le schede lente), i filtri, l'elenco dei filtri, poi le note, la crew e le immagini, nell'ordine del configuratore web.</p></header>
       <div class="row">
-        <figure class="fig" data-dev='{"screen":"crew-port","k":0.85,"hi":[{"keys":"X","text":"precedente"},{"keys":"Y","text":"successiva"}]}'></figure>
+        <figure class="fig" data-dev='{"screen":"crew-port","k":0.85,"hi":[{"keys":"X","text":"tipo precedente"},{"keys":"Y","text":"tipo successivo"}]}'></figure>
         <div>
-          <p><kbd>X</kbd> torna alla schermata precedente, <kbd>Y</kbd> va alla successiva. Il giro è continuo: dopo l'ultima ricomincia dalla prima.</p>
+          <p><kbd>Y</kbd> passa al tipo successivo, <kbd>X</kbd> torna al precedente, e si arriva sempre alla prima pagina del tipo: dalla lens chart ai filtri basta un tasto, anche con molte pagine di lenti. Il giro è continuo: dopo l'ultimo tipo ricomincia dal primo.</p>
           <p>X e Y funzionano allo stesso modo su ogni schermata, anche sulla lens chart e sui filtri.</p>
         </div>
       </div>
-      <h3>Lens chart di più pagine</h3>
+      <h3>Più pagine dello stesso tipo</h3>
       <div class="row flip">
         <figure class="fig" data-dev='{"screen":"lens-port","k":0.85,"hi":[{"keys":"AB","text":"‹ indietro"},{"keys":"CD","text":"avanti ›"}]}'></figure>
         <div>
-          <p>Una lens chart con molte lenti si divide in pagine. Sulla lens chart i bilancieri sfogliano <strong>solo le sue pagine</strong>, in giro, e ognuno vale come un tasto solo: premi un capo o l'altro, è uguale.</p>
+          <p>Una lens chart con molte lenti si divide in pagine, e più note o più schede crew fanno un tipo solo. I bilancieri sfogliano <strong>solo le pagine del tipo</strong> che hai davanti, in giro, e ognuno vale come un tasto solo: premi un capo o l'altro, è uguale. Le schede lente stanno con le lenti, dopo le pagine della lens chart.</p>
           <ul>
             <li><kbd>A</kbd>|<kbd>B</kbd>, a sinistra: <strong>pagina indietro</strong>;</li>
             <li><kbd>C</kbd>|<kbd>D</kbd>, a destra: <strong>pagina avanti</strong>.</li>
           </ul>
           <p>Con l'X3 ruotato conta quello che vedi: avanza il bilanciere a destra o in basso, torna indietro quello a sinistra o in alto.</p>
-          <p>Con una sola pagina A–D non fanno nulla.</p>
+          <p>Con una sola pagina A–D non fanno nulla. Sui filtri cambiano diottria e ND: l'elenco dei filtri è un tipo a sé, subito dopo.</p>
         </div>
       </div>
     </section>
@@ -481,7 +481,7 @@
         <tbody>
           <tr><td>I tasti non fanno nulla</td><td>C'è il lucchetto? Premi il power. Se mostra la schermata di spento, accendilo con una pressione lunga sul power (1 s).</td></tr>
           <tr><td>La schermata non ruota</td><td>La rotazione è bloccata: sbloccala con una pressione lunga su Y.</td></tr>
-          <tr><td>A–D non fanno nulla</td><td>È normale fuori dalla lens chart e dai filtri, e su una lens chart di una sola pagina.</td></tr>
+          <tr><td>A–D non fanno nulla</td><td>È normale quando il tipo ha una sola pagina (sui filtri cambiano diottria e ND, se il kit li ha).</td></tr>
           <tr><td>Il telefono non trova l'X3</td><td>Metti l'X3 in ricezione (pressione lunga su X) prima di toccare "Invia le card", e usa un browser con il Bluetooth.</td></tr>
           <tr><td>L'aggiornamento del firmware non parte</td><td>L'X3 deve essere in ricezione e la batteria sopra il 30% (o in carica). Sull'X3 conferma con A, B, C o D entro un minuto.</td></tr>
           <tr><td>All'accensione chiede la lingua</td><td>Succede finché non ne scegli una: <kbd>A</kbd> o <kbd>B</kbd> per l'inglese, <kbd>C</kbd> o <kbd>D</kbd> per l'italiano.</td></tr>

@@ -216,8 +216,10 @@ Screens:
 the microSD.
 
 **Simulator** (button above the preview): the X3 drawn with all buttons
-clickable (also from the keyboard: A–D, X and Y, P = power). Pages cycle with
-X (previous) and Y (next); A and B never change page. You can rotate it, lock
+clickable (also from the keyboard: A–D, X and Y, P = power). X (previous) and Y
+(next) cycle through the kinds of page (lenses, filters, filter list, notes,
+crew, images); A–D page through the same kind, except on the filters, where
+they change diopter and ND. You can rotate it, lock
 rotation (Y held) and turn it off (power held), and it behaves as the firmware
 is meant to. Screens are at full resolution (792×528 and 528×792); the
 simulator shows them at about half scale, close to the real size.
@@ -437,6 +439,8 @@ orientation and the card on screen, and waits for the X3 if it turns off:
 - [x] Negative image of earlier screens on a static screen: solved by putting
       the display controller to deep sleep after updates, confirmed after
       hours of use ([`docs/schermo.md`](docs/schermo.md))
+- [ ] X and Y by kind of page, A–D within the kind (firmware 0.5.0): done in
+      the web configurator and the firmware, to try on the X3
 - [ ] Rotation thresholds (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) on a real camera
 - [ ] Ghosting: how often a full refresh is needed (now every 6 changes)
 - [ ] Battery icon on the cards below 20% and while charging
