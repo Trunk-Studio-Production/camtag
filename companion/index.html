@@ -2936,17 +2936,26 @@ menuButton($('#projBtn'), $('#projMenu'));
 // Lingue: l'interfaccia è del browser (si ricarica la pagina), le card e le
 // scritte dell'X3 sono del progetto. Il manuale si apre nella lingua dell'interfaccia.
 $('#helpBtn').href = uiLang === 'it' ? 'manuale/' : 'manual/';
-// Sui browser per iPhone con Web Bluetooth i link con target _blank non sono affidabili:
-// BLE Link non apre nulla, Bluefy apre la scheda nuova ma dice di no (window.open dà
-// null) e senza mai nascondere questa. Lì si aprono sempre nella stessa scheda (il lavoro
-// resta nel localStorage); altrove restano nuove schede. Gira dopo i click dei singoli
-// link, che possono ancora scrivere l'href (#fbBar). IOS è definito più avanti.
+// Alcuni browser per iPhone con Web Bluetooth (BLE Link) non aprono nuove finestre e
+// ignorano i link con target _blank: lì il link si apre nella stessa scheda (il lavoro
+// resta nel localStorage). Altri (Bluefy) aprono la scheda nuova ma window.open dà null:
+// per questo, se non c'è la finestra, si aspetta un attimo e si resta qui se la pagina
+// ha perso il fuoco o è stata nascosta. Gira dopo i click dei singoli link, che possono
+// ancora scrivere l'href (#fbBar).
 document.addEventListener('click', e => {
-  if (!(IOS && navigator.bluetooth)) return;
   const a = e.target.closest?.('a[target="_blank"]');
-  if (!a || !a.href || e.defaultPrevented) return;
+  if (!a || !a.href || e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
   e.preventDefault();
-  location.href = a.href;
+  const href = a.href, w = window.open(href, '_blank');
+  if (w) { w.opener = null; return; }
+  let left = false;
+  const away = () => { left = true; };
+  const evs = [[window, 'blur'], [window, 'pagehide'], [document, 'visibilitychange']];
+  for (const [t, n] of evs) t.addEventListener(n, away);
+  setTimeout(() => {
+    for (const [t, n] of evs) t.removeEventListener(n, away);
+    if (!left && !document.hidden) location.href = href;
+  }, 700);
 });
 $('#langBtn').textContent = uiLang.toUpperCase();
 function renderLangMenu() {
