@@ -2806,7 +2806,11 @@ const BLE = {
 // Modi di scrittura dei dati, provati in ordine con un file di prova (linkProbe).
 // Bluefy su iPhone accetta pacchetti da 512 byte senza risposta e non li manda:
 // l'X3 non riceve nulla. `max` = byte per pacchetto, `nr` = senza risposta.
-const BLE_WRITE_MODES = [{ nr: true, max: 512 }, { nr: true, max: 182 }, { nr: false, max: 182 }];
+// `notify` accende prima le notifiche di DATA, `legacy` usa writeValue(). In Bluefy
+// (22/11/2026) i comandi su CTRL arrivano e i dati su DATA no, in tutti e tre i
+// primi modi: gli ultimi due e gli errori nel messaggio servono a capire perché.
+const BLE_WRITE_MODES = [{ nr: true, max: 512 }, { nr: true, max: 182 }, { nr: false, max: 182, notify: true },
+  { legacy: true, max: 182, notify: true }];
 // Indice del modo che funziona, trovato una volta per pagina. Su iPhone lo si
 // ricorda anche nel browser, perché lì la prova di un modo sbagliato costa un
 // ricollegamento.
@@ -2937,7 +2941,7 @@ async function bleSession(work, onFail) {
   // Una scrittura che non si chiude (il Mac a volte la lascia appesa) diventa un errore, non un'attesa infinita.
   const timed = (p, ms) => {
     let tm;
-    const late = new Promise((_, rej) => { tm = setTimeout(() => rej(new Error(t('Il dispositivo non risponde. Riprova.'))), ms); });
+    const late = new Promise((_, rej) => { tm = setTimeout(() => { const e = new Error(t('Il dispositivo non risponde. Riprova.')); e.hung = true; rej(e); }, ms); });
     return Promise.race([p, late]).finally(() => clearTimeout(tm));
   };
   // ACK di un GET: senza risposta se l'X3 lo permette (firmware recente): con la
@@ -2945,7 +2949,8 @@ async function bleSession(work, onFail) {
   // Bluefy non ha `properties`: lì si scrive con la risposta.
   link.ack = c => (ctrl.properties?.writeWithoutResponse && ctrl.writeValueWithoutResponse
     ? timed(ctrl.writeValueWithoutResponse(enc.encode(c)), BLE.timeoutMs) : link.cmd(c));
-  link.write = (chunk, ms = BLE.timeoutMs) => timed(link.mode.nr && data.writeValueWithoutResponse ? data.writeValueWithoutResponse(chunk)
+  link.write = (chunk, ms = BLE.timeoutMs) => timed(link.mode.legacy ? data.writeValue(chunk)
+    : link.mode.nr && data.writeValueWithoutResponse ? data.writeValueWithoutResponse(chunk)
     : data.writeValueWithResponse ? data.writeValueWithResponse(chunk) : data.writeValue(chunk), ms);
   link.useMode = i => { link.mode = BLE_WRITE_MODES[i]; link.chunkSize = Math.min(link.mtuChunk, link.mode.max); };
   link.connected = () => !!ctrl && !disconnected;
@@ -3093,8 +3098,14 @@ async function linkPush(link, bytes, progress, stallMs) {
     progress(bytes.length);  // tutto partito: si aspetta il DONE
     await link.waitFor(() => link.inbox.length, stallMs);
   } catch (e) {
-    if (!stallMs || e.code || link.cancelled() || !link.connected()) throw e;
-    const s = new Error(e.message); s.code = 'STALL'; throw s;
+    // e.code di testo = ERR dell'X3; un DOMException del browser ha un code numerico.
+    if (!stallMs || typeof e?.code === 'string' || link.cancelled() || !link.connected()) throw e;
+    const s = new Error(e?.message || String(e)); s.code = 'STALL';
+    // Per capire un browser che non manda: scrittura appesa, nessuna conferma
+    // dell'X3 (scritta "riuscita" ma non arrivata) o l'errore del browser.
+    s.detail = e?.hung ? 'write hung' : e instanceof Error && e.message === t('Il dispositivo non risponde. Riprova.')
+      ? `no ACK, ${link.acked} B` : e instanceof Error ? `${e.name}: ${e.message}` : `${typeof e} ${String(e)}`;
+    throw s;
   }
   const done = await link.next();
   if (!done.startsWith('DONE')) throw new Error(t('Risposta inattesa: {}', done));
@@ -3106,10 +3117,13 @@ const PROBE_FILE = 'camtag-prova.bin';
 async function linkProbe(link) {
   if (bleWriteMode !== null) return;
   const bytes = new Uint8Array(4096).map((_, i) => i * 7);
-  const spec = `FILE ${bytes.length} ${crc32(bytes).toString(16)} ${PROBE_FILE}`;
+  const spec = `FILE ${bytes.length} ${crc32(bytes).toString(16)} ${PROBE_FILE}`, errs = [];
   for (let m = 0; m < BLE_WRITE_MODES.length; m++) {
     if (m) await link.reopen();
     link.useMode(m);
+    if (link.mode.notify) {
+      try { await link.dataNotify(); } catch (e) { errs.push(`${m + 1} notify: ${e?.message || e}`); }
+    }
     bleUi(t('Provo il collegamento…'), { busy: true, progress: 0 });
     link.inbox.length = 0;
     await link.cmd('BEGIN'); await link.next();
@@ -3122,10 +3136,11 @@ async function linkProbe(link) {
       return;
     } catch (e) {
       if (!['STALL', 'CRC', 'DATI', 'OVERFLOW'].includes(e.code) || link.cancelled()) throw e;
-      console.warn('[ble] il modo', BLE_WRITE_MODES[m], 'non arriva all\'X3:', e.code);
+      console.warn('[ble] il modo', BLE_WRITE_MODES[m], 'non arriva all\'X3:', e.code, e.detail);
+      errs.push(`${m + 1}: ${e.detail || e.code}`);
     }
   }
-  throw new Error(t("Questo browser non riesce a mandare dati all'X3. Prova con un altro browser."));
+  throw new Error(`${t("Questo browser non riesce a mandare dati all'X3. Prova con un altro browser.")} (${errs.join(' · ')})`);
 }
 
 // Un file dall'X3 con GET: il client conferma con ACK ogni 2 KB (come fa l'X3
