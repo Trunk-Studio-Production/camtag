@@ -26,7 +26,7 @@
   button, a.btn { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-s);
                   padding: 8px 14px; cursor: pointer; text-decoration: none; display: inline-block; color: var(--ink); }
   button:hover:not(:disabled), a.btn:hover { border-color: var(--track); }
-  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.primary, a.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
   button.danger { color: var(--danger); }
   button:disabled { opacity: .4; cursor: default; }
   header.bar { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 12px;
@@ -35,6 +35,38 @@
   header h1 { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: .08em; }
   header .sp { flex: 1; }
   main { max-width: 680px; margin: 0 auto; padding: 28px 16px 72px; }
+  .col > :last-child { margin-bottom: 0; }
+  .links { margin: 16px 0 0; font-size: 14px; }
+  .links a { color: inherit; }
+  .small { font-size: 13px; }
+  .phone .url { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .phone code { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-s); padding: 6px 10px;
+                font-size: 13px; overflow-wrap: anywhere; }
+  body.phone .col { display: none; }
+  body.phone .bar a.btn { display: none; }
+  /* Da computer tutta la pagina sta nello schermo: a sinistra cosa sapere prima,
+     a destra la procedura con i pulsanti sempre in vista. Ripristino e registro
+     si aprono in una finestra, così la pagina non si allunga. */
+  @media (min-width: 1000px) {
+    main { max-width: 1180px; height: min(calc(100dvh - 52px), 700px); padding: 24px 32px; display: grid;
+           grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-rows: auto minmax(0, 1fr);
+           column-gap: 32px; }
+    .head { grid-column: 1 / -1; margin-bottom: 18px; }
+    .head h2 { margin-bottom: 6px; }
+    .head p { margin: 0; max-width: 980px; }
+    .head .box { margin: 12px 0 0; }
+    /* Le due colonne partono e finiscono insieme: a sinistra "se si blocca" va in
+       fondo, a destra il pannello della procedura tiene i pulsanti in fondo e, se
+       i messaggi crescono, scorre solo l'elenco dei passi. */
+    .col { display: flex; flex-direction: column; min-height: 0; }
+    .intro .box { margin: 0 0 14px; }
+    .intro .stuck { margin: auto 0 0; }
+    .proc { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-l); padding: 16px; }
+    .proc .step { background: var(--bg); }
+    .proc ol.steps { margin: 0 0 16px; flex: 1; min-height: 0; overflow: auto; align-content: start; }
+    .proc .acts { justify-content: center; }
+    .proc .links { margin-top: 12px; text-align: center; }
+  }
   h2 { font-size: 26px; line-height: 1.2; margin: 0 0 12px; }
   h3 { font-size: 15px; margin: 0; }
   p { margin: 0 0 12px; }
@@ -54,6 +86,12 @@
   .step[data-s="ok"] .ico { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
   .step[data-s="fail"] { border-color: var(--danger); }
   .step[data-s="fail"] .ico { background: var(--danger); border-color: var(--danger); color: #1a0000; }
+  .step > :not(.ico) { grid-column: 2; }
+  .step .desc { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+  .step .msg:empty, .step:has(.msg:not(:empty)) .desc { display: none; }
+  /* Mentre gira un passo, quelli già riusciti prima di lui mostrano solo titolo e ✓. */
+  .step[data-s="ok"]:has(~ .step[data-s="run"]) .msg { display: none; }
+  .ptitle { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; }
   .step .msg { margin: 2px 0 0; color: var(--muted); overflow-wrap: anywhere; }
   .step[data-s="fail"] .msg { color: var(--danger); }
   .step .more { display: grid; gap: 10px; margin-top: 10px; justify-items: start; }
@@ -62,11 +100,10 @@
   dialog { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r-l);
            padding: 20px; max-width: min(460px, calc(100vw - 32px)); }
   dialog::backdrop { background: rgba(0, 0, 0, .6); }
-  dialog h3 { font-size: 18px; margin-bottom: 10px; }
+  dialog h3 { font-size: 18px; margin-bottom: 10px; padding-right: 28px; }
+  #restoreDlg, #logDlg { width: min(560px, calc(100vw - 32px)); max-width: none; }
+  dialog .x { position: absolute; top: 12px; right: 12px; width: 30px; height: 30px; padding: 0; border-radius: 50%; line-height: 1; }
   dialog .acts { margin-top: 16px; }
-  details { border-top: 1px solid var(--line); padding: 14px 0 0; margin-top: 28px; }
-  summary { cursor: pointer; font-weight: 600; }
-  details > div { margin-top: 12px; }
   pre#log { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-s); padding: 10px 12px;
             max-height: 260px; overflow: auto; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
             white-space: pre-wrap; margin: 0; }
@@ -81,69 +118,87 @@
   <a class="btn" href="../" data-t>Configuratore web</a>
 </header>
 <main>
-  <h2 data-t>Installa CamTag sull'X3</h2>
-  <p data-t>Questa pagina installa CamTag sul tuo Xteink X3 con il cavo USB. Prima controlla che l'X3 si possa aggiornare senza rischi e ne salva una copia completa; se un controllo non passa, si ferma. Serve solo la prima volta: dopo, il firmware si aggiorna via Bluetooth dal configuratore web.</p>
-
-  <div class="box" id="noSerial" hidden>
-    <p data-t>Questo browser non può usare la USB. Apri questa pagina con Chrome o Edge su un computer (Mac, Windows o Linux).</p>
+  <div class="box phone" id="phonePanel" hidden>
+    <h2 data-t>Serve un computer</h2>
+    <p data-t>CamTag si installa una volta sola, con il cavo USB, da Chrome o Edge su un computer (Mac, Windows o Linux). Apri questa pagina lì:</p>
+    <p class="url"><code id="pageUrl"></code> <button id="copyUrl" data-t>Copia il link</button></p>
+    <p data-t>Hai già CamTag? Gli aggiornamenti arrivano via Bluetooth dal configuratore web, anche dal telefono.</p>
+    <p><a class="btn primary" href="../" data-t>Apri il configuratore web</a></p>
+    <p class="muted"><a href="#" id="showAnyway" data-t>Mostra comunque la procedura</a></p>
   </div>
 
-  <div class="box">
-    <h3 data-t>Cosa serve</h3>
-    <ul>
-      <li data-t>Chrome o Edge su un computer.</li>
-      <li data-t>Un cavo USB-C che porta i dati, non solo la carica.</li>
-      <li data-t>L'X3 acceso e carico: da spento non compare sulla USB.</li>
-      <li data-t>Circa cinque minuti, senza staccare il cavo.</li>
-    </ul>
-  </div>
-
-  <div class="box warn">
-    <p data-th><strong>Firmware non ufficiale: lo installi a tuo rischio.</strong> CamTag sostituisce il firmware dell'X3 e, nel caso peggiore, può lasciarlo inutilizzabile senza rimedio. Non c'è alcuna garanzia. Alcuni X3 escono dalla fabbrica con la USB bloccata: i controlli qui sotto li riconoscono con buona sicurezza, ma non è una certezza.</p>
-    <label class="check"><input type="checkbox" id="risk"> <span data-t>Ho capito: installo CamTag a mio rischio.</span></label>
-  </div>
-
-  <ol class="steps">
-    <li class="step" id="s1"><span class="ico">1</span><h3 data-t>L'X3 compare sulla USB</h3><p class="msg"></p></li>
-    <li class="step" id="s2"><span class="ico">2</span><h3 data-t>Il chip non ha protezioni attive</h3><p class="msg"></p></li>
-    <li class="step" id="s3"><span class="ico">3</span><h3 data-t>Copia completa della memoria</h3><p class="msg"></p>
-      <div class="more" id="s3more" hidden>
-        <button id="saveBtn" class="primary" data-t>Salva il backup</button>
-        <label class="check"><input type="checkbox" id="saved" disabled> <span data-t>Ho salvato il backup e lo tengo in almeno due posti. Non lo pubblico: contiene i dati di questo X3.</span></label>
-      </div>
-    </li>
-    <li class="step" id="s4"><span class="ico">4</span><h3 id="s4title"></h3><p class="msg"></p>
-      <div class="more" id="s4more" hidden>
-        <a class="btn primary" href="../" data-t>Vai al configuratore web</a>
-      </div>
-    </li>
-  </ol>
-
-  <p class="muted" data-t>Se l'X3 resta bloccato (schermo fermo, tasti che non rispondono): premi RESET, poi tieni premuto power per 3-5 secondi.</p>
-
-  <div class="acts">
-    <button id="startBtn" class="primary" disabled data-t>Comincia i controlli</button>
-    <button id="installBtn" disabled data-t>Installa</button>
-  </div>
-
-  <details id="restore">
-    <summary data-t>Ripristina da un backup</summary>
-    <div>
-      <p data-t>Riscrive tutta la memoria dell'X3 con un backup fatto da questa pagina o con esptool, e lo riporta esattamente com'era quando l'hai salvato.</p>
-      <p><input type="file" id="restoreFile" accept=".bin"></p>
-      <p class="muted" id="restoreMsg"></p>
-      <progress id="restoreBar" max="1" value="0" hidden></progress>
-      <p><button id="restoreBtn" class="danger" disabled data-t>Ripristina</button></p>
+  <header class="head">
+    <h2 data-t>Installa CamTag sull'X3</h2>
+    <p data-t>Questa pagina installa CamTag sul tuo Xteink X3 con il cavo USB. Prima controlla che l'X3 si possa aggiornare senza rischi e ne salva una copia completa; se un controllo non passa, si ferma. Serve solo la prima volta: dopo, il firmware si aggiorna via Bluetooth dal configuratore web.</p>
+    <div class="box" id="noSerial" hidden>
+      <p data-t>Questo browser non può usare la USB. Apri questa pagina con Chrome o Edge su un computer (Mac, Windows o Linux).</p>
     </div>
-  </details>
+  </header>
 
-  <details>
-    <summary data-t>Dettagli tecnici</summary>
-    <div><pre id="log"></pre><p style="margin-top:10px"><button id="copyLog" data-t>Copia il registro</button></p></div>
-  </details>
+  <section class="col intro">
 
-  <p class="muted" style="margin-top:28px" data-th>Se la USB non risponde più, resta solo la riscrittura della memoria con un programmatore esterno, aprendo l'X3: lo spiega <a href="https://github.com/crosspoint-reader/crosspoint-reader/blob/HEAD/docs/fix-bricked-xteink.md" target="_blank" rel="noopener">CrossPoint</a>.</p>
+    <div class="box">
+      <h3 data-t>Cosa serve</h3>
+      <ul>
+        <li data-t>Chrome o Edge su un computer.</li>
+        <li data-t>Il cavo USB dell'X3, quello in dotazione.</li>
+        <li data-t>L'X3 acceso e carico: da spento non compare sulla USB.</li>
+        <li data-t>Circa cinque minuti, senza staccare il cavo.</li>
+      </ul>
+    </div>
+
+    <div class="box warn">
+      <p data-th><strong>Firmware non ufficiale: lo installi a tuo rischio.</strong> CamTag sostituisce il firmware dell'X3 e, nel caso peggiore, può lasciarlo inutilizzabile senza rimedio. Non c'è alcuna garanzia. Alcuni X3 escono dalla fabbrica con la USB bloccata: i controlli qui sotto li riconoscono con buona sicurezza, ma non è una certezza.</p>
+      <label class="check"><input type="checkbox" id="risk"> <span data-t>Ho capito: installo CamTag a mio rischio.</span></label>
+    </div>
+
+    <p class="muted stuck" data-t>Se l'X3 resta bloccato (schermo fermo, tasti che non rispondono): premi RESET, poi tieni premuto power per 3-5 secondi.</p>
+  </section>
+
+  <section class="col proc">
+    <h3 class="ptitle" data-t>Procedura</h3>
+    <ol class="steps">
+      <li class="step" id="s1"><span class="ico">1</span><h3 data-t>L'X3 compare sulla USB</h3><p class="desc" data-t>Il browser ti chiede di scegliere l'X3 tra le porte USB.</p><p class="msg"></p></li>
+      <li class="step" id="s2"><span class="ico">2</span><h3 data-t>Il chip non ha protezioni attive</h3><p class="desc" data-t>Legge le protezioni del chip: se ce n'è una attiva, si ferma.</p><p class="msg"></p></li>
+      <li class="step" id="s3"><span class="ico">3</span><h3 data-t>Copia completa della memoria</h3><p class="desc" data-t>Legge i 16 MB della memoria in meno di un minuto e li verifica con l'X3. Il file lo salvi tu sul computer.</p><p class="msg"></p>
+        <div class="more" id="s3more" hidden>
+          <button id="saveBtn" class="primary" data-t>Salva il backup</button>
+          <label class="check"><input type="checkbox" id="saved" disabled> <span data-t>Ho salvato il backup e lo tengo in almeno due posti. Non lo pubblico: contiene i dati di questo X3.</span></label>
+        </div>
+      </li>
+      <li class="step" id="s4"><span class="ico">4</span><h3 id="s4title"></h3><p class="desc" data-t>Scrive CamTag in pochi secondi e riavvia l'X3.</p><p class="msg"></p>
+        <div class="more" id="s4more" hidden>
+          <a class="btn primary" href="../" data-t>Vai al configuratore web</a>
+        </div>
+      </li>
+    </ol>
+
+    <div class="acts">
+      <button id="startBtn" class="primary" disabled data-t>Comincia i controlli</button>
+      <button id="installBtn" disabled data-t>Installa</button>
+    </div>
+
+    <p class="links muted"><a href="#" id="openRestore" data-t>Ripristina da un backup</a> · <a href="#" id="openLog" data-t>Dettagli tecnici</a></p>
+  </section>
 </main>
+
+<dialog id="restoreDlg">
+  <button class="x" data-close title="Chiudi" aria-label="Chiudi">✕</button>
+  <h3 data-t>Ripristina da un backup</h3>
+  <p data-t>Riscrive tutta la memoria dell'X3 con un backup fatto da questa pagina o con esptool, e lo riporta esattamente com'era quando l'hai salvato.</p>
+  <p><input type="file" id="restoreFile" accept=".bin"></p>
+  <p class="muted" id="restoreMsg"></p>
+  <progress id="restoreBar" max="1" value="0" hidden></progress>
+  <p><button id="restoreBtn" class="danger" disabled data-t>Ripristina</button></p>
+  <p class="muted small" data-th>Se la USB non risponde più, resta solo la riscrittura della memoria con un programmatore esterno, aprendo l'X3: lo spiega <a href="https://github.com/crosspoint-reader/crosspoint-reader/blob/HEAD/docs/fix-bricked-xteink.md" target="_blank" rel="noopener">CrossPoint</a>.</p>
+</dialog>
+
+<dialog id="logDlg">
+  <button class="x" data-close title="Chiudi" aria-label="Chiudi">✕</button>
+  <h3 data-t>Dettagli tecnici</h3>
+  <pre id="log"></pre>
+  <p style="margin-top:10px"><button id="copyLog" data-t>Copia il registro</button></p>
+</dialog>
 
 <dialog id="askSaved">
   <h3 data-t>Hai salvato il backup?</h3>
@@ -192,6 +247,7 @@ function step(n, state, msg) {
   el.querySelector('.ico').textContent = state === 'ok' ? '✓' : state === 'fail' ? '✕' : n;
   if (msg !== undefined) el.querySelector('.msg').textContent = msg;
   if (state === 'fail') log('[' + n + '] ' + msg);
+  if (state === 'run' || state === 'fail') el.scrollIntoView({ block: 'nearest' });  // dentro l'elenco, se scorre
 }
 function bar(n, frac) {
   const el = $('#s' + n);
@@ -373,6 +429,7 @@ async function checks() {
   backup = { url: URL.createObjectURL(new Blob([data], { type: 'application/octet-stream' })), name: `backup-x3-${day}.bin`, md5: mine };
   step(3, 'run', t("Copia identica alla memoria dell'X3 (MD5 {}). Salvala sul computer: è l'unico modo per riportare l'X3 com'era.", mine));
   $('#s3more').hidden = false;
+  $('#s3more').scrollIntoView({ block: 'nearest' });
 }
 
 function saveBackup() {
@@ -403,6 +460,8 @@ async function install() {
   await disconnect();
   step(4, 'ok', t("Fatto: CamTag {} è sull'X3. Al primo avvio chiede la lingua (A o B inglese, C o D italiano). Se lo schermo non cambia entro 10 secondi, premi RESET, poi tieni premuto power per 3-5 secondi.", imageVersion));
   $('#s4more').hidden = false;
+  $('#s3more').hidden = true;  // il backup è salvato: il riquadro lascia posto al risultato
+  $('#s4more').scrollIntoView({ block: 'nearest' });
   done = true;
 }
 
@@ -485,6 +544,29 @@ $('#restoreBtn').onclick = () => run(async () => {
   $('#restoreMsg').textContent = t('Ripristino non riuscito ({}). Non staccare niente e riprova.', e.message);
   await release();
 });
+
+// Finestre del ripristino e del registro: mentre lavorano non si chiudono.
+for (const [btn, dlg] of [['#openRestore', '#restoreDlg'], ['#openLog', '#logDlg']]) {
+  $(btn).onclick = e => { e.preventDefault(); $(dlg).showModal(); };
+  $(dlg).addEventListener('cancel', e => { if (busy && dlg === '#restoreDlg') e.preventDefault(); });
+  $(dlg).querySelector('[data-close]').onclick = () => { if (!(busy && dlg === '#restoreDlg')) $(dlg).close(); };
+}
+
+// Dal telefono o dal tablet l'installazione non si fa: al posto della procedura
+// un riquadro che rimanda al computer (e al configuratore web per gli aggiornamenti).
+const isPhone = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform));
+if (isPhone) {
+  document.body.classList.add('phone');
+  $('#phonePanel').hidden = false;
+  $('#pageUrl').textContent = location.origin + location.pathname;
+}
+$('#showAnyway').onclick = e => { e.preventDefault(); document.body.classList.remove('phone'); $('#phonePanel').hidden = true; };
+$('#copyUrl').onclick = async () => {
+  const b = $('#copyUrl');
+  try { await navigator.clipboard.writeText($('#pageUrl').textContent); b.textContent = t('Copiato'); }
+  catch { getSelection().selectAllChildren($('#pageUrl')); b.textContent = t('Selezionato'); }
+  setTimeout(() => { b.textContent = t('Copia il link'); }, 2500);
+};
 
 $('#copyLog').onclick = async () => {
   const b = $('#copyLog');

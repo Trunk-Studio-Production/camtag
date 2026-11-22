@@ -85,6 +85,8 @@ costruttori di lenti e filtri nei dati vanno bene.
   dall'MD5 che calcola l'X3) e legge gli altri a pacchetti da 384 byte, uno
   alla volta: non alzare questi numeri. Provato in Chrome e Brave sul Mac (22/11/2026):
   backup in 43 s, installazione in 4 s, ripristino dei 16 MB in 41 s.
+  Da computer (≥1000 px) sta in uno schermo senza scorrere: due colonne (cosa sapere | passi e
+  pulsanti), ripristino e registro in finestre; dal telefono mostra solo "Serve un computer".
   Testi nel dizionario di `i18n.js`. In locale: copia anche
   `firmware.factory.bin` in `companion/firmware/camtag-factory.bin`.
 - `companion/manuale/` (italiano) e `companion/manual/` (inglese) — manuale
@@ -194,7 +196,7 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   **accende solo il power**, e da acceso i tasti si leggono a intervalli nel
   sonno leggero.
 - X3 bloccato (es. rimasto nello stub di esptool dopo un'installazione
-  interrotta): RESET, poi power tenuto 3-5 s. Lo dicono la pagina `install/` e i README.
+  interrotta): RESET, poi power tenuto 3-5 s. Lo dicono la pagina `install/`, i README e i manuali ("Installare CamTag").
 - Lo spegnimento porta GPIO13 basso come fa CrossPoint; l'e-paper resta visibile.
   Sull'X3 GPIO13 basso **stacca la batteria** (misurato: dopo lo spento il
   chip riparte da alimentazione tornata, con l'orologio a zero), al contrario

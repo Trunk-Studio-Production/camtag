@@ -49,8 +49,8 @@ CamTag è un progetto indipendente e open source, non affiliato a Xteink.
 
 - Un **[Xteink X3](https://www.xteink.com)**, su cui installare CamTag al
   posto del firmware originale.
-- Un **cavo USB-C dati e un computer con Chrome o Edge** per la prima
-  installazione. Dopo, card e aggiornamenti viaggiano via Bluetooth.
+- Il **cavo USB dell'X3** (quello in dotazione) **e un computer con Chrome o
+  Edge** per la prima installazione. Dopo, card e aggiornamenti viaggiano via Bluetooth.
 - Un modo per montarlo: il velcro adesivo sulla cover che arriva con l'X3
   funziona bene, o quello che usi per gli altri accessori.
 
@@ -232,7 +232,7 @@ simulatore le mostra a circa metà scala, vicino alla dimensione reale.
 intero prima di collegare il cavo.
 
 Installa dalla **[pagina di installazione](https://trunk-studio-production.github.io/camtag/companion/install/)**, con Chrome o Edge su un
-computer e un cavo USB-C dati. È la strada consigliata: non serve installare
+computer e il cavo USB dell'X3. È la strada consigliata: non serve installare
 niente, ed è provata dall'inizio alla fine su un X3 con il firmware originale.
 
 1. Accendi l'X3 e collegalo al computer: da spento non compare sulla USB.
@@ -365,7 +365,7 @@ rischi; chi usa CamTag e basta installi dalla pagina.
 
 #### Controlli: se anche uno solo non passa, non caricare
 
-Servono un cavo USB-C dati e l'X3 **acceso**: da spento non compare
+Servono il cavo USB dell'X3 e l'X3 **acceso**: da spento non compare
 sulla USB. `esptool` è quello che PlatformIO installa alla prima compilazione
 (se manca: `.venv/bin/pip install esptool`, poi `.venv/bin/python -m esptool`).
 Qui sotto `esptool` sta per `~/.platformio/penv/bin/python -m esptool --chip esp32c3`.

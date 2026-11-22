@@ -66,10 +66,10 @@
   /* ---------- Sections ---------- */
   section.s { padding: 56px 0 8px; }
   .s > header { margin-bottom: 22px; }
-  .s .num { font-size: 12px; letter-spacing: .14em; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .s .num { font-size: 22px; line-height: 1.2; letter-spacing: .06em; color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
   .s h2 { font-size: clamp(26px, 3.4vw, 34px); font-weight: 750; margin-top: 6px; }
   .s h3 { font-size: 17px; font-weight: 650; margin: 26px 0 10px; }
-  .s .intro { font-size: 17px; color: #cfcec8; max-width: 40em; margin-top: 10px; }
+  .s .intro { font-size: 17px; color: #cfcec8; margin-top: 10px; }
 
   /* Figure + text side by side */
   .row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: center; margin: 18px 0; }
@@ -442,8 +442,29 @@
     </section>
 
     <!-- 9 -->
+    <section class="s" id="install" data-title="Installing CamTag">
+      <header><div class="num">09</div><h2>Installing CamTag</h2>
+        <p class="intro">The first time, CamTag is installed over the USB cable from the <a href="../install/" target="_blank" rel="noopener">install page</a>: it opens in your computer's browser, with nothing to install. After that, updates come over Bluetooth.</p></header>
+      <div class="note warn"><b class="t">Before you start</b>
+        <ul>
+          <li><strong>Flashing CamTag can leave the X3 unusable.</strong> CamTag is unofficial firmware: you install it at your own risk, and it may void the warranty. All the details are in the <a href="https://github.com/Trunk-Studio-Production/camtag#installing-camtag" target="_blank" rel="noopener">README</a>.</li>
+          <li>You need a <strong>computer</strong> with Chrome or Edge (Brave works too) and the <strong>X3's USB cable</strong> (the one in the box). It can't be done from a phone.</li>
+          <li>Some units leave the factory with USB flashing locked: the page notices and stops. Don't install CamTag on a locked unit.</li>
+        </ul></div>
+      <ol class="steps">
+        <li>Turn the X3 on and connect it to the computer: when it's off it doesn't show up on USB.</li>
+        <li>Open the install page and press <strong>Start the checks</strong>. The page verifies that the X3 shows up on USB, that the chip has no active protections and that the memory reads without errors, and <strong>stops if a check fails</strong>.</li>
+        <li>Press <strong>Save the backup</strong>: it's a full copy of the X3's memory (16 MB, under a minute). Without a backup the page won't go on.</li>
+        <li>Press <strong>Install</strong>: a few seconds, then the X3 restarts with CamTag. On first start it asks for the language: <kbd>A</kbd> or <kbd>B</kbd> for English, <kbd>C</kbd> or <kbd>D</kbd> for Italian.</li>
+      </ol>
+      <p><strong>Keep the backup in at least two places:</strong> it's the only way to bring the X3 back to how it was, with <strong>Restore</strong> on the same page. It holds your unit's data, so don't publish it.</p>
+      <p>If the X3 gets stuck during the process (screen frozen, buttons not responding), press <strong>RESET</strong>, then hold <strong>power</strong> for 3-5 seconds.</p>
+      <p>From then on the firmware updates over Bluetooth, no cable needed (<a href="#firmware">Updating the firmware</a>).</p>
+    </section>
+
+    <!-- 10 -->
     <section class="s" id="configurator" data-title="Preparing the cards">
-      <header><div class="num">09</div><h2>Preparing the cards</h2>
+      <header><div class="num">10</div><h2>Preparing the cards</h2>
         <p class="intro">You prepare the cards in the <strong>web configurator</strong>, a page that opens in the browser of your phone or computer, with nothing to install: <a href="../">trunk-studio-production.github.io/camtag</a>. Here are the basics; every option has its explanation behind the ⓘ.</p></header>
       <h3>How it's laid out</h3>
       <ul class="parts">
@@ -473,9 +494,9 @@
       <p>In the web configurator's toolbar, the language button (<strong>EN</strong> or <strong>IT</strong>) sets three separate things: the language of the <strong>web configurator</strong>, the one the <strong>cards</strong> are drawn in, and the one for the <strong>X3 messages</strong>. The last one reaches the X3 with the next card upload; with <em>Don't change</em> the X3 keeps the one chosen at first start. Cards and X3 in different languages are fine: sending works anyway.</p>
     </section>
 
-    <!-- 10 -->
+    <!-- 11 -->
     <section class="s" id="bluetooth" data-title="Cards via Bluetooth">
-      <header><div class="num">10</div><h2>Sending cards via Bluetooth</h2>
+      <header><div class="num">11</div><h2>Sending cards via Bluetooth</h2>
         <p class="intro">Once the cards are ready in the web configurator, they reach the X3 from your phone or computer, without removing the microSD.</p></header>
       <div class="row top">
         <figure class="fig" data-dev='{"screen":"bluetooth","k":0.85,"hi":[{"keys":"X","text":"hold: receive"}]}'>
@@ -523,14 +544,14 @@
           <figcaption>The phone waits for you to confirm on the X3.</figcaption></figure>
       </div>
       <p>Cards, project and settings are kept. If you don't confirm within a minute the X3 cancels by itself, and with the battery below 30% it refuses the update: charge it first. If the connection drops halfway, or the new firmware doesn't start, the X3 goes back to the previous one by itself.</p>
-      <p>It works from 0.4.0 onwards: an X3 with older firmware has to be updated once with the USB cable, as the README explains.</p>
+      <p>It works from 0.4.0 onwards: an X3 with older firmware has to be updated once with the USB cable, from the install page (<a href="#install">Installing CamTag</a>).</p>
       <h3>With the microSD</h3>
       <p>Alternatively, download the zip from the web configurator (<strong>Project ▾ › Download cards (.zip)</strong>) and copy its <code>camtag/</code> folder to the root of the microSD, replacing the one that's there.</p>
     </section>
 
-    <!-- 11 -->
+    <!-- 12 -->
     <section class="s" id="messages" data-title="Messages and status">
-      <header><div class="num">11</div><h2>Messages and status</h2>
+      <header><div class="num">12</div><h2>Messages and status</h2>
         <p class="intro">When there's no card to show, the X3 says so in a box in the middle of the screen.</p></header>
       <div class="row top">
         <figure class="fig" data-dev='{"screen":"nocard","k":0.8}'>
@@ -558,9 +579,9 @@
       <p>When it's off, the remaining percentage is on the off screen. Charging stops by itself when the battery is full.</p>
     </section>
 
-    <!-- 12 -->
+    <!-- 13 -->
     <section class="s" id="troubleshooting" data-title="If something goes wrong">
-      <header><div class="num">12</div><h2>If something goes wrong</h2></header>
+      <header><div class="num">13</div><h2>If something goes wrong</h2></header>
       <div class="table"><table>
         <thead><tr><th>What happens…</th><th>Try this</th></tr></thead>
         <tbody>
