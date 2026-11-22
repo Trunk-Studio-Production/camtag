@@ -74,7 +74,8 @@ costruttori di lenti e filtri nei dati vanno bene.
   Bluetooth non rendono la risposta. Si usano `ask(msg, sì)` e `say(msg)`
   (finestra `#askDlg`), e `bleAsk` dentro la finestra Bluetooth.
   BLE Link non apre nuove finestre: i link `target="_blank"` passano da un click
-  globale che, se `window.open` non dà una finestra, apre il link nella stessa scheda.
+  globale che, se `window.open` non dà una finestra e la pagina resta in primo piano
+  (Bluefy apre la scheda ma dà null), apre il link nella stessa scheda.
   Nei testi per l'utente si chiama sempre **configuratore web** (in inglese
   *web configurator*), mai "strumento" o "app".
 - `companion/install/` — prima installazione e ripristino via USB dal browser
