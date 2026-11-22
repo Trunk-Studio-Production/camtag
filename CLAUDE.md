@@ -73,9 +73,9 @@ costruttori di lenti e filtri nei dati vanno bene.
   Niente `confirm()`/`alert()` del browser: alcuni browser per iPhone con Web
   Bluetooth non rendono la risposta. Si usano `ask(msg, sì)` e `say(msg)`
   (finestra `#askDlg`), e `bleAsk` dentro la finestra Bluetooth.
-  BLE Link non apre nuove finestre: i link `target="_blank"` passano da un click
-  globale che, se `window.open` non dà una finestra e la pagina resta in primo piano
-  (Bluefy apre la scheda ma dà null), apre il link nella stessa scheda.
+  Sui browser per iPhone con Web Bluetooth (`IOS && navigator.bluetooth`) i link
+  `target="_blank"` si aprono nella stessa scheda: BLE Link non apre schede, Bluefy le
+  apre ma `window.open` dà null e la pagina resta visibile, quindi niente congetture.
   Nei testi per l'utente si chiama sempre **configuratore web** (in inglese
   *web configurator*), mai "strumento" o "app".
 - `companion/install/` — prima installazione e ripristino via USB dal browser
