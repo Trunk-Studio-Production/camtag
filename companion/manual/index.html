@@ -53,8 +53,11 @@
           padding: 28px 0 40px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
   .eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; font-weight: 600; }
   .hero h1 { font-size: clamp(40px, 6vw, 64px); font-weight: 800; letter-spacing: -.03em; margin-bottom: 18px; }
-  .hero h1 em { font-style: normal; color: var(--muted); font-weight: 500; }
+  .hero h1 em { display: block; font-style: normal; color: var(--muted); font-weight: 500; }
+  /* Il logo come nella barra e nel configuratore web: Inter 800, spaziato, T verde. */
+  .hero h1 .logo { letter-spacing: .08em; }
   .lede { font-size: 18px; color: #cfcec8; max-width: 34em; }
+  .hw { font-size: 14px; color: var(--muted); max-width: 40em; margin-top: 12px; }
   .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
   .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px;
           font-size: 12px; color: var(--muted); }
@@ -187,8 +190,9 @@
     <div class="hero">
       <div>
         <div class="eyebrow">User manual · firmware 0.5.0</div>
-        <h1>CamTag <em>step by step</em></h1>
+        <h1><span class="logo">CAM<span class="logo-t">T</span>AG</span> <em>step by step</em></h1>
         <p class="lede">The e-paper badge for the camera department: lens chart, filters, crew and notes always in view, even when it's off. Here you'll find how to prepare the cards, the buttons, when to press them and what you'll see on the screen.</p>
+        <p class="hw">CamTag is firmware for the <a href="https://www.xteink.com" target="_blank" rel="noopener">Xteink X3</a>, a small e-paper reader. It's an independent, <a href="https://github.com/Trunk-Studio-Production/camtag" target="_blank" rel="noopener">open-source</a> project, not affiliated with Xteink.</p>
         <div class="meta">
           <span class="chip">Xteink X3</span>
           <span class="chip">8 buttons, no touch</span>
