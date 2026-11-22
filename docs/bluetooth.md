@@ -87,8 +87,12 @@ o aggiornamento della pagina, il configuratore web manda in una sessione a
 parte un file di prova da 4 KB (`BEGIN`, `FILE … camtag-prova.bin`), che il
 `BEGIN` vero o un `ABORT` buttano via, e prova i modi in ordine finché l'X3
 conferma entro 5 s: senza risposta a MTU − 3 byte, senza risposta a 182 byte,
-con risposta a 182 byte (`BLE_WRITE_MODES`). Il modo trovato vale finché la
-pagina resta aperta.
+con risposta a 182 byte (`BLE_WRITE_MODES`). In Bluefy la scrittura senza
+risposta blocca anche le scritture dopo (registro del 22/11/2026: dopo la prova
+non arriva più nulla) e rifiuta con un numero, non un errore: tra un modo e
+l'altro il configuratore web si scollega e si ricollega (`link.reopen`). Il modo
+trovato vale finché la pagina resta aperta; su iPhone resta anche nel browser
+(localStorage `camtag.bleWrite.v1`), così la prova costa una volta sola.
 
 Il browser manda un pacchetto per intervallo del collegamento: la velocità
 dipende quasi solo da quello. Il dispositivo chiede 15 ms esatti (le regole

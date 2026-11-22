@@ -2798,7 +2798,19 @@ const BLE = {
 // Bluefy su iPhone accetta pacchetti da 512 byte senza risposta e non li manda:
 // l'X3 non riceve nulla. `max` = byte per pacchetto, `nr` = senza risposta.
 const BLE_WRITE_MODES = [{ nr: true, max: 512 }, { nr: true, max: 182 }, { nr: false, max: 182 }];
-let bleWriteMode = null;  // indice del modo che funziona, trovato una volta per pagina
+// Indice del modo che funziona, trovato una volta per pagina. Su iPhone lo si
+// ricorda anche nel browser, perché lì la prova di un modo sbagliato costa un
+// ricollegamento.
+const BLE_MODE_KEY = 'camtag.bleWrite.v1';
+let bleWriteMode = null;
+function bleStoredMode() {
+  try { const m = +localStorage.getItem(BLE_MODE_KEY); if (IOS && m > 0 && m < BLE_WRITE_MODES.length) return m; } catch {}
+  return null;
+}
+// Bluefy rifiuta con un numero invece di un Error.
+function bleErrText(e) {
+  return e instanceof Error && e.message ? e.message : t('Errore del browser Bluetooth: {}', String(e?.message || e));
+}
 const BLE_ERRORS = {
   CRC: t('I dati sono arrivati rovinati. Riprova.'),
   SD: t('Il dispositivo non riesce a scrivere sulla microSD (piena, protetta o assente?).'),
@@ -2890,6 +2902,7 @@ async function bleSession(work, onFail) {
   let device;
   $('#bleFw').hidden = true;
   try { device = await devicePromise; } catch (e) { bleUi(t('Nessun dispositivo scelto.'), { detail: t('Sull\'X3 tieni premuto X finché compare BLUETOOTH, poi riprova.') }); return; }
+  bleWriteMode ??= bleStoredMode();
   let cancelled = false, disconnected = false, waiter = null;
   const link = { acked: 0, inbox: [], rx: [], rxBytes: 0, device };
   const wake = () => { if (waiter) { const w = waiter; waiter = null; w(); } };
@@ -2923,35 +2936,52 @@ async function bleSession(work, onFail) {
   // Bluefy non ha `properties`: lì si scrive con la risposta.
   link.ack = c => (ctrl.properties?.writeWithoutResponse && ctrl.writeValueWithoutResponse
     ? timed(ctrl.writeValueWithoutResponse(enc.encode(c)), BLE.timeoutMs) : link.cmd(c));
-  link.write = chunk => timed(link.mode.nr && data.writeValueWithoutResponse ? data.writeValueWithoutResponse(chunk)
-    : data.writeValueWithResponse ? data.writeValueWithResponse(chunk) : data.writeValue(chunk), BLE.timeoutMs);
+  link.write = (chunk, ms = BLE.timeoutMs) => timed(link.mode.nr && data.writeValueWithoutResponse ? data.writeValueWithoutResponse(chunk)
+    : data.writeValueWithResponse ? data.writeValueWithResponse(chunk) : data.writeValue(chunk), ms);
   link.useMode = i => { link.mode = BLE_WRITE_MODES[i]; link.chunkSize = Math.min(link.mtuChunk, link.mode.max); };
   link.connected = () => !!ctrl && !disconnected;
   link.cancelled = () => cancelled;
   bleRun = { cancel: () => { cancelled = true; wake(); } };
   device.addEventListener('gattserverdisconnected', () => { disconnected = true; wake(); });
+  const onCtrl = e => {
+    const m = dec.decode(e.target.value);
+    if (m.startsWith('ACK ')) link.acked = +m.slice(4); else link.inbox.push(m);
+    wake();
+  };
+  // Pacchetti di un file chiesto con GET.
+  const onData = e => {
+    const v = e.target.value;
+    link.rx.push(new Uint8Array(v.buffer.slice(v.byteOffset, v.byteOffset + v.byteLength)));
+    link.rxBytes += v.byteLength;
+    wake();
+  };
+  // Scollega e ricollega: in Bluefy una scrittura senza risposta che non parte
+  // blocca anche le scritture dopo, e solo un nuovo collegamento le libera.
+  link.reopen = async () => {
+    ctrl = null;
+    if (device.gatt.connected) device.gatt.disconnect();
+    await new Promise(r => setTimeout(r, 800));
+    if (cancelled) throw new Error(t('Annullato.'));
+    disconnected = false;
+    link.inbox.length = 0;
+    await link.open(link.openOpts);
+  };
 
   try {
     // `firmware`: si apre per aggiornarlo, quindi un protocollo diverso va bene se
     // l'X3 conosce FIRMWARE (contratto fisso, docs/bluetooth.md).
-    link.open = async ({ firmware = false } = {}) => {
+    link.open = async (opts = {}) => {
+      const { firmware = false } = link.openOpts = opts;
       bleUi(t('Mi collego a {}…', device.name || 'CamTag'), { busy: true, progress: 0 });
       const server = await device.gatt.connect();
       const svc = await server.getPrimaryService(BLE.service);
       const c = await svc.getCharacteristic(BLE.ctrl);
       data = await svc.getCharacteristic(BLE.data);
-      c.addEventListener('characteristicvaluechanged', e => {
-        const m = dec.decode(e.target.value);
-        if (m.startsWith('ACK ')) link.acked = +m.slice(4); else link.inbox.push(m);
-        wake();
-      });
-      // Pacchetti di un file chiesto con GET.
-      data.addEventListener('characteristicvaluechanged', e => {
-        const v = e.target.value;
-        link.rx.push(new Uint8Array(v.buffer.slice(v.byteOffset, v.byteOffset + v.byteLength)));
-        link.rxBytes += v.byteLength;
-        wake();
-      });
+      // Dopo un ricollegamento le caratteristiche possono essere gli stessi oggetti.
+      c.removeEventListener('characteristicvaluechanged', onCtrl);
+      c.addEventListener('characteristicvaluechanged', onCtrl);
+      data.removeEventListener('characteristicvaluechanged', onData);
+      data.addEventListener('characteristicvaluechanged', onData);
       await c.startNotifications();
       ctrl = c;
       // HELLO: versione del protocollo e MTU. Se l'MTU non è ancora negoziato (23),
@@ -3034,7 +3064,7 @@ async function bleSend() {
   }, async (e, link) => {
     if (link.connected()) { try { await link.cmd('ABORT'); } catch {} }
     const c = link.cancelled();
-    bleUi(c ? t('Invio annullato: sul dispositivo restano le card di prima.') : e.message || String(e), { error: !c, detail: c ? '' : t('Sul dispositivo restano le card di prima.') });
+    bleUi(c ? t('Invio annullato: sul dispositivo restano le card di prima.') : bleErrText(e), { error: !c, detail: c ? '' : t('Sul dispositivo restano le card di prima.') });
   });
 }
 
@@ -3048,7 +3078,7 @@ async function linkPush(link, bytes, progress, stallMs) {
     for (let off = 0; off < bytes.length; off += link.chunkSize) {
       await link.waitFor(() => off - link.acked < BLE.window || link.inbox.length, stallMs);
       if (link.inbox.length) await link.next();  // un ERR interrompe qui
-      await link.write(bytes.subarray(off, off + link.chunkSize));
+      await link.write(bytes.subarray(off, off + link.chunkSize), stallMs);
       progress(off);
     }
     progress(bytes.length);  // tutto partito: si aspetta il DONE
@@ -3069,6 +3099,7 @@ async function linkProbe(link) {
   const bytes = new Uint8Array(4096).map((_, i) => i * 7);
   const spec = `FILE ${bytes.length} ${crc32(bytes).toString(16)} ${PROBE_FILE}`;
   for (let m = 0; m < BLE_WRITE_MODES.length; m++) {
+    if (m) await link.reopen();
     link.useMode(m);
     bleUi(t('Provo il collegamento…'), { busy: true, progress: 0 });
     link.inbox.length = 0;
@@ -3078,9 +3109,10 @@ async function linkProbe(link) {
       await linkPush(link, bytes, () => {}, BLE.probeMs);
       bleWriteMode = m;
       if (m) console.info('[ble] scrittura dei dati:', BLE_WRITE_MODES[m]);
+      if (m && IOS) try { localStorage.setItem(BLE_MODE_KEY, String(m)); } catch {}
       return;
     } catch (e) {
-      if (!['STALL', 'CRC', 'DATI', 'OVERFLOW'].includes(e.code)) throw e;
+      if (!['STALL', 'CRC', 'DATI', 'OVERFLOW'].includes(e.code) || link.cancelled()) throw e;
       console.warn('[ble] il modo', BLE_WRITE_MODES[m], 'non arriva all\'X3:', e.code);
     }
   }
@@ -3127,7 +3159,7 @@ async function bleGet() {
     const c = link.cancelled();
     if (!c) console.error('Importa dall\'X3:', e, `ricevuti ${link.rxBytes} B`);
     const got = link.rxBytes ? ' ' + t("Ricevuti {} KB prima dell'errore.", Math.round(link.rxBytes / 1024)) : '';
-    bleUi(c ? t('Importazione annullata.') : e.message || String(e), { error: !c, detail: c ? '' : t('Il progetto in questo browser non è cambiato.') + got });
+    bleUi(c ? t('Importazione annullata.') : bleErrText(e), { error: !c, detail: c ? '' : t('Il progetto in questo browser non è cambiato.') + got });
   });
   if (!project) return;
   const when = project.savedAt ? new Date(project.savedAt).toLocaleString(uiLang === 'it' ? 'it-IT' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : t('in data sconosciuta');
@@ -3191,7 +3223,7 @@ async function bleFirmware(file) {
     if (link.connected()) { try { await link.cmd('ABORT'); } catch {} }
     const c = link.cancelled();
     if (!c) console.error('Aggiorna firmware:', e);
-    bleUi(c ? t("Aggiornamento annullato: il firmware dell'X3 non è cambiato.") : e.message || String(e), { error: !c,
+    bleUi(c ? t("Aggiornamento annullato: il firmware dell'X3 non è cambiato.") : bleErrText(e), { error: !c,
       detail: c || e.code || !started ? '' : t("Se l'aggiornamento era cominciato, l'X3 tiene il firmware di prima.") });
   });
   if (installed) $('#bleFw').hidden = true;  // la versione detta prima non vale più
@@ -3211,7 +3243,7 @@ async function bleBattery() {
   }, (e, link) => {
     const c = link.cancelled();
     if (!c) console.error('Registro batteria:', e, `ricevuti ${link.rxBytes} B`);
-    bleUi(c ? t('Annullato.') : e.code === 'ASSENTE' ? t("Sull'X3 non c'è un registro della batteria, o il firmware è precedente alla 0.3.1.") : e.message || String(e), { error: !c });
+    bleUi(c ? t('Annullato.') : e.code === 'ASSENTE' ? t("Sull'X3 non c'è un registro della batteria, o il firmware è precedente alla 0.3.1.") : bleErrText(e), { error: !c });
   });
   if (!bytes) return;
   const d = new Date(), p2 = n => String(n).padStart(2, '0');

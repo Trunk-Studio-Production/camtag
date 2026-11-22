@@ -463,6 +463,7 @@ const I18N_EN = {
   'Sostituisce quello di questo browser: se ti serve il lavoro attuale, prima usa "Salva progetto".': 'It replaces the one in this browser: if you need your current work, use "Save project" first.',
   'Sostituisci': 'Replace',
   'Provo il collegamento…': 'Testing the connection…',
+  'Errore del browser Bluetooth: {}': 'Bluetooth browser error: {}',
   "Questo browser non riesce a mandare dati all'X3. Prova con un altro browser.": "This browser can't send data to the X3. Try another browser.",
   'Installa': 'Install',
   'Il progetto in questo browser non è cambiato.': 'The project in this browser has not changed.',
