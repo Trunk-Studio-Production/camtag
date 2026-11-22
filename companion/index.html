@@ -1768,14 +1768,34 @@ function drawLockIcon(ctx, cx, cy, rot) {
   ctx.restore();
 }
 
-// Ordine sul dispositivo: lens chart (pagine), filtri, schede manuali.
+// Tipo di una card per i tasti: X e Y cambiano tipo, A–D sfogliano le pagine del tipo.
+// È la parola dopo "NN_" nel nome del file, fino al primo "_" o "-" (NN_lens_35mm-…,
+// NN_lenschart-2, NN_notes_…); le pagine della lens chart sono del tipo delle lenti.
+// Una card con un nome diverso (fatta a mano) è un tipo a sé, salvo che la parola
+// coincida. Uguale nel firmware (navType).
+function navType(name) {
+  const us = name.indexOf('_');
+  if (us < 0) return name;
+  const rest = name.slice(us + 1), end = rest.search(/[_-]/), w = end < 0 ? rest : rest.slice(0, end);
+  return w === 'lenschart' ? 'lens' : w;
+}
+// Schede manuali nell'ordine del dispositivo (indici in state.cards): raggruppate per
+// tipo, le lenti singole per prime (dopo la lens chart), gli altri tipi nell'ordine in
+// cui compaiono nella lista; dentro un tipo resta l'ordine della lista.
+function cardOrder() {
+  const types = [...new Set(['lens', ...state.cards.map(c => c.type)])];
+  return types.flatMap(k => state.cards.map((c, i) => (c.type === k ? i : -1)).filter(i => i >= 0));
+}
+// Ordine sul dispositivo: lenti (lens chart e schede lente), filtri, elenco filtri, poi
+// le altre schede manuali per tipo (cardOrder).
 function exportPlan() {
-  const plan = [];
+  const plan = [], ord = cardOrder(), add = i => { const c = state.cards[i]; if (!c.off) plan.push({ kind: 'card', card: c, base: `${c.type}_${slug(cardTitle(c))}` }); };
   if (state.auto.lenschart && state.lenses.length)
     lensPages().forEach((_, i) => plan.push({ kind: 'lenschart', page: i, base: i ? `lenschart-${i + 1}` : 'lenschart' }));
+  ord.filter(i => state.cards[i].type === 'lens').forEach(add);
   if (state.auto.filters) plan.push({ kind: 'filters', base: 'filters' });
   if (state.auto.filterlist) plan.push({ kind: 'filterlist', base: 'filterlist' });
-  state.cards.forEach(c => { if (!c.off) plan.push({ kind: 'card', card: c, base: `${c.type}_${slug(cardTitle(c))}` }); });
+  ord.filter(i => state.cards[i].type !== 'lens').forEach(add);
   plan.forEach((p, i) => p.name = `${String(i + 1).padStart(2, '0')}_${p.base}`);
   return plan;
 }
@@ -2057,8 +2077,9 @@ function renderList() {
   item('◆', 'Lens chart', pages > 1 ? t('{} · {} pag.', plural(state.lenses.length, 'lente', 'lenti'), pages) : plural(state.lenses.length, 'lente', 'lenti'), { kind: 'lenschart' }, !state.auto.lenschart || !state.lenses.length);
   item('◆', 'Filtri', 'ND, diottrie, stadi', { kind: 'filters' }, !state.auto.filters);
   item('◆', 'Elenco filtri', 'tutti i vetri del kit', { kind: 'filterlist' }, !state.auto.filterlist);
-  let n = 0;
-  state.cards.forEach((c, i) => item(c.off ? '⏻' : String(++n).padStart(2, '0'), cardTitle(c), c.off ? t('{} · da spento', t(TYPE_LABEL[c.type])) : TYPE_LABEL[c.type], { kind: 'card', i }));
+  // Le schede nell'ordine del dispositivo (cardOrder), numerate dentro il loro tipo.
+  const seen = {};
+  cardOrder().forEach(i => { const c = state.cards[i]; item(c.off ? '⏻' : String(seen[c.type] = (seen[c.type] || 0) + 1).padStart(2, '0'), cardTitle(c), c.off ? t('{} · da spento', t(TYPE_LABEL[c.type])) : TYPE_LABEL[c.type], { kind: 'card', i }); });
   const oc = offCard();
   item('⏻', 'Spento', oc ? t('scheda «{}»', tExact(cardTitle(oc))) : [state.off.img && 'immagine', state.off.text.trim() && 'scritta', state.off.keys && 'tasti'].filter(Boolean).map(x => t(x)).join(', ') || t('solo il nome'), { kind: 'off' });
 }
@@ -2400,7 +2421,7 @@ function filtersEditor(ed, list = false) {
   const oneSlot = f.dio.filter(d => d.slots === 1).length;
   ed.append(section('flt.dio', 'Diottrie', f.dio.length ? [dioNames(false), dioNames(true) && t('split {}', dioNames(true)), oneSlot && t('{} da uno stadio', oneSlot)].filter(Boolean).join(' · ') : 'nessuna',
     dioBody, f.dio.length > 0,
-    { tip: 'Con almeno una diottria nel kit, nella schermata filtri i tasti A/B sono diottria −/+ (le pagine si cambiano sempre con X e Y). La diottria sta negli stadi del mattebox subito davanti all\'ultimo vetro.' }));
+    { tip: 'Con almeno una diottria nel kit, nella schermata filtri i tasti A/B sono diottria −/+ (le altre schermate si raggiungono sempre con X e Y). La diottria sta negli stadi del mattebox subito davanti all\'ultimo vetro.' }));
 
   // Kit: i vetri che hai nella valigetta (gli ND pieni stanno nel kit ND qui sopra).
   const kit = kitGlasses(), kitBody = [];
@@ -2512,10 +2533,18 @@ function field(c, label, key, type = 'text', opts) {
   return h('label', { class: 'fld' }, h('span', { class: 'lab' }, label), el);
 }
 
-function moveCard(d) {
-  if (sel.kind !== 'card') return; const i = sel.i, j = i + d;
-  if (j < 0 || j >= state.cards.length) return;
-  [state.cards[i], state.cards[j]] = [state.cards[j], state.cards[i]]; sel = { kind: 'card', i: j }; save(); refresh();
+// Sposta la scheda dentro il suo tipo; dal capo del tipo sposta il tipo intero (le
+// lenti singole restano sempre per prime). Restituisce false se non si può.
+function moveCard(d, dry = false) {
+  if (sel.kind !== 'card') return false;
+  const c = state.cards[sel.i], groups = [];
+  cardOrder().forEach(i => { const x = state.cards[i]; let g = groups.find(g => g.k === x.type); if (!g) groups.push(g = { k: x.type, cards: [] }); g.cards.push(x); });
+  const gi = groups.findIndex(g => g.k === c.type), g = groups[gi], j = g.cards.indexOf(c), o = groups[gi + d];
+  if (g.cards[j + d]) { if (dry) return true; [g.cards[j], g.cards[j + d]] = [g.cards[j + d], g.cards[j]]; }
+  else if (o && g.k !== 'lens' && o.k !== 'lens') { if (dry) return true; [groups[gi], groups[gi + d]] = [o, g]; }
+  else return false;
+  state.cards = groups.flatMap(g => g.cards); sel = { kind: 'card', i: state.cards.indexOf(c) }; save(); refresh();
+  return true;
 }
 function dupCard() {
   if (sel.kind !== 'card') return;
@@ -2528,8 +2557,8 @@ function delCard() {
 
 function cardEditor(ed, c, idx) {
   ed.append(editorHead(TYPE_LABEL[c.type],
-    h('button', { class: 'icon', title: 'Sposta su', 'aria-label': 'Sposta su', disabled: idx === 0, onclick: () => moveCard(-1) }, '↑'),
-    h('button', { class: 'icon', title: 'Sposta giù', 'aria-label': 'Sposta giù', disabled: idx >= state.cards.length - 1, onclick: () => moveCard(1) }, '↓'),
+    h('button', { class: 'icon', title: 'Sposta su', 'aria-label': 'Sposta su', disabled: !moveCard(-1, true), onclick: () => moveCard(-1) }, '↑'),
+    h('button', { class: 'icon', title: 'Sposta giù', 'aria-label': 'Sposta giù', disabled: !moveCard(1, true), onclick: () => moveCard(1) }, '↓'),
     h('button', { onclick: dupCard }, 'Duplica'),
     h('button', { class: 'danger', onclick: delCard }, 'Elimina')));
   ed.append(field(c, 'Formati esportati', 'formats', 'select', [['both', 'Orizzontale + verticale (rotazione automatica)'], ['land', 'Solo orizzontale'], ['port', 'Solo verticale']]));
@@ -2634,14 +2663,23 @@ function offEditor(ed) {
 function renderEditor() {
   hidePop();
   const ed = $('#editor'); ed.innerHTML = '';
-  if (sel.kind === 'lenschart') return lensEditor(ed);
-  if (sel.kind === 'filters') return filtersEditor(ed);
-  if (sel.kind === 'filterlist') return filtersEditor(ed, true);
-  if (sel.kind === 'off') return offEditor(ed);
-  const c = state.cards[sel.i];
-  if (!c) { ed.append(h('div', { class: 'empty' }, 'Seleziona una schermata')); return; }
-  cardEditor(ed, c, sel.i);
+  try {
+    if (sel.kind === 'lenschart') return lensEditor(ed);
+    if (sel.kind === 'filters') return filtersEditor(ed);
+    if (sel.kind === 'filterlist') return filtersEditor(ed, true);
+    if (sel.kind === 'off') return offEditor(ed);
+    const c = state.cards[sel.i];
+    if (!c) { ed.append(h('div', { class: 'empty' }, 'Seleziona una schermata')); return; }
+    cardEditor(ed, c, sel.i);
+  } finally { ed.querySelectorAll('textarea').forEach(growArea); }
 }
+// Le textarea crescono con il testo (crew, note, scritta da spento): tutto il testo
+// resta in vista, senza una seconda barra di scorrimento dentro la pagina.
+function growArea(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = `${ta.scrollHeight + ta.offsetHeight - ta.clientHeight}px`;
+}
+document.addEventListener('input', e => { if (e.target.matches?.('#editor textarea')) growArea(e.target); });
 
 function downscale(url, max = 1000) {
   return new Promise((res, rej) => {
@@ -2758,13 +2796,44 @@ function fitStage() {
 // spazio all'editor; di partenza è aperta.
 function showPreview(on) {
   ui.prevHidden = !on; saveUi();
+  autoHid = false;
+  paintPreview();
+}
+function paintPreview() {
+  const on = !ui.prevHidden && !autoHid;
   $('.work').classList.toggle('nopreview', !on);
   const b = $('#prevTog');
   b.textContent = on ? t('▴ Anteprima') : t('▾ Anteprima');
   b.setAttribute('aria-expanded', String(on));
   fitStage();
 }
-$('#prevTog').onclick = () => showPreview(!!ui.prevHidden);
+// Con "▾ Anteprima" mentre si è tolta da sola, torna senza spostare l'editor.
+$('#prevTog').onclick = () => autoHid ? setAutoHid(false) : showPreview(!!ui.prevHidden);
+// Sul telefono, con l'anteprima aperta, scorrendo l'editor verso il basso (almeno
+// AUTO_HIDE_PX di fila) l'anteprima si toglie di mezzo da sola (autoHid, non
+// salvato); torna quando si risale fino all'inizio dell'editor o con "▾ Anteprima".
+// Risalire a metà non la riapre: nelle liste si scorre su e giù. In entrambi i casi
+// la pagina scorre di quanto cambia la parte fissa, così l'editor sotto il dito
+// non salta (per questo serve overflow-anchor: none, che farebbe lo stesso due volte).
+const AUTO_HIDE_PX = 60;
+let autoHid = false, lastY = scrollY, downRun = 0;
+function setAutoHid(on) {
+  if (on === autoHid) return;
+  const work = $('.work'), h0 = work.offsetHeight;
+  autoHid = on; paintPreview();
+  const d = work.offsetHeight - h0;
+  if (d) { scrollTo(0, Math.max(0, scrollY + d)); }
+  lastY = scrollY; downRun = 0;
+}
+addEventListener('scroll', () => {
+  const y = scrollY, dy = y - lastY; lastY = y;
+  if (innerWidth >= 700 || innerHeight < 500 || ui.prevHidden || $('#stage').classList.contains('full')) return;
+  downRun = dy > 0 ? downRun + dy : 0;
+  if (!autoHid) {
+    // Solo quando l'anteprima è già tutta scorsa via: nascondendola la pagina risale di altrettanto.
+    if (downRun >= AUTO_HIDE_PX && y > $('#stage').offsetHeight + AUTO_HIDE_PX) setAutoHid(true);
+  } else if (y <= 8) setAutoHid(false);
+}, { passive: true });
 function setFull(on) {
   $('#stage').classList.toggle('full', on); fitStage();
   if (on) $('#fullClose').focus({ preventScroll: true });
@@ -2784,7 +2853,7 @@ new ResizeObserver(fitStage).observe($('.pbar'));  // i comandi vanno a capo: ca
 const PROJECT_FILE = 'project.json';  // in /camtag, accanto alle card
 // Firmware che questo configuratore web si aspetta sull'X3: lo stesso di CAMTAG_FW_VERSION
 // in device/src/Version.h. L'X3 lo dice nella risposta a HELLO (docs/bluetooth.md).
-const FW_VERSION = '0.4.2';
+const FW_VERSION = '0.5.0';
 // Commit da cui è pubblicata la pagina: il workflow Pages lo scrive qui e in
 // build.txt. In locale resta il segnaposto.
 const BUILD = '__BUILD__';
@@ -3301,7 +3370,7 @@ function simContentRot() { return sim.locked ? sim.lockRot : sim.rot; }
 //   A|B = diottria e C|D = ND, scambiati quando il dispositivo è ruotato di 90°
 //   in senso orario (A|B finisce in alto, accanto all'ND).
 // - "+" sta sempre sul capo che vedi in alto o a destra (90° e 180°: il primo tasto).
-// Fuori dai filtri i bilancieri non fanno nulla, tranne sulla lens chart (lensPageDir).
+// Fuori dai filtri i bilancieri sfogliano le pagine dello stesso tipo (lensPageDir).
 // Restituisce { role: 'nd' | 'dio' | null, dir: +1 | -1 }.
 function rockerAction(k, isFilters, rot) {
   if (!'ABCD'.includes(k)) return { role: null, dir: 0 };
@@ -3317,7 +3386,7 @@ function rockerAction(k, isFilters, rot) {
   if (role === 'nd' && !f.nd.length) role = null;
   return { role, dir };
 }
-// Lens chart con più pagine: A–D sfogliano solo le sue pagine, in ciclo. I due tasti
+// Tipo con più pagine (navType; es. la lens chart): A–D sfogliano le sue pagine, in ciclo. I due tasti
 // di un bilanciere fanno la stessa cosa: avanza il bilanciere che chi guarda vede a
 // destra o in basso, arretra quello a sinistra o in alto. A|B sta a sinistra a 0°,
 // in alto a 90°, a destra a 180°, in basso a 270°. Restituisce +1 o -1.
@@ -3410,7 +3479,10 @@ function simPress(k, long) {
     return renderSim();
   }
   const act = rockerAction(k, isFilters, simContentRot());
-  const step = d => { sim.i = (sim.i + d + plan.length) % plan.length; };
+  // X e Y: prima pagina del tipo precedente o successivo, in ciclo (navType).
+  const types = [...new Set(plan.map(p => navType(p.name)))], type = navType(cur.name);
+  const step = d => { const k2 = types[(types.indexOf(type) + d + types.length) % types.length]; sim.i = plan.findIndex(p => navType(p.name) === k2); };
+  const pages = plan.map((p, i) => (navType(p.name) === type ? i : -1)).filter(i => i >= 0);
   sim.msg = '';
   if (k === 'Y' && long) {
     sim.locked = !sim.locked; sim.lockRot = sim.rot;
@@ -3422,13 +3494,13 @@ function simPress(k, long) {
     else sim.nd = Math.max(0, Math.min(ndSteps().length - 1, sim.nd + act.dir));
     clearTimeout(simSettleTimer);
     simSettleTimer = setTimeout(() => { sim.msg = ''; simSettle(); renderSim(); }, SETTLE_S * 1000);
-  } else if (cur.kind === 'lenschart' && 'ABCD'.includes(k)) {
-    const lens = plan.map((p, i) => (p.kind === 'lenschart' ? i : -1)).filter(i => i >= 0);
-    if (lens.length < 2) sim.msg = t('La lens chart ha una sola pagina: A–D non fanno nulla. Le schermate si cambiano con X e Y.');
-    else sim.i = lens[(lens.indexOf(sim.i) + lensPageDir(k, simContentRot()) + lens.length) % lens.length];
-  } else if (k === 'Y') step(1);       // Y (lato destro) = pagina successiva, in ciclo
-  else if (k === 'X') step(-1);        // X (lato sinistro) = pagina precedente
-  else sim.msg = t('Nessuna funzione per questo tasto qui: le pagine si cambiano con X e Y.');
+  } else if ('ABCD'.includes(k)) {
+    // A–D sfogliano le pagine del tipo, in ciclo (lensPageDir); sui filtri no.
+    if (isFilters) sim.msg = t('Nessuna funzione per questo tasto qui: i tipi di pagina si cambiano con X e Y.');
+    else if (pages.length < 2) sim.msg = t('Una sola pagina di questo tipo: A–D non fanno nulla. I tipi di pagina si cambiano con X e Y.');
+    else sim.i = pages[(pages.indexOf(sim.i) + lensPageDir(k, simContentRot()) + pages.length) % pages.length];
+  } else if (k === 'Y') step(1);       // Y (lato destro) = tipo successivo, in ciclo
+  else if (k === 'X') step(-1);        // X (lato sinistro) = tipo precedente
   renderSim();
 }
 

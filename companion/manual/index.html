@@ -186,7 +186,7 @@
   <main>
     <div class="hero">
       <div>
-        <div class="eyebrow">User manual · firmware 0.4.2</div>
+        <div class="eyebrow">User manual · firmware 0.5.0</div>
         <h1>CamTag <em>on the camera</em></h1>
         <p class="lede">The e-paper badge for the camera department: lens chart, filters, crew and notes always in view, even when it's off. Here you'll find how to prepare the cards, the buttons, when to press them and what you'll see on the screen.</p>
         <div class="meta">
@@ -194,7 +194,7 @@
           <span class="chip">8 buttons, no touch</span>
           <span class="chip">The screen stays on even when off</span>
         </div>
-        <div class="note"><b class="t">New in 0.4.0</b><p>The X3 firmware updates via Bluetooth from the web configurator, with no cable and no computer (<a href="#firmware">Updating the firmware</a>).</p></div>
+        <div class="note"><b class="t">New in 0.5.0</b><p>X and Y change the kind of screen (lenses, filters, notes…) and A–D page through it: from the lens chart to the filters is one press (<a href="#browsing">Browsing the screens</a>).</p></div>
       </div>
       <figure class="fig" data-dev='{"screen":"lens-port","k":0.95}'></figure>
     </div>
@@ -205,14 +205,14 @@
         <p class="intro">Everything you need on set, on one page. The details are in the sections that follow.</p></header>
       <div class="cards">
         <div class="card"><h3><kbd>X</kbd><kbd>Y</kbd> Sides</h3>
-          <dl><dt>X</dt><dd>previous screen</dd><dt>Y</dt><dd>next screen</dd>
+          <dl><dt>X</dt><dd>previous kind of screen</dd><dt>Y</dt><dd>next kind</dd>
               <dt>X <span class="hold">hold</span></dt><dd>receive cards via Bluetooth</dd>
               <dt>Y <span class="hold">hold</span></dt><dd>lock / unlock rotation</dd></dl></div>
         <div class="card"><h3><kbd>PWR</kbd> Power</h3>
           <dl><dt>press</dt><dd>lock / unlock the buttons</dd>
               <dt><span class="hold">hold 1 s</span></dt><dd>turns off and on</dd></dl></div>
         <div class="card"><h3><kbd>A|B</kbd><kbd>C|D</kbd> Bottom</h3>
-          <dl><dt>lens chart</dt><dd>A|B page back, C|D page forward</dd>
+          <dl><dt>lenses, notes…</dt><dd>A|B page back, C|D page forward</dd>
               <dt>filters</dt><dd>A|B diopter, C|D ND</dd>
               <dt>A or B <span class="hold">hold</span></dt><dd>edit the matte box stages</dd></dl></div>
         <div class="card"><h3><kbd>RESET</kbd> Restart</h3>
@@ -233,8 +233,8 @@
           <ul>
             <li><strong>Power</strong>, top right: locks the buttons, and a hold turns it off and on.</li>
             <li><strong>Reset</strong>, top left: restarts.</li>
-            <li><strong>X</strong> on the left side and <strong>Y</strong> on the right: change screen.</li>
-            <li><strong>Two rockers</strong> at the bottom, <kbd>A</kbd>|<kbd>B</kbd> on the left and <kbd>C</kbd>|<kbd>D</kbd> on the right: they work on the screen in front of you (lens chart pages, ND and diopter).</li>
+            <li><strong>X</strong> on the left side and <strong>Y</strong> on the right: change the kind of screen (lenses, filters, notes…).</li>
+            <li><strong>Two rockers</strong> at the bottom, <kbd>A</kbd>|<kbd>B</kbd> on the left and <kbd>C</kbd>|<kbd>D</kbd> on the right: they work on the screen in front of you (pages of the same kind, ND and diopter).</li>
           </ul>
           <p>You press a rocker one end at a time: <kbd>A</kbd> is the left end of the first one, <kbd>B</kbd> the right end.</p>
         </div>
@@ -255,10 +255,10 @@
       <div class="table"><table>
         <thead><tr><th>Button</th><th>Press</th><th>Hold</th></tr></thead>
         <tbody>
-          <tr><td><kbd>X</kbd></td><td>Previous screen</td><td>Receive via Bluetooth</td></tr>
-          <tr><td><kbd>Y</kbd></td><td>Next screen</td><td>Lock / unlock rotation</td></tr>
-          <tr><td><kbd>A</kbd> <kbd>B</kbd></td><td>Lens chart: page back. Filters: diopter − / +</td><td>Filters: edit the stages</td></tr>
-          <tr><td><kbd>C</kbd> <kbd>D</kbd></td><td>Lens chart: page forward. Filters: ND − / +</td><td>—</td></tr>
+          <tr><td><kbd>X</kbd></td><td>Previous kind of screen</td><td>Receive via Bluetooth</td></tr>
+          <tr><td><kbd>Y</kbd></td><td>Next kind of screen</td><td>Lock / unlock rotation</td></tr>
+          <tr><td><kbd>A</kbd> <kbd>B</kbd></td><td>Page back within the same kind. Filters: diopter − / +</td><td>Filters: edit the stages</td></tr>
+          <tr><td><kbd>C</kbd> <kbd>D</kbd></td><td>Page forward within the same kind. Filters: ND − / +</td><td>—</td></tr>
           <tr><td><kbd>PWR</kbd></td><td>Lock / unlock the buttons</td><td>Turn off / on (1 s)</td></tr>
           <tr><td><kbd>RESET</kbd></td><td>Restart</td><td>—</td></tr>
         </tbody>
@@ -301,25 +301,25 @@
     <!-- 4 -->
     <section class="s" id="browsing" data-title="Browsing the screens">
       <header><div class="num">04</div><h2>Browsing the screens</h2>
-        <p class="intro">The screens follow the order in the web configurator: the lens chart, the filters, then the cards (crew, notes, lenses, images).</p></header>
+        <p class="intro">The screens are grouped by kind: the lenses (the lens chart pages and the lens cards), the filters, the filter list, then notes, crew and images, in the order of the web configurator.</p></header>
       <div class="row">
-        <figure class="fig" data-dev='{"screen":"crew-port","k":0.85,"hi":[{"keys":"X","text":"previous"},{"keys":"Y","text":"next"}]}'></figure>
+        <figure class="fig" data-dev='{"screen":"crew-port","k":0.85,"hi":[{"keys":"X","text":"previous kind"},{"keys":"Y","text":"next kind"}]}'></figure>
         <div>
-          <p><kbd>X</kbd> goes back to the previous screen, <kbd>Y</kbd> goes to the next one. It loops: after the last one it starts again from the first.</p>
+          <p><kbd>Y</kbd> moves to the next kind, <kbd>X</kbd> goes back to the previous one, always landing on the first page of that kind: from the lens chart to the filters is one press, even with many lens pages. It loops: after the last kind it starts again from the first.</p>
           <p>X and Y work the same way on every screen, including the lens chart and the filters.</p>
         </div>
       </div>
-      <h3>Multi-page lens chart</h3>
+      <h3>Several pages of the same kind</h3>
       <div class="row flip">
         <figure class="fig" data-dev='{"screen":"lens-port","k":0.85,"hi":[{"keys":"AB","text":"‹ back"},{"keys":"CD","text":"forward ›"}]}'></figure>
         <div>
-          <p>A lens chart with many lenses is split into pages. On the lens chart the rockers page through <strong>its pages only</strong>, in a loop, and each one acts as a single button: press either end, it's the same.</p>
+          <p>A lens chart with many lenses is split into pages, and several notes or crew cards make a single kind. The rockers page through <strong>only the pages of the kind</strong> in front of you, in a loop, and each one acts as a single button: press either end, it's the same. Lens cards sit with the lenses, after the lens chart pages.</p>
           <ul>
             <li><kbd>A</kbd>|<kbd>B</kbd>, on the left: <strong>page back</strong>;</li>
             <li><kbd>C</kbd>|<kbd>D</kbd>, on the right: <strong>page forward</strong>.</li>
           </ul>
           <p>With the X3 rotated, what counts is what you see: the rocker on the right or at the bottom goes forward, the one on the left or at the top goes back.</p>
-          <p>With a single page, A–D do nothing.</p>
+          <p>With a single page, A–D do nothing. On the filters they change diopter and ND: the filter list is a kind of its own, right after.</p>
         </div>
       </div>
     </section>
@@ -417,7 +417,7 @@
       <h3>How it's laid out</h3>
       <ul class="parts">
         <li>At the top, the <strong>preview</strong>: the screen as it will look on the X3. ⟳ turns it between landscape and portrait, ⤢ opens it full screen. On a phone it closes and reopens with <strong>Preview</strong>, the first button of the strip.</li>
-        <li>Below it, the <strong>strip of screens</strong>: Lens chart, Filters, Filter list, the cards you add and Off. The order is the one you'll see on the X3 with <kbd>X</kbd> and <kbd>Y</kbd>; struck-through screens aren't sent (turn them on with <strong>Include</strong>).</li>
+        <li>Below it, the <strong>strip of screens</strong>: Lens chart, Filters, Filter list, the cards you add and Off. The order is the X3's, where screens are grouped by kind: <kbd>X</kbd> and <kbd>Y</kbd> move from one kind to the next, A–D page through it; struck-through screens aren't sent (turn them on with <strong>Include</strong>).</li>
         <li>Further down, the <strong>editor</strong> of the chosen screen.</li>
         <li>On a computer, next to Preview, there's the <strong>Simulator</strong>: try the buttons and the rotation as on the X3, before sending the cards.</li>
       </ul>
@@ -535,7 +535,7 @@
         <tbody>
           <tr><td>The buttons do nothing</td><td>Is the padlock there? Press power. If it shows the off screen, turn it on by holding power (1 s).</td></tr>
           <tr><td>The screen doesn't rotate</td><td>Rotation is locked: unlock it by holding Y.</td></tr>
-          <tr><td>A–D do nothing</td><td>That's normal outside the lens chart and the filters, and on a single-page lens chart.</td></tr>
+          <tr><td>A–D do nothing</td><td>That's normal when the kind has a single page (on the filters they change diopter and ND, if the kit has them).</td></tr>
           <tr><td>The phone can't find the X3</td><td>Put the X3 in receive mode (hold X) before tapping "Send cards", and use a browser with Bluetooth.</td></tr>
           <tr><td>The firmware update doesn't start</td><td>The X3 has to be in receive mode and the battery above 30% (or charging). Confirm on the X3 with A, B, C or D within a minute.</td></tr>
           <tr><td>It asks for the language when turned on</td><td>It does until you choose one: <kbd>A</kbd> or <kbd>B</kbd> for English, <kbd>C</kbd> or <kbd>D</kbd> for Italian.</td></tr>

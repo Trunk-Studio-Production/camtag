@@ -209,6 +209,13 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
 - `/camtag/NN_nome.bmp` orizzontale 792×528, `/camtag/NN_nome.p.bmp` verticale
   528×792. BMP 1 bit non compresso, palette 0 = nero, 1 = bianco. Ordine = nome.
 - Nomi riservati: `NN_lenschart[-2…]` (pagine da 11 lenti al massimo) e `NN_filters`.
+- Tipo della card (`navType`, uguale nel firmware): la parola dopo `NN_` fino al
+  primo `_` o `-`; `lenschart` vale `lens`. Le schede manuali si chiamano
+  `NN_<tipo>_<titolo>` (`lens`, `notes`, `crew`, `patch`); un nome fatto a mano
+  è un tipo a sé, salvo che la parola coincida. L'esportazione (`exportPlan`,
+  `cardOrder`) mette i tipi di fila: lenti (lens chart, poi schede lente),
+  `filters`, `filterlist`, poi gli altri nell'ordine della lista; ↑↓ spostano
+  la scheda nel suo tipo e, dal capo, il tipo intero.
 - `NN_filterlist` (facoltativa, `state.auto.filterlist`, spenta di partenza):
   elenco di tutti i vetri a disposizione (ND del kit, diottrie intere e split,
   famiglie con le gradazioni; le coppie di ND no), generato da `filterListRows`.
@@ -377,12 +384,12 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   (`drawLock`), come le indicazioni dei tasti: segue la rotazione del
   dispositivo, dritto per chi legge. A riposo da bloccato il chip dorme un
   secondo alla volta. Spegnendo il blocco si toglie.
-- Tasti: X (precedente) e Y (successiva) cambiano pagina in ciclo su tutte.
-  Schermata filtri A/B = diottria −/+, C/D = ND −/+. Lens chart di più pagine:
-  A–D sfogliano solo le sue pagine, in ciclo; i due tasti di un bilanciere fanno
-  lo stesso, avanza quello a destra o in basso per chi guarda, arretra quello a
-  sinistra o in alto (`lensPageDir`, `stepLensChart`). Altrove i bilancieri non
-  fanno nulla. Y tenuto =
+- Tasti (dalla 0.5.0): X (precedente) e Y (successivo) cambiano **tipo** in
+  ciclo, sempre alla prima pagina del tipo (`stepType`). Schermata filtri A/B =
+  diottria −/+, C/D = ND −/+. Altrove A–D sfogliano solo le pagine del tipo, in
+  ciclo; i due tasti di un bilanciere fanno lo stesso, avanza quello a destra o
+  in basso per chi guarda, arretra quello a sinistra o in alto (`lensPageDir`,
+  `stepPage`). Con una pagina sola non fanno nulla. Y tenuto =
   blocco rotazione. X tenuto = ricezione via Bluetooth (X o Y escono). La
   pressione breve si legge al rilascio; quella lunga (0,8 s, anche A o B per la
   modifica) scatta allo scadere del tempo con il tasto ancora giù, e il
