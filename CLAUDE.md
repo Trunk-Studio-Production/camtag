@@ -287,6 +287,10 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   disegna le scritte del firmware nella lingua dell'X3, o in quella delle card
   con "Non cambiare".
 - Decimali sulle schermate: sempre il punto (0.9), senza opzione.
+- Primo avvio del configuratore web (nessun progetto nel localStorage): kit di
+  esempio, Cooke S4/i 18/25/32/50/75 e Angénieux Optimo 28-76 e 45-120 in PL
+  (`STARTER_LENSES`, aggiunte quando arriva il database), ND del kit e Black
+  Pro-Mist completo (`freshState`), nel mattebox ND 0.3 e Black Pro-Mist 1/8.
 - Lens chart: focale, T, CF (close focus), Ø frontale (più piccolo, dato secondario, si può
   nascondere: `state.lensFront`). Attacco (`state.lensMount`, spento di
   partenza): come le sigle, quello principale in basso (solo la sigla, "LPL", subito dopo la prima serie che lo usa), gli
