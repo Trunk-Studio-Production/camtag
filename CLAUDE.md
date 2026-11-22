@@ -416,9 +416,10 @@ la posizione naturale è `Canvas::ROT_270`).
   dei tasti, spento e riaccensione con il power tenuto (prima e dopo il
   bianco), passaggio al bianco, registro. Il gauge ha già 642 mAh; la batteria
   si carica fino a circa 4,35 V e la ricarica si ferma da sola a piena.
-  Misurati (21/11/2026, 12 h a batteria): 25 mA da sveglio, 2,26 mA a riposo
-  (11,8 giorni). Mancano riposo con i tasti bloccati e i primi tre giorni da
-  spento. Le domande aperte
+  Misurati (21-22/11/2026, 39 h di registro): 25 mA da sveglio, 2,1 mA a
+  riposo (12,6 giorni), 1,8 mA a riposo con i tasti bloccati (14,9 giorni),
+  circa 10 mA con un uso vero; nessun riavvio da solo né risveglio inutile.
+  Manca solo lo spento nei primi tre giorni. Le domande aperte
   sono in fondo a `docs/batteria.md`.
 - Schermata filtri: provata sull'X3 (bilancieri, indicazioni, riordino,
   modifica, ombra tolta dal mezzo refresh, blocco che ferma tutto).

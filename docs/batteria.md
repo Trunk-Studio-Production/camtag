@@ -4,8 +4,9 @@ Come l'X3 gestisce l'energia e come si misura quanto consuma. I tempi sono
 costanti in cima a `device/src/main.cpp`; il simulatore del configuratore web
 segue lo stesso comportamento (`simPress`, `drawOffOverlay`).
 
-Il comportamento è provato sull'X3 (20/11/2026). I consumi invece sono ancora
-**stime e prime letture**, finché il registro non dà numeri misurati su più ore.
+Il comportamento è provato sull'X3 (20/11/2026). I consumi sono misurati dal
+registro su 39 h (21-22/11/2026): 25 mA da sveglio, 2,1 mA a riposo (1,8 mA
+con i tasti bloccati), circa 10 mA con un uso vero (vedi in fondo). Manca solo lo spento.
 
 ## Gli stati
 
@@ -49,7 +50,8 @@ una pressione più corta di così può sfuggire.
 - Bloccando si chiude la modifica degli stadi e si applica il riordino in
   sospeso. Non si blocca durante la ricezione Bluetooth.
 - A riposo, con i tasti bloccati, il chip non ha tasti da guardare: dorme un
-  secondo alla volta (il power lo sveglia da solo), quindi consuma meno.
+  secondo alla volta (il power lo sveglia da solo), quindi consuma meno:
+  1,80 mA invece di 2,1 (misurato su una notte, vedi in fondo).
 - Il blocco è salvato (`keylock` in NVS) e sopravvive a un riavvio; spegnendo
   si toglie.
 
@@ -149,19 +151,36 @@ tensione, come controllo.
   l'orologio riparte da zero. Quindi con la batteria staccata l'X3 non
   consuma, ma nessun timer può svegliarlo (da qui i due tempi dello spento), e
   GPIO13 non si può usare per spegnere la microSD a riposo.
-- **Consumo nei tre giorni prima del bianco**: mai misurato. Con il chip
+- **Consumo nei tre giorni prima del bianco**: mai misurato (22 min nel
+  registro del 21/11, troppo pochi per il gauge a passi di 1 mAh). Con il chip
   alimentato l'orologio continua, quindi il registro lo dà (riga `S`, poi `A`
-  con riavvio 8). Se è troppo, si accorcia `OFF_BLANK_S`.
-- **Consumo a riposo: misurato** (notte del 20-21/11/2026, registro letto via
-  Bluetooth): 2,26 mA di media su 11,9 h (27 mAh), 11,8 giorni con la batteria
-  piena; da sveglio 25 mA. Basta così: non si ottimizza a scapito d'altro
+  con riavvio 8, confermato: gli spegnimenti col firmware attuale non fanno più
+  ripartire l'orologio). Se è troppo, si accorcia `OFF_BLANK_S`.
+- **Consumi: misurati** (registro del 20-22/11/2026 letto via Bluetooth, 39 h,
+  tratti in carica esclusi):
+
+  | Stato | Tempo | mAh | Media | Con 642 mAh |
+  |---|---|---|---|---|
+  | sveglio | 14 min | 6 | 25 mA | 25,7 h |
+  | riposo | 21,7 h | 46 | 2,12 mA | 12,6 giorni |
+  | riposo, tasti bloccati | 12,25 h | 22 | 1,80 mA | 14,9 giorni |
+  | misto (uso vero) | 2,5 h | 24 | 9,5 mA | 67,4 h |
+
+  Il riposo è stabile nei tratti lunghi (notte 2,23 mA su 10,3 h, mattina
+  1,9 mA su 3,75 h, pomeriggio 2,24 mA su 6,25 h con qualche tasto) e conferma
+  la prima notte (2,26 mA su 11,9 h). Con i tasti bloccati (notte del
+  21-22/11, nessun risveglio) il chip dorme un secondo alla volta invece di
+  guardare i tasti ogni 25 ms: circa 0,4 mA in meno, il resto (microSD, IMU,
+  gauge, pannello) non cambia. Basta così: non si ottimizza a scapito d'altro
   (prontezza dei tasti, microSD), si continua solo a guardare il registro.
-- **Ricarica**: si ferma da sola a batteria piena (da +70 mA a zero, a circa
-  4,35 V). Da collegato l'X3 continua a prendere corrente dalla batteria, e la
+- **Ricarica**: si ferma da sola a batteria piena (da +70/+110 mA a zero, a circa
+  4,35 V; il gauge torna a 642 mAh). Da collegato l'X3 continua a prendere corrente dalla batteria, e la
   ricarica riparte ricollegando il cavo; se riparta anche da sola quando la
   tensione scende non si è ancora visto.
-- **Risvegli inutili dal riposo**: nessuno nella notte di prova (`sveglio_s`
-  fermo per 10 h); si vedono da `sveglio_s` che cresce senza tasti.
+- **Risvegli inutili dal riposo**: nessuno nelle 39 h del 21-22/11 (`sveglio_s`
+  cresce solo insieme ai tasti); si vedono da `sveglio_s` che cresce senza tasti.
 - **Pin nel sonno leggero**: il framework isola i pin; le uscite che devono
   restare ferme sono escluse in `keepOutputsInRest`. Riavvii inattesi a riposo
-  comparirebbero come righe `A` senza una `S` prima.
+  comparirebbero come righe `A` senza una `S` prima. Nel registro del 21-22/11
+  nessuno: tutte le 46 righe `A` sono USB, power o i riavvii dopo gli
+  aggiornamenti del firmware via Bluetooth (motivo 3, anche a batteria).

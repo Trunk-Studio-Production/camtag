@@ -381,27 +381,29 @@ orientation and the card on screen, and waits for the X3 if it turns off:
 - [x] Always listening when on (rest in light sleep), buttons locked with a
       short power press, off and back on with power held, off screen and
       switch to white
-- [ ] Consumption measured with `taratura.py batteria`: at rest, at rest with
-      buttons locked, during the first three days off (first readings: about
-      25 mA awake, 2 mA at rest)
+- [x] Consumption measured with `taratura.py batteria` (39 h of log,
+      20–22/11/2026): 25 mA awake, 2.1 mA at rest (12.6 days), 1.8 mA at rest
+      with buttons locked (14.9 days), about 10 mA in real use (about 2.5
+      days); no spontaneous restarts or useless wake-ups. Details in
+      [`docs/batteria.md`](docs/batteria.md)
+- [x] Charging stops by itself when full (about 4.35 V); the fuel gauge
+      already has the right capacity (642 mAh)
+- [ ] Consumption during the first three days off, before the screen goes
+      white
 - [x] Bluetooth receive from Brave on the Mac: creates `/camtag` even the
       first time and shows how many files it received; "Import from X3"
       brings the project back into the browser and leaves the cards as they are
+- [x] Receive speed from the Mac: 98 files, 1.1 MB in about 40 s (was 100 s)
+      by requesting the 15 ms interval right after the MTU exchange;
+      Bluetooth mouse and keyboard in use on the Mac slow it down
+- [x] Firmware update over Bluetooth: 864 KB in 26 s; the new firmware boots
+      on trial and confirms itself, otherwise the bootloader rolls back
+- [x] Battery log downloaded over Bluetooth ("Battery log" button)
+- [ ] Bluetooth from Android (Chrome) and iPhone (BLE Link)
 - [x] Real cards in portrait and landscape, X/Y in a loop, automatic rotation
       and lock (Y held)
 - [x] Rockers on a multi-page lens chart in all 4 orientations (like
       `lensPageDir` in the simulator)
-- [x] Receive speed from the Mac: 98 files, 1.1 MB in about 40 s (was 100 s)
-      by requesting the 15 ms interval right after the MTU exchange;
-      Bluetooth mouse and keyboard in use on the Mac slow it down
-- [x] Panel powered off after every update: even with the X3 awake for a long
-      time, the previous screen doesn't resurface
-- [ ] Rotation thresholds (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) on a real camera
-- [ ] Ghosting: how often a full refresh is needed (now every 6 changes)
-- [ ] Consumption when off
-- [ ] Battery reading (BQ27220 fuel gauge): the icon appears below 20%
-- [ ] Bluetooth receive from Android (Chrome) and iPhone (BLE Link),
-      consumption with Bluetooth on
 - [x] Filters screen (`taratura.py filtri`): reads the web configurator's cards as they
       are; ND and diopter with the rockers and button hints in all 4
       orientations, stage reordering after 2 s, stage editing (entering,
@@ -413,22 +415,31 @@ orientation and the card on screen, and waits for the X3 if it turns off:
 - [x] No lost button presses: before, they were all dropped during a screen
       update (`taratura.py reattivita`); now a task reads them even then and
       queues them, and they run as soon as the screen is done
+- [x] Negative image of earlier screens on a static screen: solved by putting
+      the display controller to deep sleep after updates, confirmed after
+      hours of use ([`docs/schermo.md`](docs/schermo.md))
+- [ ] Rotation thresholds (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) on a real camera
+- [ ] Ghosting: how often a full refresh is needed (now every 6 changes)
+- [ ] Battery icon on the cards below 20% and while charging
 
 ### Next steps
 
-1. **Measured consumption** with the log on the microSD (`docs/batteria.md`),
-   and from there the choices still open: how much the powered microSD costs
-   at rest, timings for rest, for going white when off (`OFF_BLANK_S`) and for
-   turning off when forgotten. A build configuration without `CAMTAG_DEBUG`
-   is also needed: today `x3` always has it on.
-2. **Screen care** (`docs/schermo.md`): confirm with hours of use that the
-   negative image on a static screen doesn't come back, understand the
-   spontaneous restart after rest and the rest that kicks in with USB, tune
-   how often a full refresh is needed (`FULL_REFRESH_EVERY`). Heat above about
-   50 °C and direct sunlight for months damage the panel: the mount matters.
-3. **Filter catalog** (`data/filters.json`) verified against the
+1. **Simpler first install**: today it needs a clone of the repository and
+   PlatformIO from the command line, which is too much for most camera
+   assistants. The three safety checks must stay.
+2. **Feedback from the beta testers** on set, and the rotation thresholds on a
+   real camera.
+3. **Consumption when off** during the first three days, and from there the
+   time before going white (`OFF_BLANK_S`). A build configuration without
+   `CAMTAG_DEBUG` is also needed: today `x3` always has it on.
+4. **Screen** (`docs/schermo.md`): the rest that kicks in with USB connected,
+   and how often a full refresh is needed (`FULL_REFRESH_EVERY`). The
+   spontaneous restart after rest, seen once, didn't happen again in 39 h of
+   log. Heat above about 50 °C and direct sunlight for months damage the
+   panel: the mount matters.
+5. **Filter catalog** (`data/filters.json`) verified against the
    manufacturers' data sheets: today it is provisional.
-4. **3D-printed mount** for attaching it to the camera.
+6. **3D-printed mount** for attaching it to the camera.
 
 ## License
 

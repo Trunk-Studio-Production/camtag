@@ -379,27 +379,28 @@ schermo, e aspetta l'X3 se si spegne:
 - [x] Acceso sempre in ascolto (riposo in sonno leggero), tasti bloccati con
       il power breve, spento e riaccensione con il power tenuto, schermata di
       spento e passaggio al bianco
-- [ ] Consumi misurati con `taratura.py batteria`: a riposo, a riposo con i
-      tasti bloccati, nei primi tre giorni da spento (prime letture: circa
-      25 mA da sveglio, 2 mA a riposo)
+- [x] Consumi misurati con `taratura.py batteria` (39 h di registro,
+      20-22/11/2026): 25 mA da sveglio, 2,1 mA a riposo (12,6 giorni), 1,8 mA
+      a riposo con i tasti bloccati (14,9 giorni), circa 10 mA con un uso vero
+      (circa due giorni e mezzo); nessun riavvio da solo né risveglio inutile.
+      Dettagli in [`docs/batteria.md`](docs/batteria.md)
+- [x] La ricarica si ferma da sola a batteria piena (circa 4,35 V); il fuel
+      gauge ha già la capacità giusta (642 mAh)
+- [ ] Consumo nei primi tre giorni da spento, prima del bianco
 - [x] Ricezione via Bluetooth da Brave sul Mac: crea `/camtag` anche la prima
       volta e mostra quanti file ha ricevuto; "Importa dall'X3" riporta il
       progetto nel browser e lascia le card come sono
+- [x] Velocità di ricezione dal Mac: 98 file, 1,1 MB in circa 40 s (erano
+      100 s) chiedendo l'intervallo da 15 ms subito dopo lo scambio dell'MTU;
+      mouse e tastiera Bluetooth in uso sul Mac rallentano
+- [x] Aggiornamento del firmware via Bluetooth: 864 KB in 26 s; il nuovo parte
+      in prova e si conferma da sé, altrimenti il bootloader torna al vecchio
+- [x] Registro della batteria scaricato via Bluetooth (pulsante "Registro batteria")
+- [ ] Bluetooth da Android (Chrome) e iPhone (BLE Link)
 - [x] Card vere in verticale e in orizzontale, X/Y in ciclo, rotazione
       automatica e blocco (Y tenuto)
 - [x] Bilancieri sulla lens chart di più pagine nei 4 versi (come
       `lensPageDir` nel simulatore)
-- [x] Velocità di ricezione dal Mac: 98 file, 1,1 MB in circa 40 s (erano
-      100 s) chiedendo l'intervallo da 15 ms subito dopo lo scambio dell'MTU;
-      mouse e tastiera Bluetooth in uso sul Mac rallentano
-- [x] Pannello spento dopo ogni aggiornamento: anche con l'X3 sveglio a lungo
-      non riaffiora la schermata precedente
-- [ ] Soglie della rotazione (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) su camera vera
-- [ ] Ghosting: ogni quanto serve un refresh completo (ora ogni 6 cambi)
-- [ ] Consumo da spento
-- [ ] Lettura batteria (fuel gauge BQ27220): l'icona appare sotto il 20%
-- [ ] Ricezione via Bluetooth da Android (Chrome) e iPhone (BLE Link), consumo
-      con il Bluetooth acceso
 - [x] Schermata filtri (`taratura.py filtri`): legge le card del configuratore web
       così come sono; ND e diottria con i bilancieri e indicazioni dei tasti nei
       4 versi, riordino degli stadi dopo 2 s, modifica degli stadi (entrata,
@@ -410,23 +411,31 @@ schermo, e aspetta l'X3 se si spegne:
 - [x] Nessun tasto perso: prima cadevano tutti durante un aggiornamento dello
       schermo (`taratura.py reattivita`); ora un compito li legge anche lì e li
       mette in coda, e si eseguono appena lo schermo ha finito
+- [x] Negativo delle schermate precedenti a schermo fermo: risolto mandando il
+      controller in sonno profondo dopo gli aggiornamenti, confermato dopo ore
+      d'uso ([`docs/schermo.md`](docs/schermo.md))
+- [ ] Soglie della rotazione (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) su camera vera
+- [ ] Ghosting: ogni quanto serve un refresh completo (ora ogni 6 cambi)
+- [ ] Icona della batteria sulle card sotto il 20% e in carica
 
 ### Prossimi passi
 
-1. **Consumi misurati** con il registro sulla microSD (`docs/batteria.md`), e
-   da lì le scelte ancora aperte: quanto pesa la microSD alimentata a riposo,
-   tempi del riposo, del bianco da spento
-   (`OFF_BLANK_S`) e dello spegnimento da dimenticato. Serve anche una
-   configurazione di compilazione senza `CAMTAG_DEBUG`: oggi `x3` lo ha sempre
-   acceso.
-2. **Cura dello schermo** (`docs/schermo.md`): confermare con ore d'uso che il
-   negativo a schermo fermo non torna, capire il riavvio da solo dopo il riposo
-   e il riposo che scatta con la USB, tarare ogni quanto serve il refresh
-   completo (`FULL_REFRESH_EVERY`). Caldo oltre i 50 °C circa e sole diretto
-   per mesi rovinano il pannello: conta il supporto.
-3. **Catalogo dei filtri** (`data/filters.json`) verificato sulle schede dei
+1. **Prima installazione più semplice**: oggi servono un clone del repository
+   e PlatformIO da riga di comando, troppo per la maggior parte degli
+   assistenti operatore. I tre controlli di sicurezza devono restare.
+2. **Feedback dei beta tester** sul set, e soglie della rotazione su camera
+   vera.
+3. **Consumo da spento** nei primi tre giorni, e da lì il tempo prima del
+   bianco (`OFF_BLANK_S`). Serve anche una configurazione di compilazione
+   senza `CAMTAG_DEBUG`: oggi `x3` lo ha sempre acceso.
+4. **Schermo** (`docs/schermo.md`): il riposo che scatta con la USB collegata
+   e ogni quanto serve il refresh completo (`FULL_REFRESH_EVERY`). Il riavvio
+   da solo dopo il riposo, visto una volta, non si è più ripresentato in 39 h
+   di registro. Caldo oltre i 50 °C circa e sole diretto per mesi rovinano il
+   pannello: conta il supporto.
+5. **Catalogo dei filtri** (`data/filters.json`) verificato sulle schede dei
    costruttori: oggi è provvisorio.
-4. **Supporto** stampato in 3D per il montaggio sulla camera.
+6. **Supporto** stampato in 3D per il montaggio sulla camera.
 
 ## Licenza
 
