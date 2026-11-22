@@ -12,7 +12,7 @@ vede dentro la pagina) e tieni l'immagine qui sotto come riserva. -->
 ![Schermate di CamTag: lens chart, filtri, crew](docs/img/screens.png)
 
 **[▶ Provalo nel browser](https://trunk-studio-production.github.io/camtag/)**:
-non serve il dispositivo. Crei le card nel configuratore web e le provi nel
+non serve il dispositivo. Crei le card nel [configuratore web](https://trunk-studio-production.github.io/camtag/) e le provi nel
 simulatore, tasti compresi.
 
 ## Cosa fa
@@ -31,7 +31,7 @@ simulatore, tasti compresi.
 - **Batteria.** Circa due giorni e mezzo di uso vero sul set, quasi due
   settimane a riposo. Da spento continua a mostrare la schermata di spento
   (nome della camera, logo).
-- **Inglese e italiano**, per il dispositivo, le card e il configuratore web.
+- **Inglese e italiano**, per il dispositivo, le card e il [configuratore web](https://trunk-studio-production.github.io/camtag/).
 
 ## Cosa serve
 
@@ -76,10 +76,10 @@ provato sul set da assistenti operatore al lavoro. Software libero sotto GPL v3.
 
 ## Come funziona
 
-1. Nel configuratore web crei le card.
+1. Nel [configuratore web](https://trunk-studio-production.github.io/camtag/) crei le card.
 2. Le mandi all'X3 in uno di due modi:
    - **Bluetooth**: sull'X3 tieni premuto **X** finché compare BLUETOOTH, poi
-     nel configuratore web tocca **Bluetooth** e poi **Invia le card** (vedi sotto);
+     nel [configuratore web](https://trunk-studio-production.github.io/camtag/) tocca **Bluetooth** e poi **Invia le card** (vedi sotto);
    - **microSD**: scarichi lo zip e copi la sua cartella `camtag/` nella radice
      della microSD.
 3. Sul dispositivo:
@@ -102,18 +102,18 @@ provato sul set da assistenti operatore al lavoro. Software libero sotto GPL v3.
      riposa, ma da fuori non si vede. Dimenticato acceso, si spegne dopo 24 ore
      senza tasti
    - da spento mostra la **schermata di spento** (una scheda scelta nello
-     configuratore web, o il solo nome) con una fascia che dice che è spento; dopo
+     [configuratore web](https://trunk-studio-production.github.io/camtag/), o il solo nome) con una fascia che dice che è spento; dopo
      tre giorni lo schermo passa al bianco. Dettagli e consumi in
      [`docs/batteria.md`](docs/batteria.md)
 
 ### Invio via Bluetooth
 
-Il configuratore web può mandare le card all'X3 senza togliere la microSD, con il
+Il [configuratore web](https://trunk-studio-production.github.io/camtag/) può mandare le card all'X3 senza togliere la microSD, con il
 Bluetooth LE del browser (Web Bluetooth).
 
 1. Sull'X3 tieni premuto **X** per 0,8 s: compare **BLUETOOTH** con il nome
    del dispositivo (es. `CAMTAG-1A2B`).
-2. Nel configuratore web tocca **Bluetooth**, poi **Invia le card** e
+2. Nel [configuratore web](https://trunk-studio-production.github.io/camtag/) tocca **Bluetooth**, poi **Invia le card** e
    scegli il dispositivo.
 3. A fine invio l'X3 mostra la prima card con **CARD AGGIORNATE**.
 
@@ -124,15 +124,13 @@ ricezione; dopo 3 minuti senza invii esce da sola. Il Bluetooth è acceso
 solo in ricezione.
 
 Con le card arriva sull'X3 anche il **progetto** (`project.json`): lo stesso
-file di "Salva progetto". Il lavoro nel configuratore web resta solo nel browser,
+file di "Salva progetto". Il lavoro nel [configuratore web](https://trunk-studio-production.github.io/camtag/) resta solo nel browser,
 che può cancellarlo (Safari lo fa dopo una settimana senza visite). Per
 riprenderlo, metti l'X3 in ricezione e tocca **Bluetooth** → **Importa
 dall'X3**: le card non cambiano. In alternativa apri `camtag/project.json`
 della microSD con **Importa progetto**.
 
 Requisiti:
-- la pagina va aperta in **HTTPS** (o da `localhost`): su `http://` il browser
-  non dà il Bluetooth alle pagine;
 - **Android, Mac, Windows, Linux**: Chrome, Edge o Brave (provato su Mac; in
   Brave il Bluetooth va acceso in `brave://flags`, voce "Web Bluetooth API");
 - **iPhone e iPad**: Safari non ha Web Bluetooth; serve un browser che lo
@@ -170,11 +168,11 @@ rotazione resta fissa.
 Le scritte del firmware dell'X3 (avviso senza card, schermata Bluetooth, fascia
 di spento, errori) sono in inglese o in italiano. Al primo avvio l'X3 chiede la
 lingua (**A** o **B** = inglese, **C** o **D** = italiano) e la richiede a ogni
-avvio finché non ne viene scelta una. Si può impostare anche dal configuratore web
+avvio finché non ne viene scelta una. Si può impostare anche dal [configuratore web](https://trunk-studio-production.github.io/camtag/)
 web, che scrive `lang=en|it` in `/camtag/settings.ini` con il prossimo invio
 delle card ("Non cambiare" non scrive nulla).
 
-Il configuratore web ha tre scelte di lingua indipendenti, nel pulsante EN/IT della
+Il [configuratore web](https://trunk-studio-production.github.io/camtag/) ha tre scelte di lingua indipendenti, nel pulsante EN/IT della
 barra in alto:
 - **interfaccia**: per browser; di partenza italiano se la lingua del sistema
   è l'italiano, altrimenti inglese;
@@ -193,14 +191,7 @@ per l'invio via Bluetooth.
 Le schermate usano il font **Inter** (© The Inter Project Authors, licenza SIL
 Open Font License 1.1), incluso in `companion/fonts/` insieme alla sua licenza.
 
-Dalla radice del progetto (serve anche `data/`, con il database lenti):
-
-```bash
-python3 -m http.server 8766
-```
-
-Poi apri http://localhost:8766/companion/. I dati restano nel browser;
-"Salva progetto" esporta un JSON da reimportare.
+I dati restano nel browser; "Salva progetto" esporta un JSON da reimportare.
 
 Schermate:
 - **Lens chart** (automatica): cerchi nel database e aggiungi le lenti, una
@@ -244,7 +235,7 @@ rispondono): premi **RESET**, poi tieni premuto **power** per 3-5 secondi.
   caricamento sostituisce il firmware originale, il bootloader e la tabella
   partizioni, e può far decadere la garanzia del dispositivo.
 - **Il primo caricamento passa sempre dalla USB.** Dal firmware 0.4.0 CamTag
-  si aggiorna anche via Bluetooth ("Aggiorna firmware" nel configuratore web,
+  si aggiorna anche via Bluetooth ("Aggiorna firmware" nel [configuratore web](https://trunk-studio-production.github.io/camtag/),
   con la conferma sui tasti dell'X3), ma solo con altre versioni di CamTag:
   per tornare al firmware originale o a CrossPoint serve la USB. Se sul tuo X3
   la USB non funziona, non caricarci CamTag.
@@ -343,7 +334,7 @@ un'operazione delicata, che può finire di romperlo.
 | `.venv/` | PlatformIO recente, isolato dal resto del sistema |
 | `data/` | Database lenti e catalogo filtri |
 
-**Modalità sviluppatore** del configuratore web: apri la pagina con `?dev`
+**Modalità sviluppatore** del [configuratore web](https://trunk-studio-production.github.io/camtag/): apri la pagina con `?dev`
 (resta accesa nel browser, `?dev=0` la spegne). Nella finestra Bluetooth
 compaiono "Registro batteria" e, con Maiusc su "Aggiorna firmware", la scelta
 di un `.bin` da installare.
@@ -357,6 +348,18 @@ git clone --depth 1 https://github.com/crosspoint-reader/crosspoint-reader refer
 ```
 
 `.venv/` e `reference/` non sono nel repo: vanno ricreati così.
+
+#### Configuratore web in locale
+
+Dalla radice del progetto (serve anche `data/`, con il database lenti):
+
+```bash
+python3 -m http.server 8766
+```
+
+Poi apri http://localhost:8766/companion/. Il Bluetooth funziona anche così: il
+browser lo dà solo alle pagine in HTTPS o da `localhost`, non a un altro
+indirizzo su `http://`.
 
 ### Firmware
 
@@ -372,7 +375,7 @@ Test sull'host, senza X3:
 device/test/filters_test.sh      # schermata filtri: uguale all'anteprima del configuratore web
 ```
 
-`filters_test.sh` compone i pezzi esportati dal configuratore web come fa il
+`filters_test.sh` compone i pezzi esportati dal [configuratore web](https://trunk-studio-production.github.io/camtag/) come fa il
 firmware e li confronta pixel per pixel con le anteprime, insieme alle regole
 degli stadi. I dati stanno in `device/test/filters_fixture.zip`: se cambia
 l'esportazione dei filtri va rigenerato con `device/test/filters_fixture.js`
@@ -424,7 +427,7 @@ schermo, e aspetta l'X3 se si spegne:
       automatica e blocco (Y tenuto)
 - [x] Bilancieri sulla lens chart di più pagine nei 4 versi (come
       `lensPageDir` nel simulatore)
-- [x] Schermata filtri (`taratura.py filtri`): legge le card del configuratore web
+- [x] Schermata filtri (`taratura.py filtri`): legge le card del [configuratore web](https://trunk-studio-production.github.io/camtag/)
       così come sono; ND e diottria con i bilancieri e indicazioni dei tasti nei
       4 versi, riordino degli stadi dopo 2 s, modifica degli stadi (entrata,
       scelta di stadio e vetro, uscita da sola dopo 5 s e con Y); il mezzo
@@ -462,7 +465,7 @@ schermo, e aspetta l'X3 se si spegne:
 
 ## Licenza
 
-CamTag (firmware e configuratore web) è software libero, distribuito con la
+CamTag (firmware e [configuratore web](https://trunk-studio-production.github.io/camtag/)) è software libero, distribuito con la
 licenza **GNU GPL v3.0**: testo completo in [`LICENSE`](LICENSE). Puoi usarlo,
 studiarlo, modificarlo e ridistribuirlo; chi distribuisce una versione
 modificata deve renderne disponibile il codice con la stessa licenza.
