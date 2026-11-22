@@ -186,6 +186,9 @@
   .mt { margin-top: 8px; }
   .acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
   .hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+  .hint.fmt code { padding: 1px 5px; border-radius: 4px; background: var(--sel); color: var(--ink); font-size: 12px; }
+  .hint.fmt b, .hint.fmt i { color: var(--ink); }
+  .hint.fmt .sep { margin: 0 10px; }
   .warn { font-size: 12px; color: var(--danger); margin: 8px 0 0; }
   .empty { color: var(--muted); padding: 14px 0; text-align: center; }
   .out { background: var(--ink); color: var(--panel); padding: 0 4px; border-radius: 3px; }
@@ -2692,9 +2695,11 @@ function cardEditor(ed, c, idx) {
     ed.append(field(c, 'Titolo', 'title'));
     rowsEditor(ed, c);
   } else if (c.type === 'notes') {
-    const body = fillArea(field(c, 'Testo', 'body', 'textarea'));
-    body.querySelector('.lab').append(info('Come su WhatsApp: *grassetto* e _corsivo_, anche insieme (*_così_*).'));
-    ed.append(field(c, 'Titolo', 'title'), body);
+    // La formattazione si vede in chiaro sotto il testo: segno e risultato.
+    const g = t('grassetto'), k = t('corsivo');
+    ed.append(field(c, 'Titolo', 'title'), fillArea(field(c, 'Testo', 'body', 'textarea')),
+      h('p', { class: 'hint fmt' }, h('code', {}, `*${g}*`), ' → ', h('b', {}, g), h('span', { class: 'sep' }, '·'),
+        h('code', {}, `_${k}_`), ' → ', h('i', {}, k)));
   } else {
     imageControls(ed, c);
     ed.append(field(c, 'Inverti colori', 'invert', 'checkbox'), field(c, 'Didascalia (opzionale)', 'caption'));

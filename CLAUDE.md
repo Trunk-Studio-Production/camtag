@@ -56,7 +56,7 @@ costruttori di lenti e filtri nei dati vanno bene.
   freccia a sinistra della striscia (`#prevTog`, fuori dallo scorrimento come il + speculare a destra, `#addBtn`, che lo è da 1099 px in giù; `ui.prevHidden`, aperta di partenza; scorrendo giù l'editor si toglie da sola, `autoHid`, e torna all'inizio dell'editor o dalla freccia), senza zoom con le dita; `fitStage` tiene
   anteprima e simulatore dentro lo schermo (il simulatore si scala). Nell'editor
   le sezioni richiudibili si fanno con `section()` e le spiegazioni stanno dietro
-  una ⓘ (`info()`): in chiaro restano solo avvisi e stati vuoti. Le preferenze
+  una ⓘ (`info()`): in chiaro restano solo avvisi, stati vuoti e la riga della formattazione delle note. Le preferenze
   dell'interfaccia (sezioni aperte, orientamento, anteprima o simulatore) stanno
   nel localStorage `camtag.ui.v1`: sono del browser, non entrano in `project.json`.
   **Modalità sviluppatore**: `?dev` accende `ui.dev` (resta nel localStorage,
@@ -64,7 +64,7 @@ costruttori di lenti e filtri nei dati vanno bene.
   `.dev-only`; oggi "Registro batteria" e il `.bin` scelto con Maiusc su
   "Aggiorna firmware". Le funzioni che servono solo a chi prova il firmware
   vanno lì. Lo zip delle card si scarica dal menu Progetto. Il testo delle note
-  accetta `*grassetto*` e `_corsivo_` come WhatsApp, a bordo parola (`richRuns`;
+  accetta `*grassetto*` e `_corsivo_`, a bordo parola, spiegati in chiaro sotto il testo (`richRuns`;
   anche `**grassetto**`; il corsivo è l'Inter dritto inclinato dal browser, nel
   repo non c'è il file italic).
   Nei testi per l'utente si chiama sempre **configuratore web** (in inglese
