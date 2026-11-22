@@ -209,7 +209,7 @@ Schermate:
   scorrono solo questi), formato ND, kit dei vetri (più gradazioni per famiglia in un colpo) e stadi del mattebox, da 1 a 3 (il `+` apre 4, 5 e 6, per mattebox più grandi o un vetro montato fuori; vedi `docs/filtri.md`).
 - **Schede manuali**: crew, note, lente singola, patch (immagine).
 
-"Scarica .zip" crea `camtag.zip`: la cartella `camtag/` va copiata nella
+"Progetto ▾ › Scarica le card (.zip)" crea `camtag.zip`: la cartella `camtag/` va copiata nella
 radice della microSD.
 
 **Simulatore** (pulsante sopra l'anteprima): l'X3 disegnato con tutti i tasti
@@ -340,6 +340,11 @@ un'operazione delicata, che può finire di romperlo.
 | `.venv/` | PlatformIO recente, isolato dal resto del sistema |
 | `data/` | Database lenti e catalogo filtri |
 
+**Modalità sviluppatore** del configuratore web: apri la pagina con `?dev`
+(resta accesa nel browser, `?dev=0` la spegne). Nella finestra Bluetooth
+compaiono "Registro batteria" e, con Maiusc su "Aggiorna firmware", la scelta
+di un `.bin` da installare.
+
 #### Dopo un clone
 
 ```bash
@@ -409,7 +414,7 @@ schermo, e aspetta l'X3 se si spegne:
       mouse e tastiera Bluetooth in uso sul Mac rallentano
 - [x] Aggiornamento del firmware via Bluetooth: 864 KB in 26 s; il nuovo parte
       in prova e si conferma da sé, altrimenti il bootloader torna al vecchio
-- [x] Registro della batteria scaricato via Bluetooth (pulsante "Registro batteria")
+- [x] Registro della batteria scaricato via Bluetooth (pulsante "Registro batteria", in modalità sviluppatore)
 - [ ] Bluetooth da Android (Chrome) e iPhone (BLE Link)
 - [x] Card vere in verticale e in orizzontale, X/Y in ciclo, rotazione
       automatica e blocco (Y tenuto)

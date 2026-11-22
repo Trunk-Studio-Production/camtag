@@ -31,6 +31,7 @@
   button:disabled { opacity: .4; cursor: default; }
   header.bar { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 12px;
                height: 52px; padding: 0 16px; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .logo-t { color: var(--accent); }
   header h1 { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: .08em; }
   header .sp { flex: 1; }
   main { max-width: 680px; margin: 0 auto; padding: 28px 16px 72px; }
@@ -73,7 +74,7 @@
 </head>
 <body>
 <header class="bar">
-  <h1>CAMTAG</h1>
+  <h1>CAM<span class="logo-t">T</span>AG</h1>
   <span class="muted" data-t>Installa</span>
   <span class="sp"></span>
   <button id="langBtn" title="Lingua della pagina"></button>

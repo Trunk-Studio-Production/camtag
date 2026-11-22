@@ -49,6 +49,11 @@ const I18N_EN = {
   'Registro batteria': 'Battery log',
   'Aggiorna firmware': 'Update firmware',
   "Installa sull'X3 il firmware di questo configuratore web. Con Maiusc premuto scegli un file .bin": 'Installs on the X3 the firmware of this web configurator. Hold Shift to choose a .bin file',
+  "Installa sull'X3 il firmware di questo configuratore web": 'Installs on the X3 the firmware of this web configurator',
+  'Modalità sviluppatore': 'Developer mode',
+  'esci': 'exit',
+  'Scarica le card (.zip)': 'Download cards (.zip)',
+  'Tutte le card, da copiare sulla microSD': 'All the cards, to copy to the microSD',
   'Invia le card': 'Send cards',
   'Chiudi': 'Close',
   'Annulla': 'Cancel',
@@ -545,7 +550,8 @@ const I18N_EN = {
   "Ripristino non riuscito ({}). Non staccare niente e riprova.": "Restore failed ({}). Don't unplug anything and try again.",
   "Lingua della pagina": "Page language",
   "Installa via USB": "Install via USB",
-  "Prima installazione o ripristino di un X3 con il cavo USB": "First install or restore of an X3 over the USB cable",
+  "Prima installazione": "First install",
+  "X3 nuovo o da ripristinare, con il cavo USB": "New X3 or one to restore, over the USB cable",
 };
 
 // Chiavi con le parti fisse, per riconoscere frasi già composte (h() con un testo

@@ -16,7 +16,7 @@ costruttori di lenti e filtri nei dati vanno bene.
 - `device/` — firmware PlatformIO (C++/Arduino, ESP32-C3). È il nostro codice.
   `BleUpload.cpp` riceve le card via Bluetooth (NimBLE-Arduino, acceso solo in
   ricezione; i file uguali non viaggiano, li copia lui dalle card attuali: `KEEP`)
-  e rimanda al telefono `project.json` (`GET`) e il registro della batteria (nome riservato `camtag-batteria.csv`, pulsante "Registro batteria"); `UploadProto.h` ha le parti provabili sull'host (`device/test/`).
+  e rimanda al telefono `project.json` (`GET`) e il registro della batteria (nome riservato `camtag-batteria.csv`, pulsante "Registro batteria", solo in modalità sviluppatore); `UploadProto.h` ha le parti provabili sull'host (`device/test/`).
   Riceve anche il firmware (`FIRMWARE`, dalla 0.4.0): conferma sui tasti dell'X3,
   scrittura nella partizione OTA libera, riavvio; il nuovo parte in prova e si
   conferma al primo giro di `loop()` (`markFirmwareValid`), se no il bootloader
@@ -48,7 +48,8 @@ costruttori di lenti e filtri nei dati vanno bene.
   `../data/*.json`, quindi va servito dalla radice del repo. Ha un
   **simulatore** (`simPress`/`renderSim`, solo da computer: sotto 700 px è nascosto) con tasti, rotazione, blocco e power:
   è la specifica di comportamento per il firmware, e i due devono restare allineati.
-  Un solo tema colore, scuro (variabili su `:root`).
+  Un solo tema colore, scuro (variabili su `:root`). Il logo CAMTAG è sempre
+  Inter 800 con spaziatura 0,08 em e la T nel verde `--accent` (`.logo-t`), come in `install/` (l'interfaccia resta nel font di sistema).
   Barra e anteprima restano fisse mentre l'editor scorre: tre colonne da 1100 px,
   due da 700 (striscia delle schermate e anteprima a sinistra), sotto i 700
   anteprima compatta in alto che si apre a tutto schermo; `fitStage` tiene
@@ -57,6 +58,11 @@ costruttori di lenti e filtri nei dati vanno bene.
   una ⓘ (`info()`): in chiaro restano solo avvisi e stati vuoti. Le preferenze
   dell'interfaccia (sezioni aperte, orientamento, anteprima o simulatore) stanno
   nel localStorage `camtag.ui.v1`: sono del browser, non entrano in `project.json`.
+  **Modalità sviluppatore**: `?dev` accende `ui.dev` (resta nel localStorage,
+  `?dev=0` la spegne) e la classe `devmode` sul body mostra gli elementi
+  `.dev-only`; oggi "Registro batteria" e il `.bin` scelto con Maiusc su
+  "Aggiorna firmware". Le funzioni che servono solo a chi prova il firmware
+  vanno lì. Lo zip delle card si scarica dal menu Progetto.
   Nei testi per l'utente si chiama sempre **configuratore web** (in inglese
   *web configurator*), mai "strumento" o "app".
 - `companion/install/` — prima installazione e ripristino via USB dal browser

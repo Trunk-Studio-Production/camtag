@@ -219,7 +219,8 @@ Sull'X3 di prova non è servito: il gauge aveva già 642 mAh.
 3. Ricollega la USB e lancia `batteria`. La seriale riavvia l'X3: è normale.
 
 Senza cavo, via Bluetooth: sull'X3 tieni premuto X, nel configuratore web apri
-la finestra Bluetooth e scegli "Registro batteria"; il CSV si scarica nel
+la finestra Bluetooth e scegli "Registro batteria" (si vede in modalità
+sviluppatore: pagina aperta con `?dev`); il CSV si scarica nel
 browser e i conti li fa `taratura.py batteria --leggi <file>`. Così si legge a
 metà prova senza metterlo in carica. La ricezione lo tiene sveglio per quei
 secondi: finisce nella colonna `sveglio_s` della riga dopo, come un uso normale.

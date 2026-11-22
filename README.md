@@ -212,7 +212,7 @@ Screens:
   matte boxes or a glass mounted outside; see `docs/filtri.md`).
 - **Manual cards**: crew, notes, single lens, patch (image).
 
-"Download .zip" creates `camtag.zip`: copy the `camtag/` folder to the root of
+"Project ▾ › Download cards (.zip)" creates `camtag.zip`: copy the `camtag/` folder to the root of
 the microSD.
 
 **Simulator** (button above the preview): the X3 drawn with all buttons
@@ -342,6 +342,11 @@ a delicate operation, which may finish breaking it.
 | `.venv/` | Recent PlatformIO, isolated from the rest of the system |
 | `data/` | Lens database and filter catalog |
 
+**Developer mode** of the web configurator: open the page with `?dev` (it stays
+on in that browser, `?dev=0` turns it off). The Bluetooth window then shows
+"Battery log" and, with Shift on "Update firmware", lets you pick a `.bin` to
+install.
+
 #### After cloning
 
 ```bash
@@ -412,7 +417,7 @@ orientation and the card on screen, and waits for the X3 if it turns off:
       Bluetooth mouse and keyboard in use on the Mac slow it down
 - [x] Firmware update over Bluetooth: 864 KB in 26 s; the new firmware boots
       on trial and confirms itself, otherwise the bootloader rolls back
-- [x] Battery log downloaded over Bluetooth ("Battery log" button)
+- [x] Battery log downloaded over Bluetooth ("Battery log" button, in developer mode)
 - [ ] Bluetooth from Android (Chrome) and iPhone (BLE Link)
 - [x] Real cards in portrait and landscape, X/Y in a loop, automatic rotation
       and lock (Y held)

@@ -49,7 +49,8 @@
   /* ---------- Barra: sempre in vista, una riga sola ---------- */
   header.bar { position: sticky; top: 0; z-index: 30; height: var(--bar-h); display: flex; align-items: center; gap: 8px;
                padding: 0 var(--gap); background: var(--bg); border-bottom: 1px solid var(--line); white-space: nowrap; }
-  .bar h1 { font-size: 16px; margin: 0; letter-spacing: .04em; }
+  .logo-t { color: var(--accent); }
+  .bar h1 { font: 800 16px/1 "Inter", sans-serif; margin: 0; letter-spacing: .08em; }  /* come install/ e i manuali */
   .bar .dev { color: var(--muted); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .bar .sp { flex: 1; }
   .bar button, .bar .btn { flex: none; }
@@ -62,6 +63,7 @@
   .pop.open { display: block; }
   .menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 8px 12px; }
   .menu button:hover { background: var(--sel); }
+  .menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
   .menu .mh { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 10px 12px 2px; }
   .menu .mh:first-child { padding-top: 6px; }
   .menu button[aria-checked="true"] { color: var(--accent); font-weight: 600; }
@@ -169,7 +171,8 @@
   .lab .out { margin-left: 4px; }
   .srow { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 8px; align-items: center; margin-top: 8px; }
   .srow .lab { margin: 0; }
-  .srow .seg { display: flex; }
+  .srow .seg { display: flex; min-width: 0; }
+  .srow .seg button { min-width: 0; white-space: normal; line-height: 1.2; padding-inline: 6px; }  /* stretti: vanno a capo invece di uscire */
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .urlrow { display: flex; gap: 8px; }
   .urlrow input { flex: 1; min-width: 0; }
@@ -244,13 +247,25 @@
 
   /* ---------- Invio via Bluetooth ---------- */
   #bleDlg { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink);
-            width: min(420px, calc(100vw - 32px)); padding: 18px; }
+            width: min(480px, calc(100vw - 32px)); padding: 18px; overflow: visible; }
   #bleDlg::backdrop { background: rgba(0, 0, 0, .45); }
-  #bleDlg h3 { margin: 0 0 8px; font-size: 15px; }
+  #bleDlg h3 { margin: 0 0 8px; padding-right: 24px; font-size: 15px; }
+  /* La X sporge dallo spigolo in alto a destra. */
+  #bleDlg .x { position: absolute; top: -14px; right: -14px; width: 34px; height: 34px; padding: 0; border-radius: 50%;
+               border-color: var(--track); background: var(--panel); box-shadow: 0 2px 8px rgba(0, 0, 0, .5);
+               font-size: 15px; line-height: 1; color: var(--ink); }
+  #bleDlg .x:hover { background: var(--sel); }
+  body:not(.devmode) .dev-only { display: none !important; }
   #bleDlg p { margin: 6px 0; }
   #bleDlg progress { width: 100%; height: 10px; margin: 10px 0 4px; accent-color: var(--accent); }
   #bleDlg .err { color: var(--danger); }
-  #bleDlg .acts { justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  #bleDlg .acts { justify-content: center; gap: 8px; margin-top: 14px; }
+  #bleDlg .acts button { white-space: nowrap; }
+  #bleDlg .usb { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+  #bleDlg .usb p { margin: 0; }
+  #bleDlg .usb b { display: block; font-weight: 600; }
+  #bleDlg .usb span { display: block; font-size: 12px; color: var(--muted); }
+  #bleDlg .usb .btn { flex: none; }
   #bleDlg .credits { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
   #bleDlg .credits a { color: inherit; }
   #bleDetail a { color: var(--accent); }
@@ -330,19 +345,20 @@
 </head>
 <body>
 <header class="bar">
-  <h1>CAMTAG</h1>
+  <h1>CAM<span class="logo-t">T</span>AG</h1>
   <span class="dev" id="dims"><span class="dev-l"></span><span class="dev-s"></span></span>
   <span class="sp"></span>
   <button id="langBtn" title="Lingua del configuratore web, delle card e delle scritte dell'X3" aria-label="Lingue"></button>
   <a id="helpBtn" class="btn" href="manuale/" target="_blank" rel="noopener" title="Manuale d'uso: tasti, schermate, invio delle card"><span class="l">Manuale</span><span class="s">?</span></a>
   <button id="projBtn"><span class="l">Progetto ▾</span><span class="s">Progetto</span></button>
-  <button id="zipBtn" title="Scarica tutte le card (.zip)"><span class="l">Scarica .zip</span><span class="s">.zip</span></button>
   <button id="bleBtn" class="primary" title="Manda le card all'X3 senza microSD, o riprendi il progetto salvato sull'X3">Bluetooth</button>
   <input type="file" id="importFile" accept="application/json" hidden>
 </header>
 <div class="pop menu" id="projMenu" role="menu">
   <button id="importBtn" role="menuitem">Importa progetto…</button>
   <button id="exportJson" role="menuitem">Salva progetto</button>
+  <hr>
+  <button id="zipBtn" role="menuitem" title="Tutte le card, da copiare sulla microSD">Scarica le card (.zip)</button>
 </div>
 <div class="pop menu" id="langMenu" role="menu"></div>
 <div class="pop menu" id="addMenu" role="menu">
@@ -355,20 +371,24 @@
 
 <dialog id="bleDlg">
   <h3>CamTag via Bluetooth</h3>
+  <button id="bleClose" class="x" title="Chiudi" aria-label="Chiudi">✕</button>
   <p id="bleMsg"></p>
   <progress id="bleBar" max="1" value="0" hidden></progress>
   <p class="hint" id="bleDetail"></p>
   <p class="hint" id="bleFw" hidden></p>
   <div class="acts">
-    <button id="bleFwBtn" title="Installa sull'X3 il firmware di questo configuratore web. Con Maiusc premuto scegli un file .bin">Aggiorna firmware</button>
+    <button id="bleFwBtn" title="Installa sull'X3 il firmware di questo configuratore web">Aggiorna firmware</button>
     <input type="file" id="bleFwFile" accept=".bin" hidden>
-    <button id="bleBatt" title="Scarica il registro dei consumi che l'X3 tiene sulla microSD">Registro batteria</button>
+    <button id="bleBatt" class="dev-only" title="Scarica il registro dei consumi che l'X3 tiene sulla microSD">Registro batteria</button>
     <button id="bleGet" title="Riprende il progetto salvato sull'X3 insieme alle card">Importa dall'X3</button>
     <button id="bleStart" class="primary">Invia le card</button>
-    <button id="bleClose">Chiudi</button>
+    <button id="bleCancel" hidden>Annulla</button>
   </div>
-  <p class="hint"><a href="install/" target="_blank" rel="noopener" title="Prima installazione o ripristino di un X3 con il cavo USB">Installa via USB</a></p>
-  <p class="credits">Per il firmware <span id="fwWanted"></span> · Sviluppato da Iacopo Boccalari · Trunk Studio · <a href="https://trunkstudio.it" target="_blank" rel="noopener">trunkstudio.it</a></p>
+  <div class="usb">
+    <p><b>Prima installazione</b><span>X3 nuovo o da ripristinare, con il cavo USB</span></p>
+    <a class="btn" href="install/" target="_blank" rel="noopener">Installa via USB</a>
+  </div>
+  <p class="credits">Per il firmware <span id="fwWanted"></span> · Sviluppato da Iacopo Boccalari · Trunk Studio · <a href="https://trunkstudio.it" target="_blank" rel="noopener">trunkstudio.it</a><span class="dev-only"> · <span>Modalità sviluppatore</span> (<a href="?dev=0">esci</a>)</span></p>
 </dialog>
 
 <main>
@@ -1876,6 +1896,11 @@ const ui = { sec: {}, view: 'land', mode: 'preview', ...(() => { try { return JS
 if (!ui.sec || typeof ui.sec !== 'object') ui.sec = {};
 function saveUi() { try { localStorage.setItem(UI_KEY, JSON.stringify(ui)); } catch {} }
 view = ui.view === 'port' ? 'port' : 'land';
+// Modalità sviluppatore: ?dev la accende, ?dev=0 la spegne, e resta nel browser.
+// Mostra le funzioni per chi prova il firmware (registro batteria, .bin da file).
+{ const d = new URLSearchParams(location.search).get('dev'); if (d !== null) { ui.dev = d !== '0'; saveUi(); const u = new URL(location.href); u.searchParams.delete('dev'); history.replaceState(null, '', u); } }
+document.body.classList.toggle('devmode', !!ui.dev);
+if (ui.dev) $('#bleFwBtn').title = t("Installa sull'X3 il firmware di questo configuratore web. Con Maiusc premuto scegli un file .bin");
 
 // ---------- Riquadri a comparsa: menu e spiegazioni ----------
 // Uno alla volta, accanto a chi lo apre e sempre dentro lo schermo. Si chiude
@@ -2814,8 +2839,8 @@ function bleUi(msg, { detail = '', progress = null, error = false, busy = false 
   $('#bleDetail').textContent = detail;
   $('#bleBar').hidden = progress === null;
   if (progress !== null) $('#bleBar').value = progress;
-  $('#bleStart').hidden = $('#bleGet').hidden = $('#bleBatt').hidden = $('#bleFwBtn').hidden = busy;
-  $('#bleClose').textContent = t(busy ? 'Annulla' : 'Chiudi');
+  bleActs(!busy);
+  $('#bleCancel').hidden = !busy;
 }
 
 // Collegamento con l'X3: requestDevice va chiamato subito, dentro il clic (il
@@ -3123,17 +3148,18 @@ $('#bleBtn').onclick = () => {
     if (IOS && window.isSecureContext && !navigator.bluetooth)
       $('#bleDetail').replaceChildren(t('Su App Store: '), ...IOS_BLE_APPS.flatMap(([n, u], i) => [i ? ' · ' : '', h('a', { href: u, target: '_blank', rel: 'noopener' }, n)]));
   } else bleUi(t('Sull\'X3 tieni premuto X finché compare BLUETOOTH, poi scegli cosa fare.'), { detail: t('Con le card arriva sull\'X3 anche il progetto, che puoi riprendere da qui con "Importa dall\'X3".') });
-  $('#bleStart').hidden = $('#bleGet').hidden = $('#bleBatt').hidden = $('#bleFwBtn').hidden = !!note;
+  bleActs(!note);
   $('#bleDlg').showModal();
 };
 $('#bleStart').onclick = () => { bleSend(); };
 $('#bleGet').onclick = () => { bleGet(); };
 $('#bleBatt').onclick = () => { bleBattery(); };
-// Con Maiusc si sceglie un .bin (prove in sviluppo). Lo si manda con il clic dopo:
+function bleActs(show) { for (const id of ['#bleStart', '#bleGet', '#bleBatt', '#bleFwBtn']) $(id).hidden = !show; }
+// In modalità sviluppatore, con Maiusc si sceglie un .bin. Lo si manda con il clic dopo:
 // il browser chiede il dispositivo solo subito dopo un clic, e la scelta del file
 // può durare di più.
 let bleFwChosen = null;
-$('#bleFwBtn').onclick = e => { if (e.shiftKey) $('#bleFwFile').click(); else bleFirmware(bleFwChosen); };
+$('#bleFwBtn').onclick = e => { if (e.shiftKey && ui.dev) $('#bleFwFile').click(); else bleFirmware(bleFwChosen); };
 $('#bleFwFile').onchange = async e => {
   const f = e.target.files[0];
   e.target.value = '';
@@ -3143,6 +3169,7 @@ $('#bleFwFile').onchange = async e => {
   bleUi(v ? t('Firmware scelto: {} ({}). Premi "Aggiorna firmware" per installarlo.', f.name, v) : t('Il file non è un firmware CamTag per l\'X3.'), { error: !v,
     detail: v ? t('Ricarica la pagina per tornare al firmware pubblicato.') : '' });
 };
+$('#bleCancel').onclick = () => { if (bleRun) bleRun.cancel(); };
 $('#bleClose').onclick = () => { if (bleRun) bleRun.cancel(); else $('#bleDlg').close(); };
 $('#bleDlg').addEventListener('cancel', e => { if (bleRun) { e.preventDefault(); bleRun.cancel(); } });
 // Il file di progetto porta con sé le modifiche delle sue lenti, per essere completo su un altro computer.

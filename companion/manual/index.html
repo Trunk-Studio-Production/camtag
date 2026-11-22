@@ -34,8 +34,9 @@
   .wrap { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 48px; max-width: 1180px; margin: 0 auto; padding: 0 24px; }
   nav.toc { position: sticky; top: 0; align-self: start; max-height: 100dvh; overflow: auto; padding: 32px 0; }
   .toc .brand { display: flex; align-items: baseline; gap: 8px; margin-bottom: 22px; }
-  .toc .brand b { font-size: 15px; letter-spacing: .08em; }
-  .toc .brand span { color: var(--muted); font-size: 12px; }
+  .logo-t { color: var(--accent); }
+  .toc .brand b { font-size: 15px; font-weight: 800; letter-spacing: .08em; }
+  .toc .brand > span { color: var(--muted); font-size: 12px; }
   .toc ol { list-style: none; padding: 0; margin: 0; counter-reset: t; }
   .toc li { margin: 0; counter-increment: t; }
   .toc li a { display: grid; grid-template-columns: 26px 1fr; padding: 6px 10px; border-radius: 6px; color: var(--muted);
@@ -167,7 +168,7 @@
 <body>
 <div class="wrap">
   <nav class="toc" aria-label="Contents">
-    <div class="brand"><b>CAMTAG</b><span>Manual</span></div>
+    <div class="brand"><b>CAM<span class="logo-t">T</span>AG</b><span>Manual</span></div>
     <ol id="toc"></ol>
     <a class="back" href="../">← Back to the web configurator</a>
   </nav>
@@ -439,7 +440,7 @@
       <p>Cards, project and settings are kept. If you don't confirm within a minute the X3 cancels by itself, and with the battery below 30% it refuses the update: charge it first. If the connection drops halfway, or the new firmware doesn't start, the X3 goes back to the previous one by itself.</p>
       <p>It works from 0.4.0 onwards: an X3 with older firmware has to be updated once with the USB cable, as the README explains.</p>
       <h3>With the microSD</h3>
-      <p>Alternatively, download the zip from the web configurator (<strong>Download .zip</strong>) and copy its <code>camtag/</code> folder to the root of the microSD, replacing the one that's there.</p>
+      <p>Alternatively, download the zip from the web configurator (<strong>Project ▾ › Download cards (.zip)</strong>) and copy its <code>camtag/</code> folder to the root of the microSD, replacing the one that's there.</p>
     </section>
 
     <!-- 10 -->

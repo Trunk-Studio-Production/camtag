@@ -64,7 +64,8 @@ si apre con "Importa progetto".
 
 ## Registro della batteria
 
-"Registro batteria" nella finestra Bluetooth del configuratore web chiede
+"Registro batteria" nella finestra Bluetooth del configuratore web (solo in
+modalità sviluppatore, `?dev`) chiede
 `GET camtag-batteria.csv`: l'X3 manda `/camtag-batteria.csv` dalla radice della
 microSD (docs/batteria.md) e il browser lo salva così com'è. Non lo cancella.
 Un firmware precedente alla 0.3.1 risponde `ERR ASSENTE`, come un X3 senza registro.
