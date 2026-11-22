@@ -2786,7 +2786,7 @@ function imageControls(ed, c) {
     ed.append(h('label', { class: 'fld' }, h('span', { class: 'lab' }, off ? 'Immagine di sfondo (facoltativa) ' : 'Immagine ',
       info(off ? SQUARE_TIP_OFF : SQUARE_TIP)), inp));
     ed.append(h('p', { class: 'tmpl' }, h('button', { type: 'button', class: 'small', title: 'PNG 792×792 con le parti che si vedono in orizzontale, in verticale, sempre e mai',
-      onclick: () => squareTemplate(off).then(b => download(b, `camtag-${t(off ? 'modello-spento' : 'modello')}-792.png`)) }, 'Scarica il modello quadrato')));
+      onclick: () => squareTemplate(off).then(b => download(b, `camtag-${t(off ? 'modello-spento' : 'modello')}-792.png`)) }, 'Scarica il modello')));
     // Da un indirizzo web: serve che il sito permetta di leggere l'immagine da un'altra pagina (CORS).
     const urlIn = h('input', { type: 'text', inputmode: 'url', placeholder: 'https://…/immagine.jpg', 'aria-label': 'Indirizzo dell\'immagine' });
     const urlBtn = h('button', { type: 'button' }, 'Carica');
