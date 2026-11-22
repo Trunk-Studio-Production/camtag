@@ -53,6 +53,10 @@
   .bar h1 { font: 800 16px/1 "Inter", sans-serif; margin: 0; letter-spacing: .08em; }  /* come install/ e i manuali */
   .bar .dev { color: var(--muted); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .bar .sp { flex: 1; }
+  /* Feedback: testo grigio, non un pulsante; sul telefono resta solo in fondo all'editor. */
+  .bar .fb-bar { flex: none; padding: 4px 6px; color: var(--muted); font-size: 13px; text-decoration: none; }
+  .bar .fb-bar:hover { color: var(--ink); text-decoration: underline; }
+  @media (max-width: 699px) { .bar .fb-bar { display: none; } }
   .bar button, .bar .btn { flex: none; }
   .dev-s, .bar .s { display: none; }
 
@@ -391,6 +395,7 @@
   <h1>CAM<span class="logo-t">T</span>AG</h1>
   <span class="dev" id="dims"><span class="dev-l"></span><span class="dev-s"></span></span>
   <span class="sp"></span>
+  <a id="fbBar" class="fb-bar" target="_blank" rel="noopener" title="Idee o problemi? Lascia un feedback" hidden>Feedback</a>
   <button id="langBtn" title="Lingua del configuratore web, delle card e delle scritte dell'X3" aria-label="Lingue"></button>
   <a id="helpBtn" class="btn" href="manuale/" target="_blank" rel="noopener" title="Manuale d'uso: tasti, schermate, invio delle card"><span class="l">Aiuto</span><span class="s">?</span></a>
   <button id="projBtn"><span class="l">Progetto ▾</span><span class="s">Progetto</span></button>
@@ -436,7 +441,7 @@
     <p><b>Prima installazione</b><span>X3 nuovo o da ripristinare, con il cavo USB</span></p>
     <a class="btn" href="install/" target="_blank" rel="noopener">Installa via USB</a>
   </div>
-  <p class="credits">Per il firmware <span id="fwWanted"></span> · <span id="buildId" title="Versione del configuratore web (commit)"></span> · Sviluppato da Iacopo Boccalari · Trunk Studio · <a href="https://trunkstudio.it" target="_blank" rel="noopener">trunkstudio.it</a><span class="dev-only"> · <span>Modalità sviluppatore</span> (<a href="?dev=0">esci</a>)</span></p>
+  <p class="credits">Per il firmware <span id="fwWanted"></span> · <span id="buildId" title="Versione del configuratore web (commit)"></span><br>Sviluppato da Iacopo Boccalari · Trunk Studio · <a href="https://trunkstudio.it" target="_blank" rel="noopener">trunkstudio.it</a><span class="dev-only"> · <span>Modalità sviluppatore</span> (<a href="?dev=0">esci</a>)</span></p>
 </dialog>
 
 <main>
@@ -3492,6 +3497,7 @@ async function bleBattery() {
 $('#fwWanted').textContent = FW_VERSION;
 $('#buildId').textContent = `web ${BUILT ? BUILD : t('locale')}`;
 { const fb = feedbackLink('span'); if (fb) $('#bleDlg .credits > .dev-only').before(fb); }
+if (FEEDBACK.url) { const a = $('#fbBar'); a.href = FEEDBACK.url; a.hidden = false; a.addEventListener('click', () => { a.href = feedbackHref(); }); }
 // Alcuni browser per iPhone (Bluefy) tengono a lungo la pagina vecchia: si
 // confronta il commit con build.txt, senza cache, all'apertura e al ritorno sulla
 // pagina. Il pulsante ricarica con ?v=<commit>, un indirizzo che la cache non ha.
