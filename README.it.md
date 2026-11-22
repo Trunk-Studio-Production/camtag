@@ -437,8 +437,7 @@ schermo, e aspetta l'X3 se si spegne:
 - [x] Negativo delle schermate precedenti a schermo fermo: risolto mandando il
       controller in sonno profondo dopo gli aggiornamenti, confermato dopo ore
       d'uso ([`docs/schermo.md`](docs/schermo.md))
-- [ ] X e Y per tipo di pagina, A–D dentro il tipo (firmware 0.5.0): fatto nel
-      configuratore web e nel firmware, da provare sull'X3
+- [x] X e Y per tipo di pagina, A–D dentro il tipo (firmware 0.5.0)
 - [ ] Soglie della rotazione (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) su camera vera
 - [ ] Ghosting: ogni quanto serve un refresh completo (ora ogni 6 cambi)
 - [ ] Icona della batteria sulle card sotto il 20% e in carica

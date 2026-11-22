@@ -441,8 +441,7 @@ orientation and the card on screen, and waits for the X3 if it turns off:
 - [x] Negative image of earlier screens on a static screen: solved by putting
       the display controller to deep sleep after updates, confirmed after
       hours of use ([`docs/schermo.md`](docs/schermo.md))
-- [ ] X and Y by kind of page, A–D within the kind (firmware 0.5.0): done in
-      the web configurator and the firmware, to try on the X3
+- [x] X and Y by kind of page, A–D within the kind (firmware 0.5.0)
 - [ ] Rotation thresholds (`kMinTiltG`, `kFlatG`, `ROTATE_STABLE_MS`) on a real camera
 - [ ] Ghosting: how often a full refresh is needed (now every 6 changes)
 - [ ] Battery icon on the cards below 20% and while charging
