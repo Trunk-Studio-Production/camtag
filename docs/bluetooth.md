@@ -94,6 +94,12 @@ l'altro il configuratore web si scollega e si ricollega (`link.reopen`). Il modo
 trovato vale finché la pagina resta aperta; su iPhone resta anche nel browser
 (localStorage `camtag.bleWrite.v1`), così la prova costa una volta sola.
 
+Ogni pacchetto di dati è un `Uint8Array` con un buffer suo (`slice`, non
+`subarray`): in Bluefy con una vista su un buffer più grande non partiva nulla,
+in nessun modo (senza risposta "riuscita" ma niente all'X3, con risposta
+appesa), mentre i comandi, che hanno sempre un buffer loro, arrivavano. È
+l'ipotesi più probabile, non ancora confermata.
+
 Il browser manda un pacchetto per intervallo del collegamento: la velocità
 dipende quasi solo da quello. Il dispositivo chiede 15 ms esatti (le regole
 Apple non danno di meno; con "15-30 ms" il Mac sceglie 30) subito dopo lo

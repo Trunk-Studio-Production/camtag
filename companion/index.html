@@ -384,6 +384,7 @@
   <p id="bleMsg"></p>
   <progress id="bleBar" max="1" value="0" hidden></progress>
   <p class="hint" id="bleDetail"></p>
+  <p id="bleCopyRow" hidden><button id="bleCopy" class="small" title="Copia l'errore con le versioni e il browser, da incollare in una segnalazione">Copia il messaggio</button></p>
   <p class="hint" id="bleFw" hidden></p>
   <div class="acts">
     <button id="bleFwBtn" title="Installa sull'X3 il firmware di questo configuratore web">Aggiorna firmware</button>
@@ -2891,7 +2892,30 @@ function bleUi(msg, { detail = '', progress = null, error = false, busy = false 
   if (progress !== null) $('#bleBar').value = progress;
   bleActs(!busy);
   $('#bleCancel').hidden = !busy;
+  $('#bleCopyRow').hidden = !error;
 }
+
+// Copia negli appunti: navigator.clipboard, e se il browser non lo permette
+// (alcuni browser per iPhone) una textarea selezionata con execCommand. La
+// textarea sta nella finestra, perché fuori da un <dialog> aperto non si seleziona.
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch {}
+  const ta = h('textarea', { readonly: '', style: 'position:fixed;top:0;left:0;opacity:0;font-size:16px' });
+  ta.value = text;
+  $('#bleDlg').append(ta);
+  ta.select(); ta.setSelectionRange(0, text.length);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch {}
+  ta.remove();
+  return ok;
+}
+$('#bleCopy').onclick = async () => {
+  const text = [$('#bleMsg').textContent, $('#bleDetail').textContent, $('#bleFw').hidden ? '' : $('#bleFw').textContent,
+    `web ${BUILT ? BUILD : 'locale'}`, navigator.userAgent].filter(Boolean).join('\n');
+  const ok = await copyText(text);
+  $('#bleCopy').textContent = t(ok ? 'Copiato' : 'Non riesco a copiare: tieni premuto il messaggio per selezionarlo');
+  setTimeout(() => { $('#bleCopy').textContent = t('Copia il messaggio'); }, 2500);
+};
 
 // Domanda dentro la finestra Bluetooth, al posto di confirm(): alcuni browser
 // per iPhone con Web Bluetooth mostrano il confirm ma non rendono la risposta.
@@ -3092,7 +3116,10 @@ async function linkPush(link, bytes, progress, stallMs) {
     for (let off = 0; off < bytes.length; off += link.chunkSize) {
       await link.waitFor(() => off - link.acked < BLE.window || link.inbox.length, stallMs);
       if (link.inbox.length) await link.next();  // un ERR interrompe qui
-      await link.write(bytes.subarray(off, off + link.chunkSize), stallMs);
+      // slice, non subarray: Bluefy manda tutto il buffer sotto una vista, cioè
+      // l'intero file in un pacchetto, che non parte (22/11/2026). Una copia
+      // per pacchetto costa poco.
+      await link.write(bytes.slice(off, off + link.chunkSize), stallMs);
       progress(off);
     }
     progress(bytes.length);  // tutto partito: si aspetta il DONE
