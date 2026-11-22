@@ -25,6 +25,7 @@ const DEV_TEXT = {
 const I18N_EN = {
   // ---------- Barra, menu, dialoghi fissi ----------
   'Manuale': 'Manual',
+  'Aiuto': 'Help',
   "Manuale d'uso: tasti, schermate, invio delle card": 'User manual: buttons, screens, sending cards',
   'Progetto ▾': 'Project ▾',
   'Progetto': 'Project',

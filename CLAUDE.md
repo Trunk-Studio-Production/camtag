@@ -82,7 +82,7 @@ costruttori di lenti e filtri nei dati vanno bene.
   Testi nel dizionario di `i18n.js`. In locale: copia anche
   `firmware.factory.bin` in `companion/firmware/camtag-factory.bin`.
 - `companion/manuale/` (italiano) e `companion/manual/` (inglese) — manuale
-  d'uso (pulsante "Manuale", nella lingua dell'interfaccia): `index.html` disegna
+  d'uso (pulsante "Aiuto", sul telefono "?", nella lingua dell'interfaccia): `index.html` disegna
   l'X3 in SVG attorno a PNG presi dal simulatore. I PNG non si aggiornano da
   soli: se cambiano le schermate, il disegno o i tasti, rigenerali in tutte e due
   le lingue con `manuale/schermate.js` (istruzioni in testa al file) e correggi
