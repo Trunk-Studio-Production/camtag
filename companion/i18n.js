@@ -500,7 +500,6 @@ const I18N_EN = {
   "Fatto: il progetto dell'X3 è nel configuratore web.": "Done: the X3's project is in the web configurator.",
   '{} schede manuali, {} lenti.': '{} manual cards, {} lenses.',
   "Sull'X3 tieni premuto X finché compare BLUETOOTH, poi scegli cosa fare.": 'On the X3 hold X until BLUETOOTH appears, then choose what to do.',
-  "Con le card arriva sull'X3 anche il progetto, che puoi riprendere da qui con \"Importa dall'X3\".": 'The project travels to the X3 with the cards, and you can get it back from here with "Import from X3".',
   'Database lenti non trovato. Avvia il server dalla radice del progetto: python3 -m http.server 8765, poi apri /companion/.': 'Lens database not found. Start the server from the project root: python3 -m http.server 8765, then open /companion/.',
 
   // ---------- Scritte sulle card (tc) ----------

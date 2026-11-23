@@ -3684,7 +3684,7 @@ $('#bleBtn').onclick = () => {
     bleUi(note, { error: true });
     if (IOS && window.isSecureContext && !navigator.bluetooth)
       $('#bleDetail').replaceChildren(t('Su App Store: '), ...IOS_BLE_APPS.flatMap(([n, u], i) => [i ? ' · ' : '', h('a', { href: u, target: '_blank', rel: 'noopener' }, n)]));
-  } else bleUi(t('Sull\'X3 tieni premuto X finché compare BLUETOOTH, poi scegli cosa fare.'), { detail: t('Con le card arriva sull\'X3 anche il progetto, che puoi riprendere da qui con "Importa dall\'X3".') });
+  } else bleUi(t('Sull\'X3 tieni premuto X finché compare BLUETOOTH, poi scegli cosa fare.'));
   bleActs(!note);
   $('#bleDlg').showModal();
 };
