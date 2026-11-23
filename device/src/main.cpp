@@ -62,6 +62,7 @@
 #include "Canvas.h"
 #include "Filters.h"
 #include "Lang.h"
+#include "Logo.h"
 #include "TinyFont.h"
 #include "Version.h"
 
@@ -694,19 +695,32 @@ Rect contentRect(const Canvas& n, const Canvas& c, int x0, int y0, int x1, int y
   return r;
 }
 
-// Profondità della linguetta: il testo corre sempre in orizzontale per chi legge,
-// quindi su un bordo che il contenuto vede verticale conta la sua larghezza.
-int tabDepth(const Canvas& n, const Canvas& c, const KeyTab& t) {
+// Il bordo della linguetta è orizzontale per chi legge il contenuto?
+bool tabAcross(const Canvas& n, const Canvas& c, const KeyTab& t) {
   int x0, y0, x1, y1, ax, ay, bx, by;
   edgePoint(n, t.edge, t.from, 0, x0, y0);
   edgePoint(n, t.edge, t.to, 0, x1, y1);
   toContent(n, c, x0, y0, ax, ay);
   toContent(n, c, x1, y1, bx, by);
-  const bool across = std::abs(bx - ax) > std::abs(by - ay);  // bordo orizzontale per chi legge
+  return std::abs(bx - ax) > std::abs(by - ay);
+}
+// Su un lato verticale un nome di più lettere (PWR e RESET in orizzontale) va in colonna,
+// una lettera dritta sotto l'altra, così la linguetta resta sottile (tabTurned).
+bool tabTurned(const Canvas& n, const Canvas& c, const KeyTab& t) {
+  if (tabAcross(n, c, t)) return false;
+  for (const char* l : t.label)
+    if (l && strlen(l) > 1) return true;
+  return false;
+}
+// Profondità della linguetta: le lettere sono sempre dritte per chi legge; su un lato
+// verticale conta la larghezza del nome, o di una lettera se va in colonna.
+int tabDepth(const Canvas& n, const Canvas& c, const KeyTab& t) {
+  if (tabAcross(n, c, t)) return 7 * t.scale + 2 * kTabPad;
+  const bool turned = tabTurned(n, c, t);
   int w = 0;
   for (const char* l : t.label)
-    if (l) w = std::max(w, tinyfont::textWidth(l, t.scale));
-  return (across ? 7 * t.scale : w) + 2 * kTabPad;
+    if (l) w = std::max(w, turned ? tinyfont::textWidth("W", t.scale) : tinyfont::textWidth(l, t.scale));
+  return w + 2 * kTabPad;
 }
 
 Rect tabRect(const Canvas& n, const Canvas& c, const KeyTab& t) {
@@ -747,12 +761,19 @@ bool inRound(int px, int py, const Rect& r, int rad) {
   const int dx = px - cx, dy = py - cy;
   return dx * dx + dy * dy <= rad * rad + rad;
 }
-// Riquadro bianco con bordo nero di `t` px e spigoli arrotondati.
+// Riquadro bianco con bordo nero di `t` px (0 = solo il fondo) e spigoli arrotondati
+// solo verso il centro: un lato che tocca o passa il bordo dello schermo si allunga di
+// rad oltre il bordo, così i suoi spigoli restano dritti (roundBox nel configuratore web).
 void roundBox(Canvas& c, const Rect& r, int rad, int t) {
-  const Rect in{r.x + t, r.y + t, r.w - 2 * t, r.h - 2 * t};
+  Rect e = r;
+  if (r.x <= 0) { e.x -= rad; e.w += rad; }
+  if (r.y <= 0) { e.y -= rad; e.h += rad; }
+  if (r.x + r.w >= c.width()) e.w += rad;
+  if (r.y + r.h >= c.height()) e.h += rad;
+  const Rect in{e.x + t, e.y + t, e.w - 2 * t, e.h - 2 * t};
   for (int y = r.y; y < r.y + r.h; y++)
     for (int x = r.x; x < r.x + r.w; x++)
-      if (inRound(x, y, r, rad)) c.setPixel(x, y, !inRound(x, y, in, rad - t));
+      if (inRound(x, y, e, rad)) c.setPixel(x, y, !inRound(x, y, in, rad - t));
 }
 
 void drawKeyLabels(Canvas& c) {
@@ -774,9 +795,28 @@ void drawKeyLabels(Canvas& c) {
       int x, y, lx, ly;
       edgePoint(n, t.edge, t.at[i], d / 2, x, y);
       toContent(n, c, x, y, lx, ly);
-      c.text(lx - tinyfont::textWidth(t.label[i], t.scale) / 2, ly - 7 * t.scale / 2, t.label[i], t.scale);
+      if (!tabTurned(n, c, t)) {
+        c.text(lx - tinyfont::textWidth(t.label[i], t.scale) / 2, ly - 7 * t.scale / 2, t.label[i], t.scale);
+        continue;
+      }
+      const int len = static_cast<int>(strlen(t.label[i]));
+      int cy = ly - (len * 7 * t.scale + (len - 1) * t.scale) / 2;  // in colonna, un punto tra le righe
+      for (int k = 0; k < len; k++, cy += 8 * t.scale) {
+        const char ch[2] = {t.label[i][k], 0};
+        c.text(lx - tinyfont::textWidth(ch, t.scale) / 2, cy, ch, t.scale);
+      }
     }
   }
+}
+
+// Il nome CAMTAG come il logo (Logo.h, Inter 800): maiuscole alte `cap`, la cui riga più
+// alta è y, centrato in orizzontale. Verticale kLogo6, orizzontale kLogo8.
+const LogoBitmap& logoFor(bool port) { return port ? kLogo6 : kLogo8; }
+void drawLogo(Canvas& c, int y, const LogoBitmap& b) {
+  const int x0 = (c.width() - b.w) / 2 - 4, y0 = y - 4, rb = (b.bw + 7) / 8;
+  for (int yy = 0; yy < b.bh; yy++)
+    for (int xx = 0; xx < b.bw; xx++)
+      if (b.bits[yy * rb + xx / 8] & (0x80 >> (xx % 8))) c.setPixel(x0 + xx, y0 + yy, true);
 }
 
 // La misura più grande, fino a `scale`, con cui il testo sta in `w` px.
@@ -792,7 +832,7 @@ void showMessage(const char* line1, const char* line2) {
   c.clear();
   const bool port = Canvas::isPortrait(rotation);
   const int W = c.width(), mid = c.height() / 2;
-  c.textCentered(mid - (port ? 150 : 120), "CAMTAG", port ? 6 : 8);
+  drawLogo(c, mid - (port ? 150 : 120), logoFor(port));
   constexpr int kPadX = 28, kPadY = 24, kGap = 20;
   const int maxW = W - 2 * kPadX - 80;
   const int s1 = fitScale(line1, port ? 4 : 5, maxW);
@@ -815,7 +855,7 @@ void showLangChoice() {
   c.clear();
   const bool port = Canvas::isPortrait(rotation);
   const int W = c.width(), mid = c.height() / 2;
-  c.textCentered(mid - (port ? 170 : 150), "CAMTAG", port ? 6 : 8);
+  drawLogo(c, mid - (port ? 170 : 150), logoFor(port));
   c.textCentered(mid - (port ? 80 : 70), "LANGUAGE - LINGUA", 3);
   const int s = port ? 4 : 5, lh = 7 * s, gap = 24, pad = 26;
   const char* l1 = "A / B  ENGLISH";
@@ -1418,15 +1458,24 @@ void drawOff(Off why) {
   const bool port = Canvas::isPortrait(rot), labels = keyLabels && why != Off::Blank;
   if (!drawn) c.clear();
   if (why != Off::Blank && (drawn ? offLogo == 1 : offLogo != 0)) {
-    const int scale = port ? 6 : 8, tw = tinyfont::textWidth("CAMTAG", scale);
+    const LogoBitmap& logo = logoFor(port);
     if (!drawn) {
-      c.textCentered(c.height() / 2 - 40, "CAMTAG", scale);
+      drawLogo(c, c.height() / 2 - 40, logo);
     } else {
-      // In un riquadro bianco a un quarto dell'altezza, sopra l'immagine.
-      const int bw = tw + 48, bh = 7 * scale + 36, bx = (c.width() - bw) / 2, by = c.height() / 4 - bh / 2;
-      c.fillRect(bx, by, bw, bh, false);
-      c.strokeRect(bx, by, bw, bh, 3, true);
-      c.textCentered(by + 18, "CAMTAG", scale);
+      // Sopra l'immagine, in una pillola bianca (spigoli con raggio metà dell'altezza):
+      // in verticale alla stessa altezza dei tasti X e Y, in orizzontale a un quarto.
+      Rect b;
+      b.h = logo.cap + 30;
+      b.w = logo.w + b.h;
+      b.x = (c.width() - b.w) / 2;
+      int cy = c.height() / 4;
+      if (port) {
+        const Rect xr = tabRect(canvas(kNaturalRot), c, kKeyTabs[2]);  // X
+        cy = xr.y + xr.h / 2;
+      }
+      b.y = cy - b.h / 2;
+      roundBox(c, b, b.h / 2, 3);
+      drawLogo(c, b.y + (b.h - logo.cap) / 2, logo);
     }
   }
   const bool saved = keyLabels;
@@ -1434,11 +1483,34 @@ void drawOff(Off why) {
   const Insets in = keyInsets(c);
   constexpr int kScale = 2, kH = 7 * kScale + 22;
   constexpr int kGap = 10;  // tra la fascia e le etichette in basso
-  const int fy = c.height() - in.bottom - (in.bottom ? kGap : 0) - kH;
+  // In verticale la fascia sta sopra le etichette in basso; in orizzontale in fondo, con
+  // la scritta accanto a un'etichetta, nello spazio libero più largo (offStrip nel
+  // configuratore web): a destra di X, o a sinistra di Y a testa in giù.
+  const int fy = port ? c.height() - in.bottom - (in.bottom ? kGap : 0) - kH : c.height() - kH;
+  const char* msg = tr(why == Off::Empty ? lang::OffEmpty : lang::OffHold);
+  const int mw = tinyfont::textWidth(msg, kScale);
+  int mx = -1;
+  if (labels && !port) {
+    const Canvas n = canvas(kNaturalRot);
+    Rect tabs[sizeof(kKeyTabs) / sizeof(kKeyTabs[0])];
+    int nt = 0;
+    for (const KeyTab& t : kKeyTabs) {
+      const Rect r = tabRect(n, c, t);
+      if (r.y + r.h >= c.height()) tabs[nt++] = r;
+    }
+    std::sort(tabs, tabs + nt, [](const Rect& a, const Rect& b) { return a.x < b.x; });
+    int best = 0;
+    for (int i = 0; nt && i <= nt; i++) {
+      const int a = i ? tabs[i - 1].x + tabs[i - 1].w : 0, b = i < nt ? tabs[i].x : c.width(), w = b - a;
+      if (w < mw + 32 || w <= best) continue;
+      best = w;
+      mx = a > 0 ? a + 16 : b - 16 - mw;  // accanto all'etichetta a sinistra, se c'è
+    }
+  }
   c.fillRect(0, fy, c.width(), kH, false);
   c.fillRect(0, fy, c.width(), 2, true);
-  c.textCentered(fy + 13, tr(why == Off::Empty ? lang::OffEmpty : lang::OffHold),
-                 kScale);
+  if (mx < 0) c.textCentered(fy + 13, msg, kScale);
+  else c.text(mx, fy + 13, msg, kScale);
   if (why != Off::Blank) {
     // Quanta batteria aveva quando si è spento: in alto a destra, o al centro in alto
     // con le etichette dei tasti (sotto, se lì c'è un'etichetta). Il riquadro bianco
@@ -1448,14 +1520,14 @@ void drawOff(Off why) {
       char label[6];
       snprintf(label, sizeof(label), "%d%%", pct);
       const int w = tinyfont::textWidth(label, kScale);
-      Rect box{c.width() - 62 - w, 0, w + 56, 30};
+      Rect box{c.width() - 70 - w, 0, w + 64, 30};
       if (labels) {
         box.x = (c.width() - box.w) / 2;
         if (hitsKeyLabel(c, box)) box.y = in.top + 8;
       }
-      c.fillRect(box.x, box.y, box.w, box.h, false);
-      c.text(box.x + 4, box.y + 8, label, kScale);
-      c.battery(box.x + 10 + w, box.y + 5, pct);
+      roundBox(c, box, kTabRadius, 0);  // fondo bianco, arrotondato verso il centro
+      c.text(box.x + 8, box.y + 8, label, kScale);
+      c.battery(box.x + 14 + w, box.y + 5, pct);
     }
   }
   drawKeyLabels(c);

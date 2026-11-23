@@ -33,7 +33,7 @@ async function makeManualShots(lang = 'it', putUrl = null) {
     await shot('filters-port', { i: 1 });
     await shot('filters-land', { i: 1, rot: 90 });
     await shot('filters-edit', { i: 1, after: () => { sim.edit = { i: editableStages(sim.stages, sim.ndShown, sim.dioShown)[0] }; } });
-    await shot('crew-port', { i: 2 });
+    await shot('crew-port', { i: simPlan().findIndex(p => p.kind === 'card' && p.card.type === 'list') });  // la crew, dopo l'elenco filtri
     await shot('lock', { i: 0, keyLock: true });
     await shot('off', { off: true });
     // Schermata di ricezione: come drawReceive nel firmware (il simulatore non la mostra).

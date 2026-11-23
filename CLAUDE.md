@@ -63,8 +63,10 @@ costruttori di lenti e filtri nei dati vanno bene.
   nel localStorage `camtag.ui.v1`: sono del browser, non entrano in `project.json`.
   **Modalità sviluppatore**: `?dev` accende `ui.dev` (resta nel localStorage,
   `?dev=0` la spegne) e la classe `devmode` sul body mostra gli elementi
-  `.dev-only`; oggi "Registro batteria" e il `.bin` scelto con Maiusc su
-  "Aggiorna firmware". Le funzioni che servono solo a chi prova il firmware
+  `.dev-only`; oggi "Registro batteria", il `.bin` scelto con Maiusc su
+  "Aggiorna firmware" Maiusc su "Scarica .bmp" (l'anteprima con quello che
+  disegna l'X3, es. `off-overlay.p.bmp`) e le spunte sotto l'anteprima (`ui.devPrev`:
+  capovolto, batteria scarica, in carica, USB, tasti bloccati; `drawStatusPreview`). Le funzioni che servono solo a chi prova il firmware
   vanno lì. Lo zip delle card si scarica dal menu Progetto. Il testo delle note
   accetta `*grassetto*` e `_corsivo_`, a bordo parola, spiegati in chiaro sotto il testo (`richRuns`;
   anche `**grassetto**`; il corsivo è l'Inter dritto inclinato dal browser, nel
@@ -248,8 +250,10 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
 - `/camtag/off.bmp`, `off.p.bmp` (facoltativa): schermata di spento, fuori dal
   giro delle pagine. Nel configuratore web la compone la pagina "Spento" (`state.off`:
   immagine di sfondo e scritta, `renderOff`), o è una scheda manuale con
-  "Schermata di spento" accesa (`c.off`, una sola; `offCard`), che la sostituisce;
-  senza nessuna delle due non si esporta. Il firmware ci disegna sopra il nome,
+  "Schermata di spento" accesa (`c.off`, una sola; `offCard`), che la sostituisce:
+  esce dal suo tipo e diventa la voce Spento in fondo alla lista (`sel` resta
+  `off`), con in cima etichette dei tasti e nome CAMTAG; spegnendola torna al suo
+  posto. Senza nessuna delle due non si esporta. Il firmware ci disegna sopra il nome,
   una fascia in basso, la batteria e le etichette dei tasti (`drawOff`; nello
   configuratore web `drawOffOverlay`, con il font 5x7 del firmware copiato in `TINY`).
 - `/camtag/settings.ini`: `keys=0|1` etichette dei tasti, `off.logo=0|1` nome
@@ -260,9 +264,17 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
 - Etichette dei tasti (`kKeyTabs`/`drawKeyLabels`, nel configuratore web `KEY_TABS`,
   stesse frazioni lungo i bordi): linguette bianche con bordo nero e nome dritto
   per chi legge (A|B e C|D, X, Y, PWR, RESET, un tasto vero che però a batteria spegne soltanto: GPIO13 cade e stacca la batteria; il riavvio è RESET e poi power tenuto, e i testi lo dicono così),
-  sulla schermata senza card e da spento (non sul bianco). La schermata senza
-  card (`showMessage`, nel simulatore `drawMessageScreen`) ha il messaggio in un
-  riquadro ben in vista al centro.
+  sulla schermata senza card e da spento (non sul bianco). Spigoli arrotondati solo
+  verso il centro (`roundBox`); su un lato verticale un nome di più lettere (PWR e RESET
+  in orizzontale) va in colonna, lettere dritte (`tabTurned`).
+- Il nome CAMTAG sugli schermi del firmware (spento, senza card, lingua) è il logo:
+  Inter 800 tutto nero, bitmap in `device/src/Logo.h` generata dal configuratore web
+  (`logoHeader()` in console; si rigenera se cambia `logoCentered`/`LOGO_SIZE`). Da
+  spento sopra un'immagine sta in una pillola, in verticale all'altezza di X e Y. La
+  fascia "spento" in orizzontale sta in fondo, con la scritta accanto alla linguetta
+  in basso (`offStrip`); la batteria da spento ha il fondo arrotondato come le linguette.
+- La schermata senza card (`showMessage`, nel simulatore `drawMessageScreen`) ha il
+  messaggio in un riquadro ben in vista al centro.
 - `/camtag/project.json`: il progetto del configuratore web, inviato con le card
   (anche nello zip) e riletto con "Importa dall'X3". Il firmware lo ignora. Il
   lavoro nel browser sta solo nel localStorage: questo file è la copia che resta.

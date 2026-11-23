@@ -111,6 +111,9 @@
   .pbar-g { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
   .pbar button, .pbar .seg button { padding: 7px 9px; }
   #previewNote { margin: 0; text-align: center; }
+  #devPrev { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+  #devPrev label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+  @media (max-width: 699px) { #devPrev { display: none !important; } }  /* solo da computer */
   .pages { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .pages:empty { display: none; }
   #previewMode, #simMode { display: flex; flex-direction: column; gap: 10px; align-items: center; max-width: 100%; min-width: 0; }
@@ -509,6 +512,13 @@
           <button class="fbtn c2" id="fNext" aria-label="Pagina successiva" hidden>›</button>
         </div>
         <p class="hint" id="previewNote">Anteprima a 1 bit, identica a ciò che vedrai sull'e-paper.</p>
+        <div id="devPrev" class="dev-only">
+          <label><input type="checkbox" data-dp="flip"> Capovolto</label>
+          <label><input type="checkbox" data-dp="low"> Batteria scarica</label>
+          <label><input type="checkbox" data-dp="charging"> In carica</label>
+          <label><input type="checkbox" data-dp="usb"> USB</label>
+          <label><input type="checkbox" data-dp="lock"> Tasti bloccati</label>
+        </div>
       </div>
       <div id="simMode" hidden>
         <div class="simbox"><div class="simscale">
@@ -1588,10 +1598,12 @@ function wrapRich(ctx, text, maxW, size) {
 }
 
 function drawPatch(ctx, W, H, c) {
-  const capH = c.caption ? Math.round(H * 0.14) : 0;
+  // Sulla scheda da spento la didascalia sta subito sopra la fascia "spento" (che sale
+  // con le etichette dei tasti), e il nero continua sotto, dietro fascia ed etichette.
+  const capH = c.caption ? Math.round(H * 0.14) : 0, capY = (c.off ? offStripTop(W, H) : H) - capH;
   const img = c.img && imgCache.get(c.img);
   if (img) {
-    const areaH = H - capH;
+    const areaH = capY;
     const s = c.fit === 'cover' ? Math.max(W / img.width, areaH / img.height) : Math.min(W / img.width, areaH / img.height);
     const w = img.width * s, h = img.height * s;
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, areaH); ctx.clip();
@@ -1602,13 +1614,16 @@ function drawPatch(ctx, W, H, c) {
   } else {
     ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = `600 ${Math.round(H * 0.06)}px ${FONT}`;
-    ctx.fillText(tc('Carica un\'immagine'), W / 2, (H - capH) / 2);
+    ctx.fillText(tc('Carica un\'immagine'), W / 2, capY / 2);
   }
   if (c.caption) {
-    ctx.fillStyle = '#000'; ctx.fillRect(0, H - capH, W, capH);
-    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    fitFont(ctx, c.caption.toUpperCase(), 800, W * 0.9, capH * 0.55);
-    ctx.fillText(c.caption.toUpperCase(), W / 2, H - capH / 2);
+    ctx.fillStyle = '#000'; ctx.fillRect(0, capY, W, H - capY);
+    // Centrata sulle lettere vere (maiuscole), non sul "middle" del font, che le abbassa.
+    const cap = c.caption.toUpperCase();
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    fitFont(ctx, cap, 800, W * 0.9, capH * 0.55);
+    const m = ctx.measureText(cap);
+    ctx.fillText(cap, W / 2, Math.round(capY + capH / 2 + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2));
   }
 }
 // Contrasto da -100 a +100 attorno al grigio `pivot` (0–255, di solito 128), solo sul riquadro
@@ -1742,6 +1757,13 @@ function tinyText(ctx, x, y, t, sc, color = '#000') {
     x += 6 * sc;
   }
 }
+// Testo 5x7 in colonna, centrato in (cx, cy): lettere dritte, una sotto l'altra, con un
+// punto di spazio tra le righe.
+const stackHeight = (t, sc) => t.length * 7 * sc + (t.length - 1) * sc;
+function tinyStacked(ctx, cx, cy, t, sc) {
+  let y = cy - Math.trunc(stackHeight(t, sc) / 2);
+  for (const ch of t) { tinyText(ctx, cx - Math.trunc(tinyWidth(ch, sc) / 2), y, ch, sc); y += 8 * sc; }
+}
 function tinyCentered(ctx, W, y, t, sc) { tinyText(ctx, Math.floor((W - tinyWidth(t, sc)) / 2), y, t, sc); }
 
 // Etichette dei tasti (drawKeyLabels nel firmware, stesse posizioni di kKeyTabs):
@@ -1765,10 +1787,18 @@ function inRound(px, py, r, rad) {
   const dx = px - cx, dy = py - cy;
   return dx * dx + dy * dy <= rad * rad + rad;
 }
-function roundBox(ctx, r, rad, t) {
-  const inn = { x: r.x + t, y: r.y + t, w: r.w - 2 * t, h: r.h - 2 * t };
+// Arrotondati solo gli spigoli verso il centro: un lato che tocca o passa il bordo dello
+// schermo (W×H) si allunga di rad oltre il bordo, così i suoi spigoli restano dritti.
+// t = 0: solo il fondo bianco, senza bordo.
+function roundBox(ctx, r, rad, t, W, H) {
+  const e = { ...r };
+  if (r.x <= 0) { e.x -= rad; e.w += rad; }
+  if (r.y <= 0) { e.y -= rad; e.h += rad; }
+  if (r.x + r.w >= W) e.w += rad;
+  if (r.y + r.h >= H) e.h += rad;
+  const inn = { x: e.x + t, y: e.y + t, w: e.w - 2 * t, h: e.h - 2 * t };
   for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++)
-    if (inRound(x, y, r, rad)) { ctx.fillStyle = inRound(x, y, inn, rad - t) ? '#fff' : '#000'; ctx.fillRect(x, y, 1, 1); }
+    if (inRound(x, y, e, rad)) { ctx.fillStyle = inRound(x, y, inn, rad - t) ? '#fff' : '#000'; ctx.fillRect(x, y, 1, 1); }
 }
 const f32 = Math.fround;
 function edgePt(edge, along, depth) {
@@ -1783,10 +1813,16 @@ function contentRect(a, b, q) {
   const [ax, ay] = natToContent(a, q), [bx, by] = natToContent(b, q);
   return { x: Math.min(ax, bx), y: Math.min(ay, by), w: Math.abs(bx - ax) + 1, h: Math.abs(by - ay) + 1 };
 }
+// Linguetta su un lato verticale con un nome di più lettere (PWR e RESET in orizzontale):
+// il nome va in colonna, una lettera sotto l'altra, così la linguetta resta sottile.
+function tabTurned(t, q) {
+  const [ax, ay] = natToContent(edgePt(t.edge, t.from, 0), q), [bx, by] = natToContent(edgePt(t.edge, t.to, 0), q);
+  return Math.abs(bx - ax) <= Math.abs(by - ay) && t.labels.some(([l]) => l.length > 1);
+}
 function tabDepth(t, q) {
   const [ax, ay] = natToContent(edgePt(t.edge, t.from, 0), q), [bx, by] = natToContent(edgePt(t.edge, t.to, 0), q);
   const across = Math.abs(bx - ax) > Math.abs(by - ay);
-  return (across ? 7 * t.scale : Math.max(...t.labels.map(([l]) => tinyWidth(l, t.scale)))) + 2 * TAB_PAD;
+  return (across ? 7 * t.scale : tabTurned(t, q) ? Math.max(...t.labels.flatMap(([l]) => [...l].map(ch => tinyWidth(ch, t.scale)))) : Math.max(...t.labels.map(([l]) => tinyWidth(l, t.scale)))) + 2 * TAB_PAD;
 }
 function tabRect(t, q) { return contentRect(edgePt(t.edge, t.from, -4), edgePt(t.edge, t.to, tabDepth(t, q) - 1), q); }
 function keyInsets(W, H, q, on = state.off.keys) {
@@ -1802,9 +1838,10 @@ function keyInsets(W, H, q, on = state.off.keys) {
 }
 const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 function drawKeyLabels(ctx, q) {
+  const [PW, PH] = dims('port'), [W, H] = q & 1 ? [PH, PW] : [PW, PH];
   for (const t of KEY_TABS) {
     const d = tabDepth(t, q), r = tabRect(t, q);
-    roundBox(ctx, r, TAB_RADIUS, 2);
+    roundBox(ctx, r, TAB_RADIUS, 2, W, H);
     ctx.fillStyle = '#000';
     if (t.divider) {
       const l = contentRect(edgePt(t.edge, t.divider, 0), edgePt(t.edge, t.divider, d - 1), q);
@@ -1812,7 +1849,8 @@ function drawKeyLabels(ctx, q) {
     }
     for (const [l, at] of t.labels) {
       const [x, y] = natToContent(edgePt(t.edge, at, Math.trunc(d / 2)), q);
-      tinyText(ctx, x - Math.trunc(tinyWidth(l, t.scale) / 2), y - Math.trunc(7 * t.scale / 2), l, t.scale);
+      if (tabTurned(t, q)) tinyStacked(ctx, x, y, l, t.scale);
+      else tinyText(ctx, x - Math.trunc(tinyWidth(l, t.scale) / 2), y - Math.trunc(7 * t.scale / 2), l, t.scale);
     }
   }
 }
@@ -1823,31 +1861,98 @@ function fitScale(t, scale, w) { while (scale > 1 && tinyWidth(t, scale) > w) sc
 // la fascia in basso, la batteria (qui un valore d'esempio) e le etichette dei tasti.
 // drawn = sotto c'è off.bmp.
 const OFF_GAP = 10;  // tra la fascia e le etichette in basso
-const OFF_STRIP = 36, LOGO_Y = 0.25;
-function logoBox(W, H) { const sc = H > W ? 6 : 8, w = tinyWidth('CAMTAG', sc) + 48, h = 7 * sc + 36; return { x: Math.trunc((W - w) / 2), y: Math.trunc(H / 4) - Math.trunc(h / 2), w, h, sc }; }
+const OFF_STRIP = 36, LOGO_Y = 0.25, OFF_TAB = 31;  // OFF_TAB = altezza delle etichette in basso
+// Riga più alta della fascia "spento" (drawOff nel firmware), con o senza etichette dei tasti.
+// In orizzontale la fascia sta in fondo, con la scritta accanto alle etichette in basso
+// (offStrip); in verticale sopra le etichette.
+function offStripTop(W, H) { return H - (state.off.keys && H > W ? OFF_TAB + OFF_GAP : 0) - OFF_STRIP; }
+// Fascia "spento": riga più alta e inizio della scritta (null = al centro). In orizzontale,
+// con le etichette, la scritta sta accanto a un'etichetta in basso, nello spazio libero più
+// largo: a destra di X con l'X3 come nell'anteprima, a sinistra di Y a testa in giù.
+function offStrip(W, H, q, text) {
+  const y = offStripTop(W, H);
+  if (!state.off.keys || H > W) return { y, x: null };
+  const tabs = KEY_TABS.map(t => tabRect(t, q)).filter(r => r.y + r.h >= H).sort((a, b) => a.x - b.x);
+  if (!tabs.length) return { y, x: null };
+  const tw = tinyWidth(text, 2), edges = [0, ...tabs.flatMap(r => [r.x, r.x + r.w]), W];
+  let best = null;
+  for (let i = 0; i < edges.length; i += 2) {
+    const a = edges[i], b = edges[i + 1], w = b - a;
+    if (w < tw + 32 || (best && w <= best.w)) continue;
+    best = { w, x: a > 0 ? a + 16 : b - 16 - tw };  // accanto all'etichetta a sinistra, se c'è
+  }
+  return { y, x: best ? best.x : null };
+}
+// Il nome CAMTAG come il logo (Inter 800, spaziatura 0,08 em, tutto nero), con le
+// maiuscole a LOGO_SIZE di quelle del font 5x7 a scala sc e la soglia del testo. Il
+// firmware lo disegna da device/src/Logo.h (logoHeader): se cambia, rigeneralo.
+const CAP_H = 0.727, LOGO_SIZE = 0.8;  // maiuscole di Inter in em; misura rispetto al 5x7
+function logoCap(sc) { return Math.round(7 * sc * LOGO_SIZE); }  // altezza delle maiuscole
+function logoFont(sc) { const px = Math.round(logoCap(sc) / CAP_H); return { font: `800 ${px}px ${FONT}`, ls: Math.round(px * 0.08) }; }
+function logoWidth(sc) {
+  const [, g] = newCanvas(1, 1), f = logoFont(sc); g.font = f.font; g.letterSpacing = `${f.ls}px`;
+  return Math.ceil(g.measureText('CAMTAG').width) - f.ls;  // senza la spaziatura dopo la G
+}
+function logoCentered(ctx, W, y, sc) {
+  const f = logoFont(sc), w = logoWidth(sc), h = logoCap(sc), pad = 4, [cv, g] = newCanvas(w + 2 * pad, h + 2 * pad);
+  g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+  g.font = f.font; g.letterSpacing = `${f.ls}px`; g.fillStyle = '#000'; g.textBaseline = 'alphabetic';
+  g.fillText('CAMTAG', pad, pad + h);
+  const d = g.getImageData(0, 0, cv.width, cv.height).data, x0 = Math.floor((W - w) / 2) - pad, y0 = y - pad;
+  ctx.fillStyle = '#000';
+  for (let yy = 0; yy < cv.height; yy++) for (let xx = 0; xx < cv.width; xx++) if (d[(yy * cv.width + xx) * 4] < TEXT_T) ctx.fillRect(x0 + xx, y0 + yy, 1, 1);
+}
+// Sopra un'immagine il nome sta in una pillola (spigoli con raggio metà dell'altezza), un po'
+// più larga perché le curve non stringano il nome.
+// device/src/Logo.h: il logo nelle due misure (sc 6 verticale, 8 orizzontale) come
+// bitmap a 1 bit, uguale pixel per pixel a logoCentered. Si rigenera dalla console del
+// configuratore web se cambia il logo: copy(logoHeader()).
+function logoHeader() {
+  const out = ['#pragma once', '// Generato dal configuratore web (logoHeader in companion/index.html): non modificarlo a mano.',
+    '// Il nome CAMTAG in Inter 800, spaziatura 0,08 em, soglia del testo. Bitmap (w + 8) x (cap + 8),',
+    '// righe da sinistra, MSB per primo, 1 = nero; si disegna da ((W - w) / 2 - 4, y - 4).', '#include <stdint.h>', '',
+    'struct LogoBitmap { int scale, w, cap, bw, bh; const uint8_t* bits; };'];
+  for (const sc of [6, 8]) {
+    const w = logoWidth(sc), cap = logoCap(sc), bw = w + 8, bh = cap + 8, [cv, g] = newCanvas(bw, bh);
+    logoCentered(g, bw, 4, sc);
+    const d = g.getImageData(0, 0, bw, bh).data, rb = Math.ceil(bw / 8), bytes = [];
+    for (let y = 0; y < bh; y++) for (let xb = 0; xb < rb; xb++) {
+      let v = 0; for (let k = 0; k < 8; k++) { const x = xb * 8 + k; if (x < bw && d[(y * bw + x) * 4] < 128) v |= 0x80 >> k; }
+      bytes.push('0x' + v.toString(16).padStart(2, '0'));
+    }
+    out.push('', `constexpr uint8_t kLogo${sc}Bits[] = {`);
+    for (let i = 0; i < bytes.length; i += 16) out.push('    ' + bytes.slice(i, i + 16).join(', ') + ',');
+    out.push('};', `constexpr LogoBitmap kLogo${sc}{${sc}, ${w}, ${cap}, ${bw}, ${bh}, kLogo${sc}Bits};`);
+  }
+  return out.join('\n') + '\n';
+}
+function logoBox(W, H, q = 0) { const sc = H > W ? 6 : 8, h = logoCap(sc) + 30, w = logoWidth(sc) + h;
+  // In verticale il centro è alla stessa altezza dei tasti X e Y.
+  const xr = tabRect(KEY_TABS.find(t => t.labels[0][0] === 'X'), q), cy = H > W ? xr.y + Math.trunc(xr.h / 2) : Math.trunc(H / 4);
+  return { x: Math.trunc((W - w) / 2), y: cy - Math.trunc(h / 2), w, h, sc }; }
 function drawOffOverlay(ctx, W, H, q, drawn) {
   ctx.save();
   if (state.off.logo) {
     const sc = H > W ? 6 : 8;
-    if (!drawn) { ctx.fillStyle = '#000'; tinyCentered(ctx, W, Math.trunc(H / 2) - 40, 'CAMTAG', sc); }
+    if (!drawn) logoCentered(ctx, W, Math.trunc(H / 2) - 40, sc);
     else {
-      const b = logoBox(W, H);
-      ctx.fillStyle = '#fff'; ctx.fillRect(b.x, b.y, b.w, b.h); ctx.fillStyle = '#000'; strokeBox(ctx, b.x, b.y, b.w, b.h, 3);
-      tinyCentered(ctx, W, b.y + 18, 'CAMTAG', sc);
+      const b = logoBox(W, H, q);
+      roundBox(ctx, b, Math.trunc(b.h / 2), 3, W, H);
+      logoCentered(ctx, W, b.y + Math.trunc((b.h - logoCap(sc)) / 2), sc);
     }
   }
-  const inn = keyInsets(W, H, q), fy = H - inn.bottom - (inn.bottom ? OFF_GAP : 0) - OFF_STRIP;
+  const inn = keyInsets(W, H, q), msg = devText('off'), st = offStrip(W, H, q, msg), fy = st.y;
   ctx.fillStyle = '#fff'; ctx.fillRect(0, fy, W, OFF_STRIP);
   ctx.fillStyle = '#000'; ctx.fillRect(0, fy, W, 2);
-  tinyCentered(ctx, W, fy + 13, devText('off'), 2);
-  const label = '80%', w = tinyWidth(label, 2), box = { x: W - 62 - w, y: 0, w: w + 56, h: 30 };
+  if (st.x === null) tinyCentered(ctx, W, fy + 13, msg, 2); else tinyText(ctx, st.x, fy + 13, msg, 2);
+  const label = `${previewPct()}%`, w = tinyWidth(label, 2), box = { x: W - 70 - w, y: 0, w: w + 64, h: 30 };
   if (state.off.keys) {
     box.x = Math.trunc((W - box.w) / 2);
     if (KEY_TABS.some(t => overlaps(tabRect(t, q), box))) box.y = inn.top + 8;
   }
-  ctx.fillStyle = '#fff'; ctx.fillRect(box.x, box.y, box.w, box.h);
-  tinyText(ctx, box.x + 4, box.y + 8, label, 2);
-  const bx = box.x + 10 + w, by = box.y + 5;
+  roundBox(ctx, box, TAB_RADIUS, 0, W, H);
+  ctx.fillStyle = '#000'; tinyText(ctx, box.x + 8, box.y + 8, label, 2);
+  const bx = box.x + 14 + w, by = box.y + 5;
   ctx.fillStyle = '#fff'; ctx.fillRect(bx - 2, by - 2, 44, 24);
   ctx.fillStyle = '#000'; strokeBox(ctx, bx, by, 36, 20, 2); ctx.fillRect(bx + 36, by + 6, 4, 8); ctx.fillRect(bx + 4, by + 4, Math.trunc(28 * 80 / 100), 12);
   if (state.off.keys) drawKeyLabels(ctx, q);
@@ -1859,7 +1964,7 @@ function drawOffOverlay(ctx, W, H, q, drawn) {
 function drawMessageScreen(ctx, W, H, q, line1, line2) {
   ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#000';
   const port = H > W, mid = Math.trunc(H / 2);
-  tinyCentered(ctx, W, mid - (port ? 150 : 120), 'CAMTAG', port ? 6 : 8);
+  logoCentered(ctx, W, mid - (port ? 150 : 120), port ? 6 : 8);
   const padX = 28, padY = 24, gap = 20, maxW = W - 2 * padX - 80;
   const s1 = fitScale(line1, port ? 4 : 5, maxW), s2 = line2 ? fitScale(line2, 3, maxW) : 0;
   const tw = Math.max(tinyWidth(line1, s1), line2 ? tinyWidth(line2, s2) : 0);
@@ -1877,9 +1982,9 @@ function drawOffComposed(ctx, W, H) {
   if (o.img && imgCache.get(o.img)) drawPatch(ctx, W, H, { ...o, caption: '' });
   const text = o.text.trim();
   if (!text) return;
-  const tab = o.keys ? 31 : 0, side = o.keys ? 40 : 24;
+  const tab = o.keys ? OFF_TAB : 0, side = o.keys ? 40 : 24;
   const lb = logoBox(W, H), top = o.logo ? lb.y + lb.h + 24 : tab + 24;
-  const bottom = H - tab - (tab ? OFF_GAP : 0) - OFF_STRIP - 16, boxed = !!o.img, pad = boxed ? 16 : 0;
+  const bottom = offStripTop(W, H) - 16, boxed = !!o.img, pad = boxed ? 16 : 0;
   const maxW = W - 2 * side - 2 * pad;
   let size = Math.round(H * 0.09), lines;
   for (; size > 16; size -= 2) {
@@ -1910,6 +2015,43 @@ function renderOff(layout) {
 // Lucchetto dei tasti bloccati (drawLock nel firmware): riquadro di 36 px sul bordo
 // fisico, sotto il power, dritto per chi legge il contenuto. (cx, cy) = centro.
 const POWER_POS = 0.85, LOCK_BOX = 36;
+// Modalità sviluppatore, sotto l'anteprima (ui.devPrev): l'X3 capovolto (verticale a testa
+// in giù, orizzontale con X in alto) e i segni che il firmware disegna sulle card.
+const devPrev = () => (ui.dev && ui.devPrev) || {};
+function previewQ(layout) { const f = devPrev().flip; return layout === 'port' ? (f ? 2 : 0) : (f ? 1 : 3); }
+const previewPct = () => devPrev().low ? 15 : 80;
+// Batteria (scarica o in carica), fulmine, USB e lucchetto (drawStatus e drawLock nel firmware).
+function drawStatusPreview(ctx, W, H, q) {
+  const p = devPrev(), pct = previewPct(), showBattery = p.charging || pct < 20;
+  const usbW = tinyWidth('USB', 2) + 14, width = (showBattery ? 48 : 0) + (p.charging ? 22 : 0) + (p.usb ? usbW + 4 : 0);
+  const [lcx, lcy] = natToContent([Math.trunc(POWER_POS * dims('port')[0] + 0.5), LOCK_BOX / 2 + 4], q), lx = lcx - LOCK_BOX / 2, ly = lcy - LOCK_BOX / 2;
+  let right = W - 10, y = 12;
+  if (width) {
+    if (p.lock && lx < right && lx + LOCK_BOX > right - width && ly < y + 22 && ly + LOCK_BOX > y - 2) y = ly + LOCK_BOX + 8;
+    if (showBattery) {
+      const x = right - 42;
+      ctx.fillStyle = '#fff'; ctx.fillRect(x - 2, y - 2, 44, 24);
+      ctx.fillStyle = '#000'; strokeBox(ctx, x, y, 36, 20, 2); ctx.fillRect(x + 36, y + 6, 4, 8); ctx.fillRect(x + 4, y + 4, Math.trunc(28 * pct / 100), 12);
+      right -= 48;
+    }
+    if (p.charging) { ctx.fillStyle = '#fff'; ctx.fillRect(right - 18, y - 2, 18, 24); drawBolt(ctx, right - 16, y - 2); right -= 22; }
+    if (p.usb) {
+      ctx.fillStyle = '#fff'; ctx.fillRect(right - usbW, y - 2, usbW, 24);
+      ctx.fillStyle = '#000'; strokeBox(ctx, right - usbW, y - 2, usbW, 24, 2); tinyText(ctx, right - usbW + 7, y + 3, 'USB', 2);
+    }
+  }
+  if (p.lock) drawLockIcon(ctx, lcx, lcy, 0);
+}
+function drawBolt(ctx, x, y) {
+  const px = [9, 1, 6, 4, 13, 8, 11], py = [0, 13, 13, 24, 10, 10, 0], n = px.length;
+  ctx.fillStyle = '#000';
+  for (let yy = 0; yy < 24; yy++) for (let xx = 0; xx < 14; xx++) {
+    const fx = xx + 0.5, fy = yy + 0.5; let inside = false;
+    for (let i = 0, j = n - 1; i < n; j = i++)
+      if ((py[i] > fy) !== (py[j] > fy) && fx < (px[j] - px[i]) * (fy - py[i]) / (py[j] - py[i]) + px[i]) inside = !inside;
+    if (inside) ctx.fillRect(x + xx, y + yy, 1, 1);
+  }
+}
 function drawLockIcon(ctx, cx, cy, rot) {
   ctx.save(); ctx.translate(cx, cy); ctx.rotate(-rot * Math.PI / 180); ctx.translate(-LOCK_BOX / 2, -LOCK_BOX / 2);
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, LOCK_BOX, LOCK_BOX);
@@ -2090,6 +2232,11 @@ view = ui.view === 'port' ? 'port' : 'land';
 { const d = new URLSearchParams(location.search).get('dev'); if (d !== null) { ui.dev = d !== '0'; saveUi(); const u = new URL(location.href); u.searchParams.delete('dev'); history.replaceState(null, '', u); } }
 document.body.classList.toggle('devmode', !!ui.dev);
 if (ui.dev) $('#bleFwBtn').title = t("Installa sull'X3 il firmware di questo configuratore web. Con Maiusc premuto scegli un file .bin");
+document.querySelectorAll('#devPrev [data-dp]').forEach(i => {
+  i.checked = !!devPrev()[i.dataset.dp];
+  i.onchange = () => { ui.devPrev = { ...ui.devPrev, [i.dataset.dp]: i.checked }; saveUi(); drawPreview(); };
+});
+if (ui.dev) $('#bmpBtn').title = t("Scarica questa schermata (.bmp). Con Maiusc premuto, con quello che ci disegna l'X3 (da spento: etichette, fascia, batteria)");
 
 // ---------- Riquadri a comparsa: menu e spiegazioni ----------
 // Uno alla volta, accanto a chi lo apre e sempre dentro lo schermo. Si chiude
@@ -2179,8 +2326,9 @@ function selectedScreen() {
   if (sel.kind === 'lenschart') return { kind: 'lenschart', page: Math.min(page, Math.max(lensPages().length - 1, 0)) };
   if (sel.kind === 'filters') return { kind: 'filters' };
   if (sel.kind === 'filterlist') return { kind: 'filterlist' };
-  if (sel.kind === 'off') return { kind: 'off' };
-  const c = state.cards[sel.i]; return c ? { kind: 'card', card: c } : null;
+  // La scheda da spento è la voce Spento: selezionarla vuol dire selezionare Spento.
+  const c = sel.kind === 'off' ? offCard() : state.cards[sel.i];
+  return c ? { kind: 'card', card: c } : sel.kind === 'off' ? { kind: 'off' } : null;
 }
 function availableLayouts() { const s = selectedScreen(); return s && s.kind === 'card' ? layoutsOf(s.card) : s && s.kind === 'off' ? offLayouts() : ['land', 'port']; }
 function currentLayout() { const l = availableLayouts(); return l.includes(view) ? view : l[0]; }
@@ -2188,13 +2336,17 @@ function currentLayout() { const l = availableLayouts(); return l.includes(view)
 function drawPreview() {
   const s = selectedScreen(), ctx = preview.getContext('2d');
   if (!s) { preview.width = 792; preview.height = 528; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, 792, 528); return; }
-  const layout = currentLayout(), r = renderScreen(s, layout, { preview: true });
+  // Capovolto (modalità sviluppatore) le indicazioni dei filtri non si disegnano: quelle
+  // nei quattro versi le mostra il simulatore.
+  const layout = currentLayout(), r = renderScreen(s, layout, { preview: true, noHints: !!devPrev().flip });
   preview.width = r.w; preview.height = r.h;
   const img = ctx.createImageData(r.w, r.h);
   for (let i = 0; i < r.w * r.h; i++) { const c = r.bits[i] ? 255 : 0; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = c; img.data[i * 4 + 3] = 255; }
   ctx.putImageData(img, 0, 0);
   const isOff = s.kind === 'off' || (s.kind === 'card' && s.card.off);
-  if (isOff) drawOffOverlay(ctx, r.w, r.h, layout === 'port' ? 0 : 3, s.kind === 'card' || hasOffBmp());
+  const q = previewQ(layout);
+  if (isOff) drawOffOverlay(ctx, r.w, r.h, q, s.kind === 'card' || hasOffBmp());
+  else if (ui.dev) drawStatusPreview(ctx, r.w, r.h, q);
   const layouts = availableLayouts();
   document.querySelectorAll('[data-view]').forEach(b => {
     b.classList.toggle('on', b.dataset.view === layout); b.setAttribute('aria-pressed', String(b.dataset.view === layout)); b.disabled = !layouts.includes(b.dataset.view);
@@ -2219,6 +2371,7 @@ function turnPage(d) {
 
 function renderList() {
   const ul = $('#list'); ul.innerHTML = '';
+  if (sel.kind === 'card' && state.cards[sel.i]?.off) sel = { kind: 'off' };
   const pages = lensPages().length;
   const item = (num, title, detail, to, off) => {
     const on = to.kind === sel.kind && to.i === sel.i;
@@ -2229,9 +2382,10 @@ function renderList() {
   item('◆', 'Lens chart', pages > 1 ? t('{} · {} pag.', plural(state.lenses.length, 'lente', 'lenti'), pages) : plural(state.lenses.length, 'lente', 'lenti'), { kind: 'lenschart' }, !state.auto.lenschart || !state.lenses.length);
   item('◆', 'Filtri', 'ND, diottrie, stadi', { kind: 'filters' }, !state.auto.filters);
   item('◆', 'Elenco filtri', 'tutti i vetri del kit', { kind: 'filterlist' }, !state.auto.filterlist);
-  // Le schede nell'ordine del dispositivo (cardOrder), numerate dentro il loro tipo.
+  // Le schede nell'ordine del dispositivo (cardOrder), numerate dentro il loro tipo; quella
+  // da spento non sta fra loro: è la voce Spento, sempre in fondo.
   const seen = {};
-  cardOrder().forEach(i => { const c = state.cards[i]; item(c.off ? '⏻' : String(seen[c.type] = (seen[c.type] || 0) + 1).padStart(2, '0'), cardTitle(c), c.off ? t('{} · da spento', t(TYPE_LABEL[c.type])) : TYPE_LABEL[c.type], { kind: 'card', i }); });
+  cardOrder().filter(i => !state.cards[i].off).forEach(i => { const c = state.cards[i]; item(String(seen[c.type] = (seen[c.type] || 0) + 1).padStart(2, '0'), cardTitle(c), TYPE_LABEL[c.type], { kind: 'card', i }); });
   const oc = offCard();
   item('⏻', 'Spento', oc ? t('scheda «{}»', tExact(cardTitle(oc))) : [state.off.img && 'immagine', state.off.text.trim() && 'scritta', state.off.keys && 'tasti'].filter(Boolean).map(x => t(x)).join(', ') || t('solo il nome'), { kind: 'off' });
 }
@@ -2710,24 +2864,38 @@ function moveCard(d, dry = false) {
   state.cards = groups.flatMap(g => g.cards); sel = { kind: 'card', i: state.cards.indexOf(c) }; save(); refresh();
   return true;
 }
+// Indice della scheda selezionata, anche quando è la voce Spento.
+function selCard() { return sel.kind === 'card' ? sel.i : sel.kind === 'off' && offCard() ? state.cards.indexOf(offCard()) : -1; }
 function dupCard() {
-  if (sel.kind !== 'card') return;
-  state.cards.splice(sel.i + 1, 0, structuredClone(state.cards[sel.i])); sel = { kind: 'card', i: sel.i + 1 }; save(); refresh();
+  const i = selCard(); if (i < 0) return;
+  const c = structuredClone(state.cards[i]); delete c.off;
+  state.cards.splice(i + 1, 0, c); sel = { kind: 'card', i: i + 1 }; save(); refresh();
 }
+// Eliminando la scheda da spento la voce Spento torna alla sua immagine e scritta.
 async function delCard() {
-  if (sel.kind !== 'card' || !await ask(t('Eliminare «{}»?', tExact(cardTitle(state.cards[sel.i]))), t('Elimina'))) return;
-  state.cards.splice(sel.i, 1); sel = state.cards.length ? { kind: 'card', i: Math.max(0, sel.i - 1) } : { kind: 'lenschart' }; save(); refresh();
+  const i = selCard();
+  if (i < 0 || !await ask(t('Eliminare «{}»?', tExact(cardTitle(state.cards[i]))), t('Elimina'))) return;
+  const off = state.cards[i].off;
+  state.cards.splice(i, 1);
+  sel = off ? { kind: 'off' } : state.cards.length ? { kind: 'card', i: Math.max(0, i - 1) } : { kind: 'lenschart' }; save(); refresh();
 }
 
 function cardEditor(ed, c, idx) {
-  ed.append(editorHead(TYPE_LABEL[c.type],
+  // La scheda da spento si apre dalla voce Spento: niente ↑↓ (non sta nel giro delle
+  // pagine), e in cima le scelte di Spento che valgono anche per lei.
+  if (c.off) {
+    ed.append(editorHead('Spento', offInfo(), h('button', { onclick: dupCard }, 'Duplica'), h('button', { class: 'danger', onclick: delCard }, 'Elimina')));
+    offToggles(ed);
+  } else ed.append(editorHead(TYPE_LABEL[c.type],
     h('button', { class: 'icon', title: 'Sposta su', 'aria-label': 'Sposta su', disabled: !moveCard(-1, true), onclick: () => moveCard(-1) }, '↑'),
     h('button', { class: 'icon', title: 'Sposta giù', 'aria-label': 'Sposta giù', disabled: !moveCard(1, true), onclick: () => moveCard(1) }, '↓'),
     h('button', { onclick: dupCard }, 'Duplica'),
     h('button', { class: 'danger', onclick: delCard }, 'Elimina')));
   ed.append(field(c, 'Formati esportati', 'formats', 'select', [['both', 'Orizzontale + verticale (rotazione automatica)'], ['land', 'Solo orizzontale'], ['port', 'Solo verticale']]));
-  ed.append(toggle('Schermata di spento', !!c.off, v => { state.cards.forEach(x => delete x.off); if (v) c.off = true; changed(true); },
-    { tip: 'L\'X3 la mostra quando lo spegni (power tenuto premuto un secondo) e non entra nel giro delle pagine: utile come etichetta, con il nome di chi lo usa e un contatto. Una sola scheda può esserlo.\nPrende il posto dell\'immagine e della scritta scelte in "Spento", dove stanno anche le etichette dei tasti e il nome CAMTAG.' }));
+  ed.append(toggle('Schermata di spento', !!c.off, v => {
+    state.cards.forEach(x => delete x.off); if (v) c.off = true;
+    sel = v ? { kind: 'off' } : { kind: 'card', i: state.cards.indexOf(c) }; changed(true);
+  }, { tip: 'L\'X3 la mostra quando lo spegni (power tenuto premuto un secondo) e non entra nel giro delle pagine: utile come etichetta, con il nome di chi lo usa e un contatto. Una sola scheda può esserlo.\nDiventa la voce Spento, in fondo alla lista, al posto dell\'immagine e della scritta scelte lì; spegnendo questa opzione torna fra le schede.' }));
   const pair = (a, b) => ed.append(h('div', { class: 'two' }, a, b));
   if (c.type === 'lens') {
     pair(field(c, 'Marca', 'brand'), field(c, 'Serie', 'series'));
@@ -2782,11 +2950,12 @@ function imageControls(ed, c) {
       const file = inp.files[0]; if (!file) return;
       say(''); useImage(file).catch(() => say(t('Il file non è un\'immagine leggibile.')));
     } });
-    const off = c === state.off;
+    // Pagina Spento o scheda da spento: il modello con sopra quello che disegna l'X3.
+    const off = c === state.off, offTpl = off || !!c.off;
     ed.append(h('label', { class: 'fld' }, h('span', { class: 'lab' }, off ? 'Immagine di sfondo (facoltativa) ' : 'Immagine ',
-      info(off ? SQUARE_TIP_OFF : SQUARE_TIP)), inp));
+      info(offTpl ? SQUARE_TIP_OFF : SQUARE_TIP)), inp));
     ed.append(h('p', { class: 'tmpl' }, h('button', { type: 'button', class: 'small', title: 'PNG 792×792 con le parti che si vedono in orizzontale, in verticale, sempre e mai',
-      onclick: () => squareTemplate(off).then(b => download(b, `camtag-${t(off ? 'modello-spento' : 'modello')}-792.png`)) }, 'Scarica il modello')));
+      onclick: () => squareTemplate(offTpl).then(b => download(b, `camtag-${t(offTpl ? 'modello-spento' : 'modello')}-792.png`)) }, 'Scarica il modello')));
     // Da un indirizzo web: serve che il sito permetta di leggere l'immagine da un'altra pagina (CORS).
     const urlIn = h('input', { type: 'text', inputmode: 'url', placeholder: 'https://…/immagine.jpg', 'aria-label': 'Indirizzo dell\'immagine' });
     const urlBtn = h('button', { type: 'button' }, 'Carica');
@@ -2835,20 +3004,20 @@ function imageControls(ed, c) {
 }
 
 // ---------- editor: schermata di spento ----------
-function offEditor(ed) {
-  const o = state.off, oc = offCard();
-  ed.append(editorHead('Spento', info('Quello che l\'X3 mostra da spento (power tenuto premuto un secondo). Il dispositivo ci disegna sopra la fascia in basso che dice che è spento e come si riaccende, la batteria al momento dello spegnimento, il nome CAMTAG e le etichette dei tasti, se li tieni. Dopo tre giorni da spento lo schermo passa al bianco con la sola fascia, che lo conserva meglio.')));
+function offInfo() { return info('Quello che l\'X3 mostra da spento (power tenuto premuto un secondo). Il dispositivo ci disegna sopra la fascia in basso che dice che è spento e come si riaccende, la batteria al momento dello spegnimento, il nome CAMTAG e le etichette dei tasti, se li tieni. Dopo tre giorni da spento lo schermo passa al bianco con la sola fascia, che lo conserva meglio.'); }
+function offToggles(ed) {
+  const o = state.off;
   ed.append(toggle('Etichette dei tasti', o.keys, v => { o.keys = v; changed(); },
     { tip: 'Un riquadro con il nome di ogni tasto (A B C D, X, Y, PWR, RESET) sul bordo dove sta il tasto, dritto per chi legge. Utile a chi usa l\'X3 per la prima volta. Le vedi anche sulla schermata che l\'X3 mostra quando non ha card; se l\'X3 si blocca, premi RESET e poi tieni premuto PWR: RESET da solo lo spegne soltanto.' }));
   ed.append(toggle('Nome CAMTAG', o.logo, v => { o.logo = v; changed(); },
     { tip: 'Senza immagine e senza scritta sta al centro; con un\'immagine o una scritta va in alto, in un riquadro.' }));
-  if (oc) {
-    ed.append(h('p', { class: 'warn' }, t("Da spento l'X3 mostra la scheda «{}»: immagine e scritta di questa pagina non contano.", tExact(cardTitle(oc)))),
-      h('div', { class: 'srow' },
-        h('button', { onclick: () => selectScreen({ kind: 'card', i: state.cards.indexOf(oc) }) }, 'Vai alla scheda'),
-        h('button', { onclick: () => { delete oc.off; changed(true); } }, 'Usa questa pagina')));
-    return;
-  }
+}
+// Con una scheda da spento la voce Spento apre lei (cardEditor); se no immagine e scritta.
+function offEditor(ed) {
+  const o = state.off, oc = offCard();
+  if (oc) return cardEditor(ed, oc, state.cards.indexOf(oc));
+  ed.append(editorHead('Spento', offInfo()));
+  offToggles(ed);
   ed.append(h('label', { class: 'fld' }, h('span', { class: 'lab' }, 'Scritta (facoltativa)'),
     h('textarea', { placeholder: 'Es. il nome della produzione, chi lo usa, un contatto', oninput: e => { o.text = e.target.value; changed(); } }, o.text)));
   imageControls(ed, o);
@@ -3052,10 +3221,17 @@ $('#fView').onclick = () => setView(currentLayout() === 'land' ? 'port' : 'land'
 $('#fPrev').onclick = () => turnPage(-1);
 $('#fNext').onclick = () => turnPage(1);
 $('#actualBtn').onclick = () => { $('#actualBtn').classList.toggle('on', $('#frame').classList.toggle('actual')); };
-$('#bmpBtn').onclick = () => {
+// Modalità sviluppatore, con Maiusc: l'anteprima così com'è, con quello che disegna il
+// dispositivo (da spento nome, fascia, batteria d'esempio ed etichette dei tasti).
+$('#bmpBtn').onclick = e => {
   const s = selectedScreen(); if (!s) return;
   const l = currentLayout(), r = renderScreen(s, l, { preview: true });
   const base = s.kind === 'card' ? `${s.card.type}_${slug(cardTitle(s.card))}` : s.kind;
+  if (e.shiftKey && ui.dev) {
+    const d = preview.getContext('2d').getImageData(0, 0, preview.width, preview.height).data, bits = new Uint8Array(preview.width * preview.height);
+    for (let i = 0; i < bits.length; i++) bits[i] = d[i * 4] > 127 ? 1 : 0;
+    return download(encodeBmp(bits, preview.width, preview.height), `${s.card?.off || s.kind === 'off' ? 'off' : base}-overlay${l === 'port' ? '.p' : ''}.bmp`);
+  }
   download(encodeBmp(r.bits, r.w, r.h), `${base}${l === 'port' ? '.p' : ''}.bmp`);
 };
 $('#zipBtn').onclick = async () => download(await (await buildZip()).generateAsync({ type: 'blob' }), 'camtag.zip');
@@ -3075,7 +3251,7 @@ function fitStage() {
   let avail;
   if (phone && !full) avail = vh * 0.25;
   else {
-    const chrome = hOf($('.pbar')) + (simOn ? hOf($('#simStatus')) + hOf($('#simHint')) : hOf($('#previewNote'))) + (strip && !phone ? hOf($('.screens')) : 0);
+    const chrome = hOf($('.pbar')) + (simOn ? hOf($('#simStatus')) + hOf($('#simHint')) : hOf($('#previewNote')) + hOf($('#devPrev'))) + (strip && !phone ? hOf($('.screens')) : 0);
     avail = vh - chrome - (full ? 80 : $('header').offsetHeight + 60);  // margini e cornice
     if (strip && vh < 500) avail = Math.max(avail, 220);  // telefono orizzontale: non c'è blocco fisso da far stare nello schermo
   }
@@ -3142,7 +3318,7 @@ new ResizeObserver(fitStage).observe($('.pbar'));  // i comandi vanno a capo: ca
 const PROJECT_FILE = 'project.json';  // in /camtag, accanto alle card
 // Firmware che questo configuratore web si aspetta sull'X3: lo stesso di CAMTAG_FW_VERSION
 // in device/src/Version.h. L'X3 lo dice nella risposta a HELLO (docs/bluetooth.md).
-const FW_VERSION = '0.5.1';
+const FW_VERSION = '0.5.2';
 // Commit da cui è pubblicata la pagina: il workflow Pages lo scrive qui e in
 // build.txt. In locale resta il segnaposto.
 const BUILD = '__BUILD__';
