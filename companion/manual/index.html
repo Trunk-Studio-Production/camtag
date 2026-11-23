@@ -151,7 +151,7 @@
          padding: 3px 7px; border-radius: 3px; white-space: nowrap; display: inline-block; }
 
   /* Summary cards */
-  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin: 18px 0; }
+  .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }  /* 4 schede: 2 sopra e 2 sotto */
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-m); padding: 16px; }
   .card h3 { margin: 0 0 10px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
   .card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; font-size: 14px; }
@@ -189,6 +189,7 @@
     section.s { padding-top: 44px; }
     td:first-child { white-space: normal; }
   }
+  @media (max-width: 559px) { .cards { grid-template-columns: minmax(0, 1fr); } }
   @media (max-width: 479px) { .figs2 { grid-template-columns: 1fr; } .phones { grid-template-columns: minmax(0, 220px); } }
 
   /* ---------- Print: white pages, no contents ---------- */
