@@ -488,7 +488,8 @@ aggiornamento del firmware via Bluetooth (864 KB in 26 s; il nuovo parte in prov
 `stato 1`, e si conferma: il bootloader ha il rollback), tutto anche da iPhone con
 BLE Link e Bluefy (utilizzabili tutti e due), card vere, X/Y per tipo e A–D
 dentro il tipo (0.5.0), rotazione (soglie confermate in giorni d'uso) e blocco,
-niente ghosting con `FULL_REFRESH_EVERY` = 6, bilancieri della lens chart nei 4 versi. Tasti, assi IMU e verso dello schermo sono tarati sull'X3 (`kKeyA`…`kKeyD`, `kKeyX`, `kKeyY`,
+niente ghosting con `FULL_REFRESH_EVERY` = 6, bilancieri della lens chart nei 4 versi,
+grafica della 0.5.2 (logo, linguette, schermata di spento; 23/11/2026). Tasti, assi IMU e verso dello schermo sono tarati sull'X3 (`kKeyA`…`kKeyD`, `kKeyX`, `kKeyY`,
 `kImuSwapXY`, `kImuSignX`, `kImuSignY`, `kQuarterTurns` in `device/src/main.cpp`:
 la posizione naturale è `Canvas::ROT_270`).
 
