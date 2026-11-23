@@ -59,7 +59,8 @@ Insieme alle card il configuratore web manda `project.json`: lo stesso contenuto
 più `savedAt`, la data dell'invio. Sta in `/camtag` e quindi cambia solo al
 `COMMIT`, insieme alle card che descrive. Il firmware lo ignora (legge solo i
 `.bmp`); "Importa dall'X3" lo rilegge con `GET project.json` e, dopo una
-conferma, sostituisce il progetto del browser. È anche nello zip: dalla microSD
+conferma, sostituisce il progetto del browser; se è uguale a quello del browser
+a meno di `savedAt` (`sameProject`) lo dice e non chiede nulla. È anche nello zip: dalla microSD
 si apre con "Importa progetto".
 
 ## Registro della batteria

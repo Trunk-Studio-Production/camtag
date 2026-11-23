@@ -3455,8 +3455,8 @@ async function bleSend() {
     await link.open();
 
     await link.cmd('BEGIN'); await link.next();
-    let sent = 0, kept = 0, keptBytes = 0;
-    const t0 = Date.now();
+    let sent = 0, kept = 0, keptBytes = 0, moved = 0;  // moved: byte viaggiati davvero (non KEEP)
+    const t0 = Date.now(), speed = bleSpeed();
     for (const [i, f] of files.entries()) {
       const spec = `${f.bytes.length} ${crc32(f.bytes).toString(16)} ${f.path}`;
       const same = kept ? t(" · {} già uguali sull'X3", kept) : '';
@@ -3467,13 +3467,15 @@ async function bleSend() {
         await link.cmd(`KEEP ${spec}`);
         if ((await link.next()).startsWith('DONE')) { kept++; keptBytes += f.bytes.length; sent += f.bytes.length; continue; }
       }
-      bleUi(t('Invio {} di {}…', i + 1, files.length), { busy: true, progress: sent / total, detail: t('{} · {} di {} KB{}', f.path, Math.round(sent / 1024), Math.round(total / 1024), same) });
+      const showSend = off => bleUi(t('Invio {} di {}…', i + 1, files.length), { busy: true, progress: (sent + off) / total,
+        detail: t('{} · {} di {} KB{}', f.path, Math.round((sent + off) / 1024), Math.round(total / 1024), same) + speed(moved + off) });
+      showSend(0);
       console.info('[ble] invio', f.path, link.version >= 3 ? '(diverso o assente sull\'X3)' : '(protocollo 2: niente confronto)');
       await link.cmd(`FILE ${spec}`);
       const r = await link.next();
       if (r.startsWith('DONE')) continue;  // file vuoto
-      await linkPush(link, f.bytes, off => { $('#bleBar').value = (sent + off) / total; });
-      sent += f.bytes.length;
+      await linkPush(link, f.bytes, showSend);
+      sent += f.bytes.length; moved += f.bytes.length;
     }
     bleUi(t('Salvo sul dispositivo…'), { busy: true, progress: 1 });
     await link.cmd('COMMIT'); await link.next();
@@ -3487,6 +3489,21 @@ async function bleSend() {
     const c = link.cancelled();
     bleUi(c ? t('Invio annullato: sul dispositivo restano le card di prima.') : bleErrText(e), { error: !c, detail: c ? '' : t('Sul dispositivo restano le card di prima.') });
   });
+}
+
+// Velocità degli ultimi 3 s per l'avanzamento (" · 23 KB/s"): `speed(byte viaggiati)`.
+// Vuota nel primo secondo, quando la misura non dice ancora nulla.
+function bleSpeed() {
+  const pts = [];
+  return bytes => {
+    const now = performance.now();
+    pts.push([now, bytes]);
+    while (pts.length > 2 && now - pts[1][0] >= 3000) pts.shift();
+    const dt = (now - pts[0][0]) / 1000;
+    if (dt < 1) return '';
+    const v = (bytes - pts[0][1]) / 1024 / dt;
+    return ` · ${v < 10 ? v.toFixed(1) : Math.round(v)} KB/s`;
+  };
 }
 
 // Dati di un file su DATA, dopo l'OK a FILE o FIRMWARE: al massimo BLE.window
@@ -3517,6 +3534,7 @@ async function linkGet(link, path, what) {
   if (head[0] !== 'FILE') throw new Error(t('Risposta inattesa: {}', head.join(' ')));
   const size = +head[1], crc = parseInt(head[2], 16);
   let acked = 0;
+  const speed = bleSpeed();
   while (acked < size) {
     await link.waitFor(() => link.rxBytes - acked >= BLE.ackEvery || link.rxBytes >= size);
     if (link.rxBytes > size) throw new Error(t('Il dispositivo ha mandato più dati del previsto. Riprova.'));
@@ -3526,7 +3544,7 @@ async function linkGet(link, path, what) {
       try { await link.ack(`ACK ${acked}`); break; }
       catch (e) { if (i >= 3 || !link.connected()) throw e; await new Promise(r => setTimeout(r, 150)); }
     }
-    bleUi(what, { busy: true, progress: acked / size, detail: t('{} di {} KB', Math.round(acked / 1024), Math.round(size / 1024)) });
+    bleUi(what, { busy: true, progress: acked / size, detail: t('{} di {} KB', Math.round(acked / 1024), Math.round(size / 1024)) + speed(acked) });
   }
   const bytes = new Uint8Array(size);
   let off = 0;
@@ -3553,6 +3571,10 @@ async function bleGet() {
   if (!project) return;
   const when = project.savedAt ? new Date(project.savedAt).toLocaleString(uiLang === 'it' ? 'it-IT' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : t('in data sconosciuta');
   const name = project.production ? (uiLang === 'it' ? `«${project.production}», ` : `“${project.production}”, `) : '';
+  if (sameProject(project, projectData())) {
+    bleUi(t('Sull\'X3 c\'è il progetto {}inviato {}.', name, when), { detail: t('È uguale a quello di questo browser: non è cambiato niente.') });
+    return;
+  }
   if (!await bleAsk(t('Sull\'X3 c\'è il progetto {}inviato {}.', name, when), t('Sostituisce quello di questo browser: se ti serve il lavoro attuale, prima usa "Salva progetto".'), t('Sostituisci'))) {
     bleUi(t('Importazione annullata: il progetto in questo browser non è cambiato.'));
     return;
@@ -3598,10 +3620,10 @@ async function bleFirmware(file) {
     bleAttention(version, 60);  // l'X3 rifiuta dopo 60 s
     const ok = await link.next(BLE.confirmMs);
     if (ok !== 'OK') throw new Error(t('Risposta inattesa: {}', ok));
-    const t0 = Date.now(), kb = Math.round(bytes.length / 1024);
+    const t0 = Date.now(), kb = Math.round(bytes.length / 1024), speed = bleSpeed();
     await linkPush(link, bytes, off => off < bytes.length
       ? bleUi(t('Installo il firmware {}…', version), { busy: true, progress: off / bytes.length,
-        detail: t('{} di {} KB. Tieni il telefono vicino all\'X3.', Math.round(off / 1024), kb) })
+        detail: t('{} di {} KB{}. Tieni il telefono vicino all\'X3.', Math.round(off / 1024), kb, speed(off)) })
       : bleUi(t('L\'X3 controlla il firmware…'), { busy: true, progress: 1 }));
     installed = { version, secs: Math.max(1, Math.round((Date.now() - t0) / 1000)), kb };
   }, async (e, link) => {
@@ -3691,6 +3713,13 @@ $('#bleDlg').addEventListener('close', bleAskNo);
 $('#bleClose').onclick = () => { bleAskNo(); if (bleRun) bleRun.cancel(); else $('#bleDlg').close(); };
 $('#bleDlg').addEventListener('cancel', e => { if (bleRun) { e.preventDefault(); bleRun.cancel(); } });
 // Il file di progetto porta con sé le modifiche delle sue lenti, per essere completo su un altro computer.
+// Stesso progetto a meno dell'ora di invio (savedAt): chiavi in ordine, così non
+// conta l'ordine in cui sono state scritte.
+function sameProject(a, b) {
+  const canon = d => JSON.stringify({ ...d, savedAt: null }, (k, v) => v && typeof v === 'object' && !Array.isArray(v)
+    ? Object.fromEntries(Object.keys(v).sort().map(key => [key, v[key]])) : v);
+  return canon(a) === canon(b);
+}
 function projectData() {
   const used = Object.fromEntries(state.lenses.filter(l => l.dbId && lensOverrides[l.dbId]).map(l => [l.dbId, lensOverrides[l.dbId]]));
   return { ...state, lensOverrides: used, savedAt: new Date().toISOString() };
