@@ -62,12 +62,12 @@ CamTag è un progetto indipendente e open source, non affiliato a Xteink.
 ## Per cominciare
 
 1. Crea le card nel [configuratore web](https://trunk-studio-production.github.io/camtag/).
-2. Collega l'X3 e apri **[Installa via USB](https://trunk-studio-production.github.io/camtag/companion/install/)**
+2. Collega l'X3 e apri **[Installa via USB](https://trunk-studio-production.github.io/camtag/install/)**
    con Chrome o Edge: fa i [controlli di sicurezza](#installare-camtag),
    salva un backup completo e installa CamTag.
 3. Manda le card via Bluetooth (tieni **X** sull'X3) o con la microSD.
 
-Il [manuale d'uso](https://trunk-studio-production.github.io/camtag/companion/manuale/)
+Il [manuale d'uso](https://trunk-studio-production.github.io/camtag/manuale/)
 spiega ogni tasto e ogni schermata.
 
 ## Contribuire
@@ -231,7 +231,7 @@ simulatore le mostra a circa metà scala, vicino alla dimensione reale.
 **Caricare CamTag può rendere l'X3 inutilizzabile.** Leggi questa parte per
 intero prima di collegare il cavo.
 
-Installa dalla **[pagina di installazione](https://trunk-studio-production.github.io/camtag/companion/install/)**, con Chrome o Edge su un
+Installa dalla **[pagina di installazione](https://trunk-studio-production.github.io/camtag/install/)**, con Chrome o Edge su un
 computer e il cavo USB dell'X3. È la strada consigliata: non serve installare
 niente, ed è provata dall'inizio alla fine su un X3 con il firmware originale.
 
@@ -284,7 +284,7 @@ Dopo la prima installazione gli aggiornamenti arrivano via Bluetooth
 ### Ripristino
 
 - Backup completo, che riporta l'X3 esattamente com'era: "Ripristina da un
-  backup" nella [pagina di installazione](https://trunk-studio-production.github.io/camtag/companion/install/).
+  backup" nella [pagina di installazione](https://trunk-studio-production.github.io/camtag/install/).
 - Firmware originale Xteink o CrossPoint: dal flasher web su crosspointreader.com.
   La tabella partizioni di CamTag è la stessa di CrossPoint.
 

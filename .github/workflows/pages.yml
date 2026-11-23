@@ -1,9 +1,10 @@
 # Pubblica il configuratore web su GitHub Pages a ogni push su main.
-# companion/ e data/ (la pagina legge ../data/*.json), più il firmware compilato
-# dallo stesso commit in companion/firmware/camtag.bin, che il configuratore web
-# manda all'X3 con "Aggiorna firmware", e l'immagine completa in
-# companion/firmware/camtag-factory.bin per la prima installazione via USB
-# (companion/install/); in radice un rimando a companion/.
+# Il contenuto di companion/ va nella radice del sito e data/ in data/ (nel repo
+# la pagina legge ../data/*.json, qui data/*.json), più il firmware compilato
+# dallo stesso commit in firmware/camtag.bin, che il configuratore web manda
+# all'X3 con "Aggiorna firmware", e l'immagine completa in
+# firmware/camtag-factory.bin per la prima installazione via USB (install/).
+# I vecchi indirizzi sotto companion/ rimandano ai nuovi.
 name: Pages
 
 on:
@@ -70,24 +71,37 @@ jobs:
           test "$fac" = "$web"
       - name: Prepara il sito
         run: |
-          mkdir -p _site
-          cp -R companion data _site/
-          mkdir -p _site/companion/firmware
-          cp device/.pio/build/x3/firmware.bin _site/companion/firmware/camtag.bin
-          cp device/.pio/build/x3/firmware.factory.bin _site/companion/firmware/camtag-factory.bin
+          mkdir -p _site/firmware
+          cp -R companion/. _site/
+          cp -R data _site/
+          cp device/.pio/build/x3/firmware.bin _site/firmware/camtag.bin
+          cp device/.pio/build/x3/firmware.factory.bin _site/firmware/camtag-factory.bin
           # Il commit nella pagina (BUILD) e in build.txt, che la pagina rilegge senza
           # cache per sapere se ne esiste una più nuova; i18n.js con lo stesso ?v.
+          # I dati stanno accanto alla pagina, non più un livello sopra.
           sha=${GITHUB_SHA::7}
-          sed -i "s/__BUILD__/$sha/; s/src=\"i18n.js\"/src=\"i18n.js?v=$sha\"/" _site/companion/index.html
-          grep -q "const BUILD = '$sha'" _site/companion/index.html
-          echo "$sha" > _site/companion/build.txt
-          cat > _site/index.html <<'HTML'
+          sed -i "s/__BUILD__/$sha/; s/src=\"i18n.js\"/src=\"i18n.js?v=$sha\"/; s#\`\.\./data/#\`data/#g" _site/index.html
+          grep -q "const BUILD = '$sha'" _site/index.html
+          if grep -q '`\.\./data/' _site/index.html; then exit 1; fi
+          echo "$sha" > _site/build.txt
+          # Vecchi indirizzi (fino a novembre 2026 il sito stava sotto companion/):
+          # rimandano allo stesso posto un livello sopra, con ?… e #… intatti.
+          # build.txt anche lì: una pagina vecchia rimasta aperta (Bluefy) vede la
+          # versione nuova, si ricarica e passa dal rimando.
+          mkdir -p _site/companion && cp _site/build.txt _site/companion/build.txt
+          for d in "" manual/ manuale/ install/; do
+            mkdir -p "_site/companion/$d"
+            up=$(echo "companion/$d" | sed 's#[^/]*/#../#g')
+            cat > "_site/companion/${d}index.html" <<HTML
           <!doctype html>
           <meta charset="utf-8">
           <title>CamTag</title>
-          <meta http-equiv="refresh" content="0; url=companion/">
-          <a href="companion/">CamTag</a>
+          <link rel="canonical" href="${up}${d}">
+          <script>location.replace('${up}${d}' + location.search + location.hash)</script>
+          <noscript><meta http-equiv="refresh" content="0; url=${up}${d}"></noscript>
+          <a href="${up}${d}">CamTag</a>
           HTML
+          done
           touch _site/.nojekyll
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
@@ -100,7 +114,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}companion/
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v5

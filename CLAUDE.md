@@ -25,7 +25,7 @@ costruttori di lenti e filtri nei dati vanno bene.
   schermata Bluetooth con i credits e mandata nella risposta a `HELLO`: lo
   configuratore web la mostra accanto a `FW_VERSION`; si ferma solo se il protocollo è diverso. Si cambiano
   insieme, a ogni nuovo firmware: il workflow Pages compila il firmware, lo pubblica
-  in `companion/firmware/camtag.bin` (per "Aggiorna firmware"), l'immagine completa
+  in `firmware/camtag.bin` del sito (per "Aggiorna firmware"), l'immagine completa
   in `camtag-factory.bin` (per `install/`) e si ferma se la
   versione nel binario (`CAMTAG_FW_TAG`) non è `FW_VERSION`.
   `Lang.h` ha le scritte del firmware in inglese e italiano (`tr()`): una frase
@@ -45,7 +45,9 @@ costruttori di lenti e filtri nei dati vanno bene.
   sono una chiave esatta, le frasi con valori passano da `t('… {} …', x)`, le
   scritte sulle card da `tc()`; `?i18n=check` segnala in console le chiavi
   mancanti. Legge
-  `../data/*.json`, quindi va servito dalla radice del repo. Ha un
+  `../data/*.json`, quindi in locale va servito dalla radice del repo; su Pages
+  `companion/` è la radice del sito, con `data/` accanto (il workflow toglie il `../`),
+  e i vecchi indirizzi sotto `companion/` rimandano lì. Ha un
   **simulatore** (`simPress`/`renderSim`, solo da computer: sotto 700 px è nascosto) con tasti, rotazione, blocco e power:
   è la specifica di comportamento per il firmware, e i due devono restare allineati.
   Un solo tema colore, scuro (variabili su `:root`). Il logo CAMTAG è sempre
