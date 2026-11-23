@@ -143,7 +143,7 @@
         <li data-t>Chrome o Edge su un computer.</li>
         <li data-t>Il cavo USB dell'X3, quello in dotazione.</li>
         <li data-t>L'X3 acceso e carico: da spento non compare sulla USB.</li>
-        <li data-t>Circa cinque minuti, senza staccare il cavo.</li>
+        <li data-t>Circa cinque minuti con il cavo ben innestato e fermo, collegato direttamente: anche un adattatore magnetico, con un cavo un po' rigido, può spostarsi e far saltare il contatto.</li>
       </ul>
     </div>
 
@@ -496,7 +496,7 @@ $('#startBtn').onclick = () => run(async () => {
 });
 const startInstall = () => run(install, async e => {
   bar(4, null);
-  step(4, 'fail', t('Scrittura non riuscita ({}). Non staccare niente e premi di nuovo "Installa". Se non riesce, il backup riporta l\'X3 com\'era.', e.message));
+  step(4, 'fail', t('Scrittura non riuscita ({}). Se il cavo si è mosso, ricollegalo bene senza spegnere l\'X3; poi premi di nuovo "Installa". Se non riesce, il backup riporta l\'X3 com\'era.', e.message));
   await release();
 });
 // Senza la spunta "Ho salvato il backup" si chiede prima: chi dice di averlo già
@@ -541,7 +541,7 @@ $('#restoreBtn').onclick = () => run(async () => {
   msg(t("Ripristinato: l'X3 è com'era quando hai salvato il backup. Se lo schermo non cambia entro 10 secondi, premi RESET, poi tieni premuto power per 3-5 secondi."));
 }, async e => {
   $('#restoreBar').hidden = true;
-  $('#restoreMsg').textContent = t('Ripristino non riuscito ({}). Non staccare niente e riprova.', e.message);
+  $('#restoreMsg').textContent = t('Ripristino non riuscito ({}). Se il cavo si è mosso, ricollegalo bene senza spegnere l\'X3, poi riprova.', e.message);
   await release();
 });
 

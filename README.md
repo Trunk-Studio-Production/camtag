@@ -48,8 +48,8 @@ CamTag is an independent, open-source project, not affiliated with Xteink.
 
 - An **[Xteink X3](https://www.xteink.com)**, to install CamTag on in place of
   the original firmware.
-- The **X3's USB cable** (the one in the box) **and a computer with Chrome
-  or Edge** for the first install. After that, cards and updates travel over Bluetooth.
+- The **X3's USB cable** (the one in the box, plugged in directly) **and a
+  computer with Chrome or Edge** for the first install. After that, cards and updates travel over Bluetooth.
 - A way to mount it: adhesive velcro on the cover that comes with the X3
   works well, or whatever you use for your other accessories.
 
@@ -247,6 +247,13 @@ has been tested end to end on an X3 with the original firmware.
    verified against the fingerprint the X3 computes itself. Without a backup it
    doesn't go on.
 4. It installs CamTag (a few seconds) and restarts the X3.
+
+**The cable must stay firmly plugged in and still for the whole procedure.**
+Connect it straight to the X3, with no adapters: even magnetic ones can shift
+with a slightly stiff cable and break the contact. If the connection drops
+while writing, the page tells you: plug the cable back in firmly without
+turning the X3 off and try again; if that doesn't work, the backup brings it
+back as it was.
 
 **Keep the backup in at least two places.** It's the exact copy of your device
 and the only way back to the factory state. It contains your unit's data:
