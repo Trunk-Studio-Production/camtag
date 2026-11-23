@@ -11,9 +11,12 @@ nell'editor di GitHub su questa riga (diventa un link user-attachments che si
 vede dentro la pagina) e tieni l'immagine qui sotto come riserva. -->
 ![Schermate di CamTag: lens chart, filtri, crew](docs/img/screens.png)
 
-**[▶ Provalo nel browser](https://trunk-studio-production.github.io/camtag/)**:
-non serve il dispositivo. Crei le card nel [configuratore web](https://trunk-studio-production.github.io/camtag/) e le provi nel
-simulatore, tasti compresi.
+**Provalo prima di comprarlo.** Il [configuratore web](https://trunk-studio-production.github.io/camtag/) ha un
+simulatore: un X3 nel browser, con i tasti, la rotazione e la schermata filtri.
+Prepari le tue card e le vedi funzionare prima di prendere il dispositivo.
+
+**[▶ Provalo nel browser](https://trunk-studio-production.github.io/camtag/)** (da computer: dal telefono
+c'è il configuratore web, senza il simulatore).
 
 ## Cos'è
 

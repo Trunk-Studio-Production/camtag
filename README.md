@@ -11,9 +11,12 @@ the GitHub editor on this line (it becomes a user-attachments link that plays
 inline) and keep the image below as the fallback. -->
 ![CamTag screens: lens chart, filters screen, crew](docs/img/screens.png)
 
-**[▶ Try it in your browser](https://trunk-studio-production.github.io/camtag/)**:
-no device needed. Build your cards in the [web configurator](https://trunk-studio-production.github.io/camtag/) and play with
-them in the simulator, buttons included.
+**Try before you buy.** The [web configurator](https://trunk-studio-production.github.io/camtag/) has a
+simulator: an X3 in your browser, with working buttons, rotation and the
+filters screen. Build your cards and watch them work before you get the device.
+
+**[▶ Try it in your browser](https://trunk-studio-production.github.io/camtag/)** (on a computer: on a phone
+you get the web configurator, without the simulator).
 
 ## What it is
 
