@@ -484,8 +484,10 @@ schermo, e aspetta l'X3 se si spegne:
       X3. Esclusi: versione del firmware, lettura dei tasti dell'X3,
       configuratore in locale o pubblicato, riavvio del Mac, Wi-Fi, rumore
       delle porte USB, tastiera Bluetooth. Un mouse Bluetooth in uso li rende
-      più frequenti. Da provare: un altro computer, e un timeout di
-      supervisione più corto chiesto dall'X3. Tutta la storia è in
+      più frequenti. Da un MacBook Pro, in molti trasferimenti, mai visto:
+      sembra di quel Mac Studio, che ha macOS 26 (il MacBook Pro il 27).
+      Ultima prova: il Mac Studio con macOS 27; poi l'indagine si chiude
+      comunque (dal Mac Studio basta riprovare). Tutta la storia è in
       [`docs/bluetooth.md`](docs/bluetooth.md), "Collegamenti lentissimi dal Mac"
 - [x] Aggiornamento del firmware via Bluetooth: 864 KB in 26 s; il nuovo parte
       in prova e si conferma da sé, altrimenti il bootloader torna al vecchio

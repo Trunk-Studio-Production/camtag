@@ -13,7 +13,7 @@ aspetta che torni.
     .venv/bin/python scripts/taratura.py blocco
     .venv/bin/python scripts/taratura.py reattivita
     .venv/bin/python scripts/taratura.py log [--file x3.log]
-    .venv/bin/python scripts/taratura.py batteria [--azzera] [--leggi registro.csv] [--bianco N] [--diagnosi 0|1]
+    .venv/bin/python scripts/taratura.py batteria [--azzera] [--leggi registro.csv] [--bianco N]
     .venv/bin/python scripts/taratura.py usb [--prove N]
 
 `card` prova con le card vere sopra: verso della card e direzione dei bilancieri
@@ -37,8 +37,8 @@ tratti a batteria: con la USB collegata si carica. `--azzera` cancella il regist
 sull'X3 dopo averlo salvato; `--leggi` rifà i conti su un file già salvato
 (anche quello scaricato via Bluetooth con "Registro batteria" nel configuratore web);
 `--bianco N` porta a N secondi l'attesa prima del bianco da spento, per provarla
-(0 rimette i tre giorni); `--diagnosi 1` accende la diagnosi da spento (dieci tratti da
-un minuto: l'X3 si sveglia da solo e ferma i pin liberi un tratto sì e uno no).
+(0 rimette i tre giorni). Le righe D delle diagnosi da spento (0.5.6-0.5.11) si
+leggono ancora nei registri vecchi.
 
 `usb` prova il cavo collegato con l'X3 a riposo: fa staccare e riattaccare il cavo
 N volte (10), misura dopo quanto compare la porta e legge dall'X3 perché si è
@@ -892,7 +892,7 @@ BATT_BLANK = ('offma', 'touchma')
 # Diagnosi da spento della 0.5.6 (righe D dopo la riga A dell'accensione): cosa è stato
 # fatto prima di ogni tratto da un minuto. L'ultimo tratto, con tutto rimesso a dormire,
 # è la lettura normale dell'accensione. Dalla 0.5.7 le righe D dicono solo cosa si è
-# fatto alla microSD (info da 100000 in su), dalla 0.5.8 a MISO (da 200000 in su), dalla 0.5.9 ai pin liberi (da 300000).
+# fatto alla microSD (info da 100000 in su), dalla 0.5.8 a MISO (da 200000 in su), dalla 0.5.9 ai pin liberi (da 300000), dalla 0.5.10 se c'era la microSD (da 400000), dalla 0.5.11 il CS della flash (da 500000, diag_sd_notes).
 DIAG_STEPS = ("com'era", 'dopo un risveglio a vuoto', 'tutto riavviato e rimesso a dormire', 'IMU lasciato sveglio',
               'pannello fuori dal sonno profondo', 'microSD lasciata accesa')
 RESETS = {1: 'alimentazione tornata', 3: 'riavvio del firmware', 4: 'errore del firmware', 8: 'sonno profondo',
@@ -921,7 +921,40 @@ def parse_battery(text):
     return rows
 
 
-def fetch_battery(x3, erase, blank=None, diag=None):
+def diag_sd_notes(diag):
+    """Righe D della 0.5.10 (da 400000) e della 0.5.11 (da 500000): base + tratto × 1000
+    + 100 se salvata in NVS da un'accensione senza microSD + quello che dice il tratto:
+    0.5.10 la microSD (0 dentro, 1 fuori, 2 non si sa), 0.5.11 il CS della flash
+    (1 con il pull-up acceso prima di dormire, + 10 se ce l'aveva già)."""
+    notes, groups = [], {}
+
+    def close():
+        if groups:
+            notes.append('   ' + ' · '.join(f'{k}: {B}{", ".join(v)} mA{X}{DIM}' for k, v in groups.items()))
+            groups.clear()
+
+    for d in diag:
+        flash = d['info'] >= 500000
+        step, rest = divmod(d['info'] - (500000 if flash else 400000), 1000)
+        saved, sd = divmod(rest, 100)
+        if step == 0:  # comincia uno spento
+            close()
+            notes.append('spento senza microSD (letture salvate, scritte a questa accensione):' if saved
+                         else 'spento con diagnosi:')
+        if flash:
+            what = 'CS con pull-up' if sd % 10 else "CS com'era"
+            if sd >= 10:
+                what += ' (pull-up già acceso)'
+        else:
+            what = {0: 'microSD dentro', 1: 'microSD fuori'}.get(sd, 'microSD ?')
+        ma = '?' if d['offma'] is None else f'{-d["offma"]} mA'
+        notes.append(f'   diagnosi {step + 1}, {what}: {B}{ma}{X}{DIM}')
+        groups.setdefault(what, []).append(ma.replace(' mA', ''))
+    close()
+    return notes
+
+
+def fetch_battery(x3, erase, blank=None):
     """Chiede il registro all'X3. Restituisce (testo del CSV, ultima lettura del gauge)."""
     lines, state, gauge = [], {'on': False, 'done': False, 'booted': False}, {}
     prev = x3.on_line
@@ -962,7 +995,7 @@ def fetch_battery(x3, erase, blank=None, diag=None):
                 break
         if not state['done']:
             sys.exit(f'{BAD}L\'X3 non ha mandato il registro: firmware senza il registro dei consumi?{X}')
-        for cmd in ([b'batt!\n'] if erase else []) + ([b'blank=%d\n' % blank] if blank is not None else []) + ([b'diag=%d\n' % diag] if diag is not None else []):
+        for cmd in ([b'batt!\n'] if erase else []) + ([b'blank=%d\n' % blank] if blank is not None else []):
             x3.ser.write(cmd)
             for _ in range(50):
                 x3.pump()
@@ -995,22 +1028,42 @@ def battery_report(rows, gauge=None):
     kinds = ('sveglio', 'riposo', 'misto', 'spento')
     tot = {k: {'s': 0, 'mah': 0, 'mv': 0, 'screen': 0, 'n': 0, 'ma': []} for k in kinds}
     notes, charged = [], 0
+    # Dalla 0.6.0 lo spento è un sonno leggero che scrive una riga P ogni 5 minuti con
+    # info 1: lo spento va dalla riga S alla A, passando per quelle.
+    off_from = None
     for a, b in zip(rows, rows[1:]):
         dt = b['t'] - a['t']
-        if b['ev'] == 'A':
+        if a['ev'] == 'S':
+            off_from = a
+        off_p = a['ev'] == 'P' and a['info'] == 1
+        if b['ev'] == 'P' and b['info'] == 1:
+            if dt <= 0 or off_from is None:
+                continue
+            kind = 'spento'
+        elif b['ev'] == 'A':
             reset, wake = divmod(b['info'], 100)
-            if a['ev'] != 'S':
+            # Dalla 0.5.10 le righe D (da 400000) dicono se durante il tratto c'era la microSD;
+            # quelle di uno spento senza microSD arrivano a un'accensione dopo, quindi qui
+            # non vanno legate allo spento appena prima: si scrivono per conto loro.
+            new = [d for d in b.get('diag', []) if d['info'] >= 400000]
+            b['diag'] = [d for d in b.get('diag', []) if d['info'] < 400000]
+            if a['ev'] != 'S' and not (off_p and off_from):
                 notes.append(f'riavvio da acceso ({RESETS.get(reset, reset)})')
+                notes.extend(diag_sd_notes(new))
                 continue
             how = f'{RESETS.get(reset, reset)}{" · " + WAKES.get(wake, str(wake)) if WAKES.get(wake, str(wake)) else ""}'
+            if reset == 3 and wake == 7:
+                how = 'power (spento leggero)'
+            s0 = a if a['ev'] == 'S' else off_from
+            span = b['t'] - s0['t']
             if dt <= 0:
                 notes.append(f'spento ({OFF_WHY.get(a["info"], "?")}) e riacceso ({how}): l\'orologio è ripartito, '
                              'quindi da spento il chip è rimasto senza alimentazione')
                 continue
             # Corrente di quel solo spento: se varia da uno all'altro si vede qui, non nella media.
             one = ''
-            if a['ma'] <= 0 and b['ma'] <= 0 and b['mah'] <= a['mah'] and dt >= 1800:
-                one = f' · {a["mah"] - b["mah"]} mAh, {(a["mah"] - b["mah"]) / (dt / 3600):.1f} mA'
+            if s0['ma'] <= 0 and b['ma'] <= 0 and b['mah'] <= s0['mah'] and span >= 1800:
+                one = f' · {s0["mah"] - b["mah"]} mAh, {(s0["mah"] - b["mah"]) / (span / 3600):.1f} mA'
             touch = f' · {WARN}{b["touch"]} tocchi brevi del power{X}{DIM}' if b['touch'] else ''
             # Dalla 0.5.5: la corrente che il gauge aveva in memoria appena sveglio, cioè il
             # consumo da spento al mA, senza aspettare che scendano i mAh.
@@ -1019,9 +1072,10 @@ def battery_report(rows, gauge=None):
                 now = f' · {B}al risveglio {-b["offma"]} mA{X}{DIM}'
                 if b['touchma'] is not None:
                     now += f' (al primo tocco {-b["touchma"]} mA)'
-                if dt < 60:
+                if span < 60:
                     now += ' (meno di un minuto: il gauge può non aver fatto in tempo a leggere)'
-            notes.append(f'spento {fmt_hours(dt / 3600)} ({OFF_WHY.get(a["info"], "?")}), riacceso: {how}{one}{touch}{now}')
+            notes.append(f'spento {fmt_hours(span / 3600)} ({OFF_WHY.get(s0["info"], "?")}), riacceso: {how}{one}{touch}{now}')
+            notes.extend(diag_sd_notes(new))
             diag, groups = b.get('diag', []), {}
             for d in diag:
                 ma = '?' if d['offma'] is None else f'{-d["offma"]} mA'
@@ -1099,12 +1153,12 @@ def battery_report(rows, gauge=None):
         print(f'   {DIM}· {n}{X}')
 
 
-def test_battery(x3, erase, read_path, blank=None, diag=None):
+def test_battery(x3, erase, read_path, blank=None):
     if read_path:
         battery_report(parse_battery(Path(read_path).read_text()))
         return
     print(f'\n{B}Registro dei consumi{X}: lo chiedo all\'X3…')
-    text, gauge = fetch_battery(x3, erase, blank, diag)
+    text, gauge = fetch_battery(x3, erase, blank)
     out = REPO / 'misure'
     out.mkdir(exist_ok=True)
     path = out / f'batteria-{time.strftime("%Y%m%d-%H%M")}.csv'
@@ -1131,8 +1185,6 @@ def main():
     ap.add_argument('--porta', help='porta seriale (di solito si trova da sola)')
     ap.add_argument('--azzera', action='store_true', help='batteria: cancella il registro sull\'X3 dopo averlo salvato')
     ap.add_argument('--leggi', help='batteria: rifà i conti su un registro già salvato (anche via Bluetooth), senza X3')
-    ap.add_argument('--diagnosi', type=int, choices=(0, 1),
-                    help='batteria: accende (1) o spegne (0) la diagnosi da spento: dieci tratti da un minuto, vedi docs/batteria.md')
     ap.add_argument('--bianco', type=int, help='batteria: secondi da spento prima del bianco, per provarlo (0 = tre giorni)')
     ap.add_argument('--prove', type=int, default=10, help='usb: quante volte staccare e riattaccare il cavo')
     args = ap.parse_args()
@@ -1162,7 +1214,7 @@ def main():
         elif args.prova == 'log':
             show_log(x3, args.file)
         elif args.prova == 'batteria':
-            test_battery(x3, args.azzera, None, args.bianco, args.diagnosi)
+            test_battery(x3, args.azzera, None, args.bianco)
         else:
             test_positions(x3, args.out)
     except KeyboardInterrupt:

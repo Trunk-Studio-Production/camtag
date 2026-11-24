@@ -488,8 +488,11 @@ orientation and the card on screen, and waits for the X3 if it turns off:
       of 93 from the Mac, 0 out of 80 from an iPhone with BLE Link, same X3.
       Ruled out: firmware version, the X3 reading its keys, local or published
       configurator, a Mac restart, Wi-Fi, USB noise, the Bluetooth keyboard. A
-      Bluetooth mouse in use makes it more frequent. Still to try: another
-      computer, and a shorter supervision timeout requested by the X3. The
+      Bluetooth mouse in use makes it more frequent. Never seen from a
+      MacBook Pro over many transfers: it looks specific to that Mac Studio,
+      which runs macOS 26 (the MacBook Pro runs 27). Last check: the Mac
+      Studio on macOS 27; after that the investigation closes either way (from
+      the Mac Studio, just retry). The
       full story is in [`docs/bluetooth.md`](docs/bluetooth.md), "Collegamenti
       lentissimi dal Mac" (in Italian)
 - [x] Firmware update over Bluetooth: 864 KB in 26 s; the new firmware boots

@@ -26,11 +26,12 @@
 //           tocchi va a riposo: sonno leggero, da cui si sveglia ogni REST_POLL_MS
 //           per guardare i tasti, e ogni tanto il verso e la batteria. Da fuori
 //           non cambia nulla: la prima pressione arriva come le altre.
-//   spento  sonno profondo, lo riaccende solo il power tenuto premuto. A schermo
-//           la scheda di spento (/camtag/off.bmp, se c'è) con una fascia che lo
-//           dice; dopo OFF_BLANK_S lo schermo passa al bianco con la sola fascia.
-//           Fino al bianco il chip resta alimentato (serve il timer); dopo, la
-//           batteria è staccata e non consuma più nulla.
+//   spento  lo riaccende solo il power tenuto premuto. A schermo la scheda di
+//           spento (/camtag/off.bmp, se c'è) con una fascia che lo dice; dopo
+//           OFF_BLANK_S lo schermo passa al bianco con la sola fascia. Fino al
+//           bianco il chip resta nel sonno leggero del riposo (offRest), senza
+//           tasti né verso; dopo, sonno profondo con la batteria staccata, che
+//           non consuma più nulla.
 //           Ci va con il power tenuto, dopo AUTO_OFF_MS senza tasti e a batteria scarica.
 
 #include <Arduino.h>
@@ -420,35 +421,19 @@ struct OffNote {
   uint32_t touches;
   int16_t touchMa;
   bool touchMaOk;
+  // Spento leggero (offRest): si riaccende riavviando il chip, e questi passano il
+  // riavvio. offMa = la corrente letta al risveglio del power che lo riaccende.
+  bool light;
+  int16_t offMa;
+  bool offMaOk;
 };
-constexpr uint32_t kOffNoteMagic = 0x4F464654;
+constexpr uint32_t kOffNoteMagic = 0x4F464655;
 RTC_NOINIT_ATTR OffNote offNote;
 uint32_t offTouches = 0;  // quelli dello spento appena finito
 // Corrente da spento: letta all'accensione e al primo tocco breve (docs/batteria.md).
 bool offMaOk = false, touchMaOk = false;
 int16_t offMa = 0, touchMa = 0;
 
-// Diagnosi da spento (docs/batteria.md). La 0.5.6 ha escluso IMU e pannello, la 0.5.7
-// lo stato della microSD, la 0.5.8 MISO da solo. Questa ferma insieme tutti i pin che
-// da spento restano liberi (holdFreePins): se il 5 mA sparisce si restringe, se resta
-// non dipende dai pin del chip. Con "diag" acceso, nei primi minuti dello spento il
-// timer lo sveglia ogni kDiagStepS; ogni volta legge dal gauge il consumo del tratto
-// appena finito, riavvia tutto e lo rimette a dormire, un tratto con i pin fermi e uno no. Le letture passano il sonno profondo qui e vanno nel registro
-// (righe D) alla prossima accensione. CAMTAG_OFF_DIAG_DEFAULT (Version.h) la accende di
-// partenza, per una build di prova da installare senza cavo.
-constexpr uint32_t kDiagStepS = 60;
-constexpr uint8_t kDiagSteps = 9;      // letture al risveglio; la decima è quella dell'accensione
-constexpr uint8_t kPinsAsIs = 0, kPinsHeld = 1;  // cosa si è fatto ai pin liberi prima di ogni tratto
-struct DiagNote {
-  uint32_t magic;
-  uint8_t step;                // letture fatte = tratto in corso
-  uint16_t ok;                 // un bit per lettura riuscita
-  int16_t ma[kDiagSteps];
-  uint8_t pins[kDiagSteps + 1];  // kPinsAsIs o kPinsHeld, prima di ogni tratto
-};
-constexpr uint32_t kDiagMagic = 0x44494134;
-RTC_NOINIT_ATTR DiagNote diagNote;
-DiagNote diagDone = {};  // quella dello spento appena finito, da scrivere nel registro
 
 // A riposo la USB non può funzionare (nel sonno leggero il suo orologio è fermo), e
 // un dispositivo che si presenta e poi non risponde fa rinunciare il computer finché
@@ -1597,11 +1582,6 @@ void holdPin(int8_t pin, int level) {
   gpio_hold_en(g);
 }
 
-// I pin liberi da spento, per la diagnosi (holdFreePins): MISO, BUSY, SDA, SCL, GPIO9
-// dell'X3. Numeri fissi come in battery::wakeCurrent: all'avvio il profilo attivo è
-// ancora quello dell'X4, che le linee I2C non le ha.
-constexpr int8_t kFreePins[] = {7, 6, 20, 0, 9};
-
 // I comandi del bus condiviso da pannello e microSD, da tenere fermi da spento: nel
 // sonno profondo i pin restano in aria, e con la microSD e il pannello alimentati un
 // ingresso a mezza tensione consuma (misurato: da 1,3 a 5 mA secondo come capita,
@@ -1628,19 +1608,15 @@ void releaseBus() {
 
 // Sonno profondo, da cui esce solo con il power (o con il timer del bianco). Non torna.
 // Sull'X3 e sull'X4 GPIO13 basso stacca la batteria: da spento non consuma nulla, ma
-// nessun timer può più svegliarlo. Per questo con la scheda di spento a schermo il chip
-// resta alimentato (GPIO13 alto) fino al passaggio al bianco, e la batteria si stacca
-// solo dopo. A batteria scarica si stacca subito.
+// nessun timer può più svegliarlo. Dalla 0.6.0 con la scheda di spento a schermo il
+// chip sta in offRest (sonno leggero); qui ci arriva con kOffShown solo da un X3 che
+// era nello spento di prima. Al bianco e a batteria scarica la batteria si stacca.
 [[noreturn]] void sleepOff(uint8_t stage) {
   // L'ora dello spegnimento serve a riprendere il conto se un tocco del power, troppo
   // breve per accendere, lo risveglia prima del bianco.
   if (prefs.getUChar("off", 0) == 0) {
     prefs.putULong("offAt", battery::nowS());
-    offNote = {kOffNoteMagic, 0, 0, false};
-    diagNote.magic = stage == kOffShown && prefs.getBool("diag", CAMTAG_OFF_DIAG_DEFAULT) ? kDiagMagic : 0;
-    diagNote.step = 0;
-    diagNote.ok = 0;
-    diagNote.pins[0] = kPinsAsIs;
+    offNote = {kOffNoteMagic, 0, 0, false, false, 0, false};
   }
   prefs.putUChar("off", stage);
   // Se l'orologio è ripartito (è mancata l'alimentazione) il conto ricomincia.
@@ -1656,9 +1632,7 @@ void releaseBus() {
     holdPin(13, HIGH);
 #endif
     holdBus();
-    // Finché dura la diagnosi il timer è il suo; poi torna quello del bianco.
-    const bool diag = diagNote.magic == kDiagMagic && diagNote.step < kDiagSteps;
-    esp_sleep_enable_timer_wakeup((diag ? kDiagStepS : passed < blankS ? blankS - passed : 5) * 1000000ULL);
+    esp_sleep_enable_timer_wakeup((passed < blankS ? blankS - passed : 5) * 1000000ULL);
   } else {
 #if !SOC_PM_SUPPORT_EXT1_WAKEUP
     holdPin(13, LOW);
@@ -1668,33 +1642,17 @@ void releaseBus() {
   freeink::PowerManager::deepSleepUntilPowerButton();
 }
 
-// I pin che da spento nessuno tiene (oltre a quelli di holdBus): MISO della microSD,
-// BUSY del pannello, le due linee I2C, GPIO9. Qui restano su con il pull-up e i due
-// della USB vengono spenti, pad e resistenze compresi (come a riposo). setup()
-// toglie il blocco per primo; la USB torna da sola, il risveglio rifà il chip da capo.
-void holdFreePins() {
-  for (const int8_t pin : kFreePins) {
-    const auto g = static_cast<gpio_num_t>(pin);
-    gpio_hold_dis(g);
-    pinMode(pin, INPUT_PULLUP);
-    gpio_hold_en(g);
-  }
-  usbPad(false);
-  for (const auto g : {kUsbDm, static_cast<gpio_num_t>(USB_INT_PHY0_DP_GPIO_NUM)}) gpio_set_direction(g, GPIO_MODE_DISABLE);
-}
-
-// Periferiche a dormire (IMU, pannello, microSD), poi sonno profondo. `holdPins`: ferma
-// anche i pin liberi; per ora lo fa solo la diagnosi, un tratto sì e uno no.
-[[noreturn]] void sleepAll(uint8_t stage, bool holdPins = false) {
+// Periferiche a dormire (IMU, pannello, microSD), poi sonno profondo.
+[[noreturn]] void sleepAll(uint8_t stage) {
   imu.sleep();
   display->deepSleep();
   SdMan.shutdown();
-  if (holdPins) holdFreePins();
-  if (diagNote.magic == kDiagMagic && diagNote.step <= kDiagSteps) diagNote.pins[diagNote.step] = holdPins ? kPinsHeld : kPinsAsIs;
   xSemaphoreTake(adcLock, portMAX_DELAY);  // keyScan non legge più l'ADC
   input.prepareForDeepSleep();
   sleepOff(stage);
 }
+
+[[noreturn]] void offRest();
 
 [[noreturn]] void powerOff(Off why) {
   LOGF("[camtag] spento (%u)\n", static_cast<unsigned>(why));
@@ -1709,7 +1667,8 @@ void holdFreePins() {
   drawOff(why);
   prefs.putUChar("rot", rotation);
   prefs.putBool("keylock", false);  // alla riaccensione i tasti sono liberi
-  sleepAll(why == Off::Blank ? kOffBlank : why == Off::Empty ? kOffEmpty : kOffShown);
+  if (why == Off::Blank || why == Off::Empty) sleepAll(why == Off::Blank ? kOffBlank : kOffEmpty);
+  offRest();
 }
 
 // --- Riposo ----------------------------------------------------------------------
@@ -1867,6 +1826,87 @@ void rest() {
   LOGF("[riposo] fine: %s\n", why);
 }
 
+// Spento leggero (dalla 0.6.0, docs/batteria.md): da fuori è lo spento di sempre, con
+// la scheda di spento a schermo, ma il chip resta nel sonno leggero del riposo invece
+// del sonno profondo. Nel sonno profondo l'X3 consumava a caso 1,3 o 5 mA, e sei prove
+// non hanno trovato da cosa dipende; il riposo non ha mai dato 5. Qui niente tasti A–D,
+// verso, USB né carica: lo svegliano il power e il timer (riga del registro ogni 5
+// minuti, bianco dopo OFF_BLANK_S). Power tenuto POWER_HOLD_MS: riavvia il chip, che
+// riparte acceso come dal sonno profondo (offNote.light); un tocco più breve è contato.
+// Al bianco e a batteria scarica va nel sonno profondo con la batteria staccata.
+[[noreturn]] void offRest() {
+  const auto powerPin = static_cast<gpio_num_t>(BoardConfig::ACTIVE.input.power);
+  const int powerDown = BoardConfig::ACTIVE.input.powerActiveHigh ? HIGH : LOW;
+  if (prefs.getUChar("off", 0) == 0) prefs.putULong("offAt", battery::nowS());
+  prefs.putUChar("off", kOffShown);
+  const uint32_t blankS = prefs.getULong("blankS", OFF_BLANK_S);  // "blank=N" dalla seriale, per le prove
+  OffNote note = {kOffNoteMagic, 0, 0, false, true, 0, false};
+  LOGF("[spento] leggero, bianco dopo %lu s\n", static_cast<unsigned long>(blankS));
+  imu.sleep();
+  if (!displayAsleep) sleepDisplay();
+  xSemaphoreTake(adcLock, portMAX_DELAY);
+  vTaskSuspend(keyScanTask);
+  keepOutputsInRest();
+  usbPad(false);
+  restStartUs = static_cast<uint64_t>(esp_timer_get_time());
+  // Prima di sbloccare tutto per il bianco o la batteria scarica (powerOff riprende adcLock).
+  const auto leave = [&]() {
+    gpio_wakeup_disable(powerPin);
+    gpio_set_intr_type(powerPin, GPIO_INTR_DISABLE);
+    esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+    vTaskResume(keyScanTask);
+    xSemaphoreGive(adcLock);
+  };
+  for (;;) {
+    // Il power ancora giù (quello che l'ha spento) lo risveglierebbe subito.
+    while (digitalRead(powerPin) == powerDown) delay(20);
+    const uint32_t now = battery::nowS(), at = prefs.getULong("offAt", now);
+    const uint32_t passed = now >= at ? now - at : 0;
+    if (passed >= blankS) {
+      leave();
+      powerOff(Off::Blank);
+    }
+    const uint32_t sinceLog = now - lastBatteryLogS;
+    const uint32_t toLog = sinceLog >= BATTERY_LOG_S ? 1 : BATTERY_LOG_S - sinceLog;
+    gpio_wakeup_enable(powerPin, powerDown == LOW ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL);
+    esp_sleep_enable_gpio_wakeup();
+    esp_sleep_enable_timer_wakeup(std::min(toLog, blankS - passed) * 1000000ULL);
+    // Se il chip rifiuta il sonno leggero si comporta uguale, solo senza risparmiare.
+    if (esp_light_sleep_start() != ESP_OK) delay(1000);
+    gpio_wakeup_disable(powerPin);
+    gpio_set_intr_type(powerPin, GPIO_INTR_DISABLE);
+    if (digitalRead(powerPin) == powerDown) {
+      // Prima di tutto la corrente che il gauge ha misurato mentre il chip dormiva.
+      battery::Reading r;
+      battery::read(r);
+      const uint32_t t0 = millis();
+      while (digitalRead(powerPin) == powerDown && millis() - t0 < POWER_HOLD_MS) delay(10);
+      if (digitalRead(powerPin) == powerDown) {
+        note.offMa = r.ma;
+        note.offMaOk = r.ok;
+        offNote = note;
+        LOGF("[spento] power tenuto: riavvio acceso (%d mA da spento, %lu tocchi)\n", r.ma,
+             static_cast<unsigned long>(note.touches));
+        delay(20);
+        ESP.restart();  // il power è giù: tiene accesa la batteria anche durante il riavvio
+      }
+      if (note.touches++ == 0) {
+        note.touchMa = r.ma;
+        note.touchMaOk = r.ok;
+      }
+      LOGF("[spento] tocco breve (%lu)\n", static_cast<unsigned long>(note.touches));
+      continue;
+    }
+    if (battery::nowS() - lastBatteryLogS >= BATTERY_LOG_S) {
+      logBattery(battery::kSample, 1);  // info 1: riga da spento
+      if (batteryLow(lastBattery)) {
+        leave();
+        powerOff(Off::Empty);
+      }
+    }
+  }
+}
+
 // Cavo attaccato o staccato, carica cominciata o finita: ridisegna la card quando
 // due letture di fila, a un secondo, sono d'accordo.
 void pollUsb() {
@@ -1984,8 +2024,6 @@ void setup() {
   // Il consumo da spento, dal gauge: va letto subito, prima che lui rifaccia la misura
   // con il chip sveglio (prima anche dell'attesa della seriale e di quella del power).
   int16_t wakeMa = 0;
-  // I pin fermati dalla diagnosi (holdFreePins) comprendono le linee I2C del gauge.
-  for (const int8_t pin : kFreePins) gpio_hold_dis(static_cast<gpio_num_t>(pin));
   const bool wakeMaOk = reset == ESP_RST_DEEPSLEEP && battery::wakeCurrent(wakeMa);
 #ifdef CAMTAG_DEBUG
   delay(250);
@@ -2003,23 +2041,15 @@ void setup() {
   prefs.begin("camtag", false);
   const uint8_t wasOff = prefs.getUChar("off", 0);
   const bool timerWake = wasOff == kOffShown && reset == ESP_RST_DEEPSLEEP && wake == ESP_SLEEP_WAKEUP_TIMER;
-  // Risveglio della diagnosi da spento: segna la lettura del tratto appena finito; più
-  // sotto, riavviato tutto, lo rimette a dormire per il tratto dopo.
-  const bool diagWake = timerWake && diagNote.magic == kDiagMagic && diagNote.step < kDiagSteps;
-  if (diagWake) {
-    const uint8_t i = diagNote.step++;
-    diagNote.ma[i] = wakeMa;
-    if (wakeMaOk) diagNote.ok |= 1 << i;
-  }
-  const bool blank = timerWake && !diagWake;
-  const bool stayOff = wasOff && !blank && !diagWake && (reset == ESP_RST_DEEPSLEEP || reset == ESP_RST_POWERON) &&
+  const bool blank = timerWake;
+  const bool stayOff = wasOff && !blank && (reset == ESP_RST_DEEPSLEEP || reset == ESP_RST_POWERON) &&
                        !powerHeld();
   // Alimentazione tornata con la scheda di spento a schermo (RESET, poi un tocco): le
   // periferiche sono appena accese, non a dormire. Si avvia tutto e le si spegne più sotto.
   const bool freshOff = stayOff && reset == ESP_RST_POWERON && wasOff == kOffShown;
   if (stayOff && !freshOff) {
     if (reset == ESP_RST_DEEPSLEEP) {
-      if (offNote.magic != kOffNoteMagic) offNote = {kOffNoteMagic, 0, 0, false};
+      if (offNote.magic != kOffNoteMagic) offNote = {kOffNoteMagic, 0, 0, false, false, 0, false};
       if (offNote.touches++ == 0) {
         offNote.touchMa = wakeMa;
         offNote.touchMaOk = wakeMaOk;
@@ -2027,16 +2057,18 @@ void setup() {
     }
     sleepOff(wasOff);
   }
-  if (!diagWake && offNote.magic == kOffNoteMagic) {  // un risveglio della diagnosi non li consuma
+  // Riacceso dallo spento leggero: offRest ha riavviato il chip con il power tenuto, e
+  // ha lasciato qui tocchi e corrente letti prima del riavvio.
+  const bool fromLightOff = reset == ESP_RST_SW && offNote.magic == kOffNoteMagic && offNote.light;
+  if (offNote.magic == kOffNoteMagic) {
     offTouches = offNote.touches;
     touchMaOk = offNote.touches && offNote.touchMaOk;
     touchMa = offNote.touchMa;
+    if (fromLightOff) {
+      offMaOk = offNote.offMaOk;
+      offMa = offNote.offMa;
+    }
     offNote.magic = 0;
-  }
-  // Acceso davvero: le letture della diagnosi vanno nel registro, più sotto.
-  if (!diagWake && diagNote.magic == kDiagMagic) {
-    diagDone = diagNote;
-    diagNote.magic = 0;
   }
   // Solo dopo uno spento: il timer del bianco e il riposo non passano di qui con "off".
   if (wasOff && wakeMaOk) {
@@ -2095,8 +2127,7 @@ void setup() {
 
   sdReady = SdMan.begin();
 
-  if (freshOff) sleepAll(kOffShown);
-  if (diagWake) sleepAll(kOffShown, diagNote.step & 1);  // tratti dispari: pin liberi fermi
+  if (freshOff) offRest();  // la scheda di spento è ancora a schermo
   if (blank) powerOff(Off::Blank);
   // Batteria scarica: resta spento con l'avviso, senza ridisegnarlo se c'è già.
   if (batteryEmpty()) {
@@ -2108,20 +2139,9 @@ void setup() {
   }
   prefs.putUChar("off", 0);
   keysLocked = prefs.getBool("keylock", false);  // il lucchetto può essere ancora a schermo
-  logBattery(battery::kBoot, static_cast<int>(reset) * 100 + static_cast<int>(wake));
-  // Diagnosi da spento: una riga D per tratto, info = 300000 + tratto * 1000 + quello
-  // che si è fatto ai pin liberi prima (kPinsAsIs o kPinsHeld). L'ultimo tratto è quello letto
-  // a questa accensione.
-  for (uint8_t i = 0; i <= diagDone.step && i <= kDiagSteps && diagDone.magic == kDiagMagic && sdReady; i++) {
-    const bool last = i == diagDone.step;
-    battery::Counters c;
-    c.offMaOk = last ? offMaOk : (diagDone.ok >> i) & 1;
-    c.offMa = last ? offMa : diagDone.ma[i];
-    battery::log(battery::kDiag, 300000 + i * 1000 + diagDone.pins[i], lastBattery, c);
-    LOGF("[camtag] diagnosi da spento %u: %d mA%s, pin liberi %s\n", i, c.offMa, c.offMaOk ? "" : " (non letta)",
-         diagDone.pins[i] == kPinsHeld ? "fermi" : "com'erano");
-  }
-
+  // Dallo spento leggero il risveglio vero è stato il power (7, ESP_SLEEP_WAKEUP_GPIO),
+  // prima del riavvio: la riga A lo dice come per lo spento di prima.
+  logBattery(battery::kBoot, static_cast<int>(reset) * 100 + (fromLightOff ? ESP_SLEEP_WAKEUP_GPIO : static_cast<int>(wake)));
   if (sdReady) {
     loadCardList();  // con settings.ini, che può dare la lingua
     loadFilters();
@@ -2317,9 +2337,6 @@ void serialCommands() {
       else
         prefs.remove("blankS");
       LOGF("[b] bianco dopo %lu s\n", static_cast<unsigned long>(secs ? secs : OFF_BLANK_S));
-    } else if (!strncmp(cmd, "diag=", 5)) {
-      prefs.putBool("diag", cmd[5] == '1');
-      LOGF("[b] diagnosi da spento %s\n", cmd[5] == '1' ? "accesa" : "spenta");
     }
   }
 }

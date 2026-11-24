@@ -425,9 +425,11 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
 - Energia (`docs/batteria.md`): per chi lo usa gli stati sono due. **Acceso**
   mostra le card e sente i tasti in ogni momento: dopo 5 s senza tocchi va a
   riposo (sonno leggero, tasti letti ogni 25 ms, verso ogni secondo) senza che
-  da fuori cambi nulla. **Spento** (sonno profondo) mostra la schermata di
+  da fuori cambi nulla. **Spento** mostra la schermata di
   spento con la fascia "SPENTO - TIENI POWER PER ACCENDERE", e dopo 72 h il
-  bianco con la sola fascia (fino ad allora il chip resta alimentato, poi la
+  bianco con la sola fascia (fino ad allora il chip resta alimentato nel sonno
+  leggero del riposo, senza tasti né verso, `offRest`: il sonno profondo dava a
+  caso 1,3 o 5 mA; il power tenuto riavvia il chip acceso; poi sonno profondo e la
   batteria si stacca; `taratura.py batteria --bianco N` accorcia l'attesa per provarlo). Power tenuto 1 s spegne e accende. Si spegne da
   solo dopo 24 h senza tasti e a batteria scarica (sotto 3,3 V, con l'avviso).
   Niente segni di "pausa" sulle card: se mostra una card, risponde.
@@ -512,15 +514,18 @@ grafica della 0.5.2 (logo, linguette, schermata di spento; 23/11/2026). Tasti, a
 `kImuSwapXY`, `kImuSignX`, `kImuSignY`, `kQuarterTurns` in `device/src/main.cpp`:
 la posizione naturale è `Canvas::ROT_270`).
 
-- Bluetooth dal Mac: ogni tanto il Mac serve l'X3 un solo scambio ogni 3 s, per
+- Bluetooth dal Mac Studio: ogni tanto il Mac serve l'X3 un solo scambio ogni 3 s, per
   un minuto o due (prove del 24/11/2026 in `docs/bluetooth.md`: indicano il Mac e
   i suoi altri dispositivi Bluetooth; non dipende dal firmware né dal
   configuratore, locale o pubblicato). Il configuratore web lo dice dopo 4 s
   senza risposta a `HELLO` o senza `ACK` in un invio (`BLE.slowMs`). Riavviare
   il Mac non cambia nulla (3 lenti su 38); da iPhone con BLE Link 0 su 80, e
-  l'indagine è ferma lì (nota nei README). Si
-  conta con `scripts/ble-prova.html`; restano da provare un altro computer e un
-  timeout di supervisione più corto chiesto dall'X3.
+  l'indagine è ferma lì (nota nei README). Dal MacBook Pro, in molti
+  trasferimenti, mai visto: è di quel Mac, un conto lì non serve. Il Mac Studio
+  ha macOS 26, il MacBook Pro il 27: il 25/11 si aggiorna e si riconta (una
+  cinquantina di collegamenti, `scripts/ble-prova.html`). Poi l'indagine si
+  chiude comunque: è l'unico computer che lo fa, basta riprovare. Non riaprirla
+  senza un secondo dispositivo che lo faccia.
 - Cavo USB collegato a riposo (0.4.2): provato sull'X3 con `taratura.py usb`
   (22/11/2026, batteria piena, attraverso hub: 9 su 10 entro 10 s, porta in
   2,6-6,7 s, nessuna lettura sbagliata). Un hub senza computer si legge come un computer: lì
@@ -534,23 +539,11 @@ la posizione naturale è `Canvas::ROT_270`).
   Misurati (21-22/11/2026, 39 h di registro): 25 mA da sveglio, 2,1 mA a
   riposo (12,6 giorni), 1,8 mA a riposo con i tasti bloccati (14,9 giorni),
   circa 10 mA con un uso vero; nessun riavvio da solo né risveglio inutile.
-  Spento prima del bianco (22-24/11/2026, 24 h, 0.5.2): da 1,3 a 5 mA, più del
-  riposo. La 0.5.3 toglie le due cause trovate nel codice e conta i tocchi brevi
-  del power (colonna `tocchi`), ma la prima misura (24/11/2026, 2,1 h con un
-  tocco) dà ancora 5,3 mA: **causa da trovare**. La 0.5.5 legge il gauge in
-  cima a `setup()` (`wakeCurrent`, con i pin dell'X3 perché lì il profilo attivo
-  è ancora l'X4; colonne `spento_mA` e `tocco_mA`) per avere
-  il consumo da spento in 2-3 minuti: provato (24/11/2026), su cinque
-  spegnimenti senza tocchi tre a −2 mA e due a −5, quindi il tocco non c'entra.
-  La diagnosi da spento (0.5.6: `diag=1` dalla seriale o build con
-  `CAMTAG_OFF_DIAG_DEFAULT=1`, che porta `-diag` in coda alla versione; righe `D` del registro) ha escluso IMU e pannello:
-  restava la microSD, ma la 0.5.7 (`sdGoIdle`, CMD0, un tratto sì e uno no;
-  provata il 24/11/2026) dà 5 mA anche con la microSD a riposo: non è il suo
-  stato. La 0.5.8 prova MISO della microSD (GPIO7), che `holdBus` non tiene e
-  da spento resta in aria: provata (24/11/2026), **non c'entra** nemmeno
-  lui (5 mA in 3 tratti su 5 con MISO alto). La 0.5.9 ferma insieme tutti i
-  pin liberi (`holdFreePins`: MISO, BUSY, I2C, GPIO9, USB spenta), un tratto sì e
-  uno no: **da provare**. Poi decidere `OFF_BLANK_S` (il meglio
-  possibile resta 1,3 mA). Tutto in fondo a `docs/batteria.md`.
+  Spento prima del bianco nel sonno profondo (fino alla 0.5.11): a caso 1,3 o
+  5 mA a ogni spegnimento; sei diagnosi sull'X3 (24/11/2026: IMU, pannello,
+  microSD anche tolta, MISO, pin liberi, CS della flash) non hanno trovato la
+  causa. La 0.6.0 lo fa nel sonno leggero (`offRest`): **da provare** sull'X3
+  (accensione, tocchi brevi, bianco con `--bianco`, consumo di una notte), poi
+  decidere `OFF_BLANK_S`. Tutto in fondo a `docs/batteria.md`.
 - Schermata filtri: provata sull'X3 (bilancieri, indicazioni, riordino,
   modifica, ombra tolta dal mezzo refresh, blocco che ferma tutto).

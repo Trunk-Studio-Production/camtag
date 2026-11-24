@@ -6,9 +6,11 @@ segue lo stesso comportamento (`simPress`, `drawOffOverlay`).
 
 Il comportamento è provato sull'X3 (20/11/2026). I consumi sono misurati dal
 registro (21-24/11/2026): 25 mA da sveglio, 2,1 mA a riposo (1,8 mA con i
-tasti bloccati), circa 10 mA con un uso vero. Da spento, prima del bianco,
-**da 1,3 a 5 mA**, più del riposo: la 0.5.3 corregge due cause trovate nel
-codice ma il consumo alto c'è ancora, una volta sì e una no: **causa da trovare** (vedi in fondo).
+tasti bloccati), circa 10 mA con un uso vero. Da spento, prima del bianco, il
+sonno profondo dava **a caso 1,3 o 5 mA** a ogni spegnimento; sei prove non hanno
+trovato da cosa dipende (vedi in fondo). Dalla 0.6.0 lo spento prima del bianco è
+quindi un **sonno leggero** come il riposo (`offRest`), che non ha mai dato 5:
+consumo da misurare sull'X3.
 
 ## Gli stati
 
@@ -16,7 +18,7 @@ codice ma il consumo alto c'è ancora, una volta sì e una no: **causa da trovar
 |---|---|---|---|
 | **Acceso, sveglio** | chip a piena potenza, tasti letti ogni 5 ms | le card | un tasto, il power, un cambio di verso |
 | **Acceso, a riposo** | sonno leggero; ogni 25 ms (`REST_POLL_MS`) si sveglia circa 1 ms per leggere i tasti | le card, uguale | 5 s senza tocchi (`AWAKE_MS`) |
-| **Spento** | sonno profondo; lo sveglia solo il power | scheda di spento con la fascia, poi bianco | power tenuto 1 s, 24 h senza tasti, batteria scarica |
+| **Spento** | sonno leggero senza tasti né verso (dalla 0.6.0); lo sveglia solo il power. Dopo il bianco sonno profondo con la batteria staccata | scheda di spento con la fascia, poi bianco | power tenuto 1 s, 24 h senza tasti, batteria scarica |
 
 Per chi lo usa gli stati sono due: **acceso** (mostra le card e risponde
 sempre, salvo con i tasti bloccati, e allora c'è il lucchetto) e **spento**
@@ -145,9 +147,13 @@ ricollegamento la linguetta USB è comparsa in pochi secondi.
 ### Spento
 
 - **Power tenuto 1 s** (`POWER_HOLD_MS`) spegne.
-- **Da spento, power tenuto** (circa 1 s in tutto, `POWER_ON_HOLD_MS` dopo
-  l'avvio del chip) accende sull'ultima card. Un tocco breve non accende e non
-  cambia lo schermo: in una borsa non si accende da solo.
+- **Da spento, power tenuto 1 s** (`POWER_HOLD_MS`, contato da quando il power
+  sveglia il chip) accende sull'ultima card: `offRest` riavvia il chip con il power
+  giù, che tiene la batteria collegata, e il chip riparte acceso come una volta
+  dal sonno profondo. Un tocco breve non accende e non cambia lo schermo: in una
+  borsa non si accende da solo. Dopo il bianco o con la batteria scarica il chip
+  è nel sonno profondo con la batteria staccata, e il power lo accende come prima
+  (`POWER_ON_HOLD_MS` dopo l'avvio).
 - **Dimenticato acceso** si spegne dopo 24 h senza tasti (`AUTO_OFF_MS`).
 - **Batteria scarica**: sotto 3,3 V (`EMPTY_MV`), non in carica, si spegne con
   l'avviso "BATTERIA SCARICA - METTI IN CARICA" e non si riaccende finché non
@@ -173,14 +179,19 @@ ricollegamento la linguetta USB è comparsa in pochi secondi.
   le etichette in basso e la batteria al centro in alto.
 - Dopo 72 h da spento (`OFF_BLANK_S`) lo schermo passa al **bianco con la sola
   fascia**: un'immagine ferma per settimane può lasciare un'ombra.
-- Lo spento ha quindi due tempi (`sleepOff`). Con la scheda di spento a schermo
-  il chip resta **alimentato in sonno profondo** (GPIO13 alto), perché serve il
-  timer che lo sveglia per il bianco: in quei tre giorni consuma poco, ma non
-  zero. Dopo il bianco GPIO13 va basso e **la batteria è staccata**: non
-  consuma più nulla. A batteria scarica si stacca subito, senza bianco.
+- Lo spento ha quindi due tempi. Con la scheda di spento a schermo il chip resta
+  **alimentato nel sonno leggero** (`offRest`, dalla 0.6.0; prima sonno profondo,
+  `sleepOff`): niente tasti A–D, verso, USB né carica, solo il power e il timer,
+  che lo sveglia per la riga del registro ogni 5 minuti (`P` con `info` 1) e per
+  il bianco. Pin e periferiche come a riposo (`keepOutputsInRest`, pad USB
+  spento), con IMU e pannello a dormire. Dopo il bianco GPIO13 va basso e **la
+  batteria è staccata**: non consuma più nulla. A batteria scarica (letta a ogni
+  riga del registro) si stacca subito, senza bianco.
 - Per provarlo senza aspettare tre giorni:
   `taratura.py batteria --bianco 120` (poi `--bianco 0` per rimettere i tre giorni).
-- Nei tre giorni alimentati tutto deve restare a dormire e fermo (dalla 0.5.3):
+- Nei tre giorni alimentati del sonno profondo (fino alla 0.5.11) tutto doveva
+  restare a dormire e fermo (dalla 0.5.3); `holdBus` e i tocchi servono ancora
+  all'X3 che arriva da quel firmware:
   - **I comandi del bus sono tenuti alti** (`holdBus`: CS della microSD e del
     pannello, clock, MOSI, DC), come RESET del pannello e GPIO13. Nel sonno
     profondo un pin non tenuto resta in aria, e con microSD e pannello
@@ -195,8 +206,8 @@ ricollegamento la linguetta USB è comparsa in pochi secondi.
     colonna `tocchi` del registro.
   - **Alimentazione tornata con la scheda di spento a schermo** (RESET, poi un
     tocco del power o il cavo): le periferiche sono appena accese, non a
-    dormire. Il firmware le avvia e le rimette a dormire (`sleepAll`) prima di
-    tornare spento.
+    dormire. Il firmware le avvia e torna spento in `offRest`, che le rimette
+    a dormire.
 
 In NVS: `off` = 0 acceso, 1 scheda di spento a schermo, 2 bianco, 3 avviso di
 batteria scarica; `offAt` = ora dello spegnimento.
@@ -212,7 +223,7 @@ mAh. Il firmware scrive `/camtag-batteria.csv` nella radice della microSD
 |---|---|
 | `t_s` | secondi di un orologio che attraversa sonno e riavvii (riparte solo senza alimentazione) |
 | `evento` | `A` avvio, `P` riga periodica, `S` spegnimento |
-| `info` | `A`: motivo del riavvio × 100 + motivo del risveglio (`esp_reset_reason`, `esp_sleep_get_wakeup_cause`); `S`: 0 power, 1 dimenticato acceso, 2 batteria scarica |
+| `info` | `A`: motivo del riavvio × 100 + motivo del risveglio (`esp_reset_reason`, `esp_sleep_get_wakeup_cause`; 307 = riacceso dallo spento leggero); `P`: 1 se da spento (dalla 0.6.0), se no 0; `S`: 0 power, 1 dimenticato acceso, 2 batteria scarica |
 | `mV`, `mA` | tensione e corrente; `mA` positivo = in carica, risoluzione 1 mA |
 | `mAh`, `pieno_mAh`, `pct` | capacità residua, capacità a pieno e percentuale secondo il gauge |
 | `sveglio_s`, `riposo_s` | secondi passati sveglio e a riposo dall'ultimo avvio |
@@ -420,24 +431,91 @@ tensione, come controllo.
   del chip non c'entrano. Righe `D`: `info` = 300000 + (tratto − 1) × 1000 +
   1 se i pin sono fermi, + 0 se no.
 
-  La diagnosi si accende e si spegne dalla seriale (`diag=1`, `diag=0`, cioè
-  `taratura.py batteria --diagnosi 1`) e resta in NVS; di partenza è spenta.
-  Per un firmware che la ha già accesa, da installare via Bluetooth senza cavo:
-  `PLATFORMIO_BUILD_FLAGS="-DCAMTAG_OFF_DIAG_DEFAULT=1" ../.venv/bin/pio run -e x3`
-  (senza `-v`, che fa fallire l'ultimo passo). Quella build porta `-diag` in
-  coda alla versione (`0.5.9-diag`, `Version.h`): lo si legge sulla schermata
-  Bluetooth dell'X3 e nel configuratore web, che la tratta come più vecchia
-  della pubblicata. Un tocco breve durante la
-  diagnosi fa ripartire il minuto in corso; accendendo prima della fine nel
-  registro vanno i tratti fatti. Sotto il minuto da spento la lettura non
-  vale (il gauge non ha ancora misurato: −12, −28, −33 mA dopo pochi secondi).
+  **Provato sull'X3 (24/11/2026, 0.5.9-diag): i pin del chip non c'entrano.**
+  Tre spenti di fila, senza tocchi (25, 8 e 13 minuti; il secondo spento prima
+  della fine, 8 tratti):
 
-  Resta un limite che il firmware non toglie: il caso migliore da spento è
-  1,3 mA, poco meno del riposo con i tasti bloccati (1,8 mA). È la scheda
-  alimentata (la microSD in attesa è la prima indiziata), e si azzera solo
-  staccando la batteria con GPIO13. Dopo la misura va deciso quanto restare
-  alimentati prima del bianco (`OFF_BLANK_S`): a 1,3 mA 72 h costano 94 mAh,
-  24 h ne costano 31 (5%).
+  | Spento | Pin com'erano | Pin fermi |
+  |---|---|---|
+  | 1 (25 min) | 2, 1, 2, 1, 5 | 5, 5, 5, 5, 5 |
+  | 2 (8 min) | 5, 2, 2, 5 | 5, 2, 2, 5 |
+  | 3 (13 min) | 5, 5, 2, 5, 5 | 2, 5, 5, 5, 2 |
+
+  Il primo spento sembrava dire il contrario (pin fermi sempre a 5), i due dopo
+  no: in tutto, con i pin fermi 10 tratti su 14 a 5 mA, senza 8 su 14. Fermare
+  tutti i pin liberi non toglie il 5, semmai non cambia nulla. Con le prove
+  della 0.5.6-0.5.9 (IMU, pannello, microSD a riposo con CMD0, MISO, tutti i pin
+  liberi) a ogni riaddormentamento esce 2 o 5 a caso, poco più spesso 5. Il riposo
+  invece (sonno leggero, stesse periferiche alimentate) sta sempre a 2,1 mA.
+
+  **Prova senza microSD (0.5.10)**: la diagnosi è la stessa (dieci tratti da un
+  minuto, tutto riavviato ogni volta), senza toccare i pin (`holdFreePins` non c'è
+  più; `setup()` sblocca ancora quelli che la 0.5.9 poteva aver lasciato fermi).
+  Ogni risveglio guarda se la microSD c'è (`SdMan.begin()`). Se in dieci tratti
+  senza microSD il 5 non esce mai è lei (per caso, a più di metà 5, succederebbe
+  meno di una volta su mille); se esce, resta da guardare la flash del chip, il cui
+  CS da spento nessuno tiene (a riposo sì).
+
+  Come si fa: con l'X3 acceso togli la microSD, poi power tenuto per spegnere;
+  aspetta almeno 10 minuti; riaccendi (senza microSD le letture vanno in NVS,
+  `diagSaved`); spegni, rimetti la microSD, riaccendi: le righe arrivano nel
+  registro. Righe `D`: `info` = 400000 + (tratto − 1) × 1000 + 100 se salvate da
+  un'accensione senza microSD + la microSD durante il tratto (0 dentro, 1 fuori,
+  2 non si sa: il primo tratto, cominciato da acceso). Una diagnosi salvata non è
+  sostituita da una più corta. `taratura.py batteria` le scrive per conto loro
+  (`diag_sd_notes`), perché arrivano un'accensione dopo il loro spento.
+
+  **Provato sull'X3 (24/11/2026, 0.5.10-diag): la microSD non c'entra.** Spento
+  senza microSD, tolta da acceso, dieci tratti letti:
+
+  | Tratto | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+  |---|---|---|---|---|---|---|---|---|---|---|
+  | mA | 2 | 5 | 1 | 5 | 1 | 5 | 1 | 2 | 1 | 5 |
+
+  Il 5 esce 4 volte su 10 anche senza microSD. Escluse quindi IMU, pannello,
+  microSD (stato e presenza) e pin liberi del chip. Restano la flash del chip, le
+  altre parti della scheda sempre alimentate (gauge, RTC, regolatori) e il sonno
+  profondo stesso; il sonno leggero del riposo non ha mai dato 5.
+
+  **Prova del CS della flash (0.5.11)**: prima del sonno profondo l'IDF (5.5) isola
+  i pin digitali non fermati ma salta quelli della flash (`esp_mspi_get_io` in
+  `esp_sleep_isolate_digital_gpio`), e `gpio_deep_sleep_hold_en` (in
+  `deepSleepUntilPowerButton`) li ferma come sono: il CS (GPIO14) senza pull-up,
+  pilotato o no dalla flash in quel momento. Nel sonno leggero del riposo invece
+  l'IDF gli dà il pull-up (`CONFIG_ESP_SLEEP_FLASH_LEAKAGE_WORKAROUND`, acceso).
+  Una flash selezionata per caso consuma milliampere. La diagnosi è la stessa
+  (dieci tratti da un minuto, tutto riavviato ogni volta); nei tratti pari (2, 4,
+  6, 8, 10) `sleepOff` accende il pull-up del CS (`FUN_PU`, senza togliere il pin
+  alla flash), nei dispari no. Righe `D`: `info` = 500000 + (tratto − 1) × 1000 +
+  1 se con il pull-up, + 10 se il pull-up era già acceso (allora la prova non dice
+  nulla), + 100 se salvate da un'accensione senza microSD. Se nei pari il 5 sparisce
+  il rimedio va nello spento di tutti.
+
+  **Provato sull'X3 (24/11/2026, 0.5.11-diag): il CS della flash ha già il pull-up.**
+  Tutti i dieci tratti hanno `+ 10`: prima di dormire il pull-up c'era sempre, quindi
+  il CS non resta in aria e i tratti pari e dispari sono uguali. Le letture lo
+  confermano: senza la prova 5, 2, 2, 5, 2 mA, con 5, 2, 5, 5, 5. Resta solo un CS
+  fermato basso proprio nell'istante dell'ingresso nel sonno, poco probabile.
+
+  Dopo sei prove (IMU, pannello, microSD, MISO, pin liberi, CS della flash) il 5 mA
+  esce sempre a caso a ogni ingresso nel sonno profondo, poco meno di una volta su
+  due, e non si è trovato da cosa dipende senza aprire l'X3. Il sonno leggero del
+  riposo invece non l'ha mai dato in 39 h di registro.
+
+  Le diagnosi si accendevano dalla seriale (`diag=1`) o con una build
+  `-DCAMTAG_OFF_DIAG_DEFAULT=1`, che portava `-diag` in coda alla versione; un
+  tocco breve faceva ripartire il minuto in corso, e sotto il minuto da spento la
+  lettura non valeva (−12, −28, −33 mA dopo pochi secondi). La 0.6.0 le toglie dal
+  firmware; `taratura.py` legge ancora le righe `D` dei registri vecchi.
+
+  **Rimedio (0.6.0): spento leggero.** Prima del bianco il chip non va più nel
+  sonno profondo ma resta nel sonno leggero del riposo (`offRest`, vedi
+  "Schermata di spento"), con il power e il timer come soli risvegli. Atteso un
+  po' meno dei 1,8 mA del riposo con i tasti bloccati, perché non si sveglia ogni
+  secondo per il verso: a 1,8 mA le 72 h prima del bianco costano 130 mAh (20%),
+  contro i 94 dello spento migliore e i 350 di quello peggiore. **Da misurare
+  sull'X3**: una notte da spento, poi `taratura.py batteria --leggi`. Se il
+  consumo è stabile, decidere `OFF_BLANK_S` (24 h costerebbero circa 43 mAh).
 - **Consumi: misurati** (registro del 20-22/11/2026 letto via Bluetooth, 39 h,
   tratti in carica esclusi):
 

@@ -191,11 +191,22 @@ registro: vale solo il tempo misurato dalla pagina. BLE Link apre la pagina
 anche da un indirizzo http della rete locale, Bluefy no. L'indagine si ferma qui:
 l'uso sul set passa dal telefono, e dal Mac basta riprovare.
 
-Ancora da capire: se è di questo Mac o dei Mac in genere (da un altro portatile
-mai visto, ma mai contato) e quanto pesa il mouse. Che sia cominciato il 24/11
+**Dal MacBook Pro non capita (nota del 24/11, sera).** Il proprietario ha fatto
+molti trasferimenti da un MacBook Pro, anche il 24/11, e sono stati sempre
+veloci: mai contati con la pagina di prova, ma abbastanza da dire che il
+problema è del Mac Studio (o di quello che ha intorno: mouse, tastiera), non dei
+Mac in genere. Un conto formale sul MacBook Pro non serve.
+
+Differenza trovata tra i due: il MacBook Pro ha macOS 27, il Mac Studio l'ultima
+macOS 26. Il 25/11 il Mac Studio passa al 27: se dopo l'aggiornamento i lenti
+spariscono (contarli con `scripts/ble-prova.html`, ne servono una cinquantina
+per dirlo: con uno ogni 15 la probabilità di zero per caso è circa 3%), la
+causa era il Bluetooth di macOS 26. Se restano, l'indagine si chiude lo stesso:
+da iPhone e dal MacBook Pro va sempre, ed è un solo computer, che basta far
+riprovare. Le idee che seguono restano qui solo per chi incontrasse lo stesso
+problema altrove. Che sia cominciato il 24/11
 non è dimostrato: il registro del Mac parte dal 23/11 pomeriggio, e con un lento
-ogni 10-20 collegamenti quattro veloci di fila sono normali. Prove che restano:
-- lo stesso conto da un altro computer, con lo stesso X3;
+ogni 10-20 collegamenti quattro veloci di fila sono normali. Idea non provata:
 - un timeout di supervisione corto chiesto dall'X3. Nel lento passa uno scambio
   ogni 0,75 × timeout (3 s con i 4 s di oggi, a 15 come a 45 ms): con 0,5 s
   sarebbe uno ogni 0,4 s, cioè un invio lento ma che arriva in fondo. Da vedere

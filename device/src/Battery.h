@@ -40,7 +40,7 @@ struct Counters {
   int16_t offMa = 0, touchMa = 0;
 };
 
-// kDiag: un tratto della diagnosi da spento (docs/batteria.md), scritto all'accensione.
+// kDiag: un tratto della diagnosi da spento (0.5.6-0.5.11, docs/batteria.md); non si scrive più.
 enum Event : char { kBoot = 'A', kSample = 'P', kOff = 'S', kDiag = 'D' };
 
 void begin();
