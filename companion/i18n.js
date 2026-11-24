@@ -53,6 +53,8 @@ const I18N_EN = {
   'Firmware da file…': 'Firmware from file…',
   'Aggiornamento': 'Update',
   'X3 che ha già CamTag, via Bluetooth': 'X3 already running CamTag, over Bluetooth',
+  'X3 che ha già CamTag, via Bluetooth · qui: {}': 'X3 already running CamTag, over Bluetooth · here: {}',
+  'Aggiorna firmware a {}': 'Update firmware to {}',
   "Installa sull'X3 il firmware di questo configuratore web": 'Installs on the X3 the firmware of this web configurator',
   'Modalità sviluppatore': 'Developer mode',
   'esci': 'exit',

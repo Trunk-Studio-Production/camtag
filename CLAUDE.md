@@ -143,6 +143,10 @@ costruttori di lenti e filtri nei dati vanno bene.
 
 ## Repo e comandi
 
+Firmware di prova (es. `-diag`): compilato, copialo sempre in
+`companion/firmware/camtag.bin` e di' all'utente di installarlo con "Aggiorna
+firmware" dal configuratore locale; mai fargli cercare il `.bin` a mano.
+
 Repo pubblico `Trunk-Studio-Production/camtag`, licenza GPL-3.0, branch `main`. Commit e push
 solo quando l'utente lo chiede. Ogni push su `main` che tocca `companion/`,
 `data/` o `device/` compila il firmware e pubblica il configuratore web su GitHub Pages
@@ -158,6 +162,7 @@ cd device && ../.venv/bin/pio run -e x3                  # compila
 cd device && ../.venv/bin/pio run -e x3 -t upload        # carica (vedi sotto)
 python3 -m http.server 8766    # dalla radice; poi apri http://localhost:8766/companion/
 # per provare "Aggiorna firmware" in locale: cp device/.pio/build/x3/firmware.bin companion/firmware/camtag.bin
+# il configuratore locale legge la versione di quel camtag.bin e la scrive su "Aggiorna firmware"
 # per provare install/ in locale: cp device/.pio/build/x3/firmware.factory.bin companion/firmware/camtag-factory.bin
 ```
 
@@ -539,10 +544,11 @@ la posizione naturale è `Canvas::ROT_270`).
   spegnimenti senza tocchi tre a −2 mA e due a −5, quindi il tocco non c'entra.
   La diagnosi da spento (0.5.6: `diag=1` dalla seriale o build con
   `CAMTAG_OFF_DIAG_DEFAULT=1`, che porta `-diag` in coda alla versione; righe `D` del registro) ha escluso IMU e pannello:
-  resta la microSD, che `SdMan.shutdown()` su queste schede non ferma e che da
-  spento resta alimentata. La 0.5.7 prova il rimedio (`sdGoIdle`, CMD0, un
-  tratto sì e uno no): **da provare**, poi metterlo in `sleepAll` per tutti e
-  decidere `OFF_BLANK_S` (il meglio
+  restava la microSD, ma la 0.5.7 (`sdGoIdle`, CMD0, un tratto sì e uno no;
+  provata il 24/11/2026) dà 5 mA anche con la microSD a riposo: non è il suo
+  stato. La 0.5.8 prova MISO della microSD (GPIO7), che `holdBus` non tiene e
+  da spento resta in aria: `holdMiso` lo tiene alto un tratto sì e uno no,
+  **da provare**. Poi decidere `OFF_BLANK_S` (il meglio
   possibile resta 1,3 mA). Tutto in fondo a `docs/batteria.md`.
 - Schermata filtri: provata sull'X3 (bilancieri, indicazioni, riordino,
   modifica, ombra tolta dal mezzo refresh, blocco che ferma tutto).

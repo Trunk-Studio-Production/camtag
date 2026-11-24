@@ -372,12 +372,36 @@ tensione, come controllo.
   `spento_mA` = la lettura. Nella 0.5.6 `info` era (tratto − 1) × 1000 + stato
   dell'IMU. `taratura.py batteria` legge tutte e due.
 
+  **Provato sull'X3 (24/11/2026, 0.5.7-diag): il rimedio non vale.** Uno spento
+  di 819 s, senza tocchi, tutti i dieci tratti letti (il decimo, di 279 s, alla
+  riaccensione); la microSD ha risposto 1 (a riposo) ogni volta:
+
+  | Tratto | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+  |---|---|---|---|---|---|---|---|---|---|---|
+  | `sdGoIdle` | no | sì | no | sì | no | sì | no | sì | no | sì |
+  | mA | 2 | 2 | 2 | 1 | 5 | 2 | 5 | 1 | 2 | 5 |
+
+  Il 5 viene anche con la microSD a riposo (tratto 10), quindi lo stato della
+  microSD non decide: 2 alti su 5 senza, 1 su 5 con, che è il caso. Lo stato
+  cambia a ogni riaddormentamento, senza vie di mezzo: va bene per una linea
+  in aria che si ferma a un livello o a mezza tensione. `holdBus` tiene i due
+  CS, SCLK, MOSI e DC, ma non **MISO della microSD (GPIO7)**: con la microSD
+  non selezionata nessuno lo pilota.
+
+  **Prova di MISO (0.5.8)**: la diagnosi è la stessa (dieci tratti da un
+  minuto, tutto riavviato ogni volta), ma nei tratti pari (2, 4, 6, 8, 10)
+  `holdMiso` tiene MISO alto con il pull-up interno (`releaseBus` lo libera
+  all'avvio), nei dispari resta in aria come sempre; `sdGoIdle` non c'è più.
+  Se i pari stanno tutti a 1-2 mA e tra i dispari escono dei 5, il rimedio va in
+  `sleepAll` per tutti. Righe `D`: `info` = 200000 + (tratto − 1) × 1000 + 1
+  se MISO è tenuto alto, + 0 se in aria (quelle da 100000 sono della 0.5.7).
+
   La diagnosi si accende e si spegne dalla seriale (`diag=1`, `diag=0`, cioè
   `taratura.py batteria --diagnosi 1`) e resta in NVS; di partenza è spenta.
   Per un firmware che la ha già accesa, da installare via Bluetooth senza cavo:
   `PLATFORMIO_BUILD_FLAGS="-DCAMTAG_OFF_DIAG_DEFAULT=1" ../.venv/bin/pio run -e x3`
   (senza `-v`, che fa fallire l'ultimo passo). Quella build porta `-diag` in
-  coda alla versione (`0.5.7-diag`, `Version.h`): lo si legge sulla schermata
+  coda alla versione (`0.5.8-diag`, `Version.h`): lo si legge sulla schermata
   Bluetooth dell'X3 e nel configuratore web, che la tratta come più vecchia
   della pubblicata. Un tocco breve durante la
   diagnosi fa ripartire il minuto in corso; accendendo prima della fine nel

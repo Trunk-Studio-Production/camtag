@@ -428,26 +428,25 @@ uint32_t offTouches = 0;  // quelli dello spento appena finito
 bool offMaOk = false, touchMaOk = false;
 int16_t offMa = 0, touchMa = 0;
 
-// Diagnosi da spento (docs/batteria.md). La prima (0.5.6) ha escluso IMU e pannello e
-// lasciato la microSD: l'SDK su queste schede non la ferma, perché dà per scontato che
-// lo spento le tolga l'alimentazione, mentre qui resta alimentata fino al bianco. Questa
-// prova il rimedio: con "diag" acceso, nei primi minuti dello spento il timer lo sveglia
-// ogni kDiagStepS; ogni volta legge dal gauge il consumo del tratto appena finito,
-// riavvia tutto e lo rimette a dormire, un tratto mandando la microSD a riposo
-// (sdGoIdle) e uno no. Le letture passano il sonno profondo qui e vanno nel registro
+// Diagnosi da spento (docs/batteria.md). La 0.5.6 ha escluso IMU e pannello, la 0.5.7
+// lo stato della microSD (anche dopo CMD0 a volte 5 mA). Resta MISO della microSD, che
+// da spento nessuno pilota: questa lo prova. Con "diag" acceso, nei primi minuti dello
+// spento il timer lo sveglia ogni kDiagStepS; ogni volta legge dal gauge il consumo del
+// tratto appena finito, riavvia tutto e lo rimette a dormire, un tratto con MISO tenuto
+// alto dal pull-up (holdMiso) e uno no. Le letture passano il sonno profondo qui e vanno nel registro
 // (righe D) alla prossima accensione. CAMTAG_OFF_DIAG_DEFAULT (Version.h) la accende di
 // partenza, per una build di prova da installare senza cavo.
 constexpr uint32_t kDiagStepS = 60;
 constexpr uint8_t kDiagSteps = 9;      // letture al risveglio; la decima è quella dell'accensione
-constexpr uint8_t kSdAsIs = 0xFE;      // microSD lasciata com'è; se no la risposta a CMD0 (1 = a riposo)
+constexpr uint8_t kMisoFloat = 0, kMisoUp = 1;  // cosa si è fatto a MISO prima di ogni tratto
 struct DiagNote {
   uint32_t magic;
   uint8_t step;                // letture fatte = tratto in corso
   uint16_t ok;                 // un bit per lettura riuscita
   int16_t ma[kDiagSteps];
-  uint8_t sd[kDiagSteps + 1];  // cosa si è fatto alla microSD prima di ogni tratto
+  uint8_t miso[kDiagSteps + 1];  // kMisoFloat o kMisoUp, prima di ogni tratto
 };
-constexpr uint32_t kDiagMagic = 0x44494132;
+constexpr uint32_t kDiagMagic = 0x44494133;
 RTC_NOINIT_ATTR DiagNote diagNote;
 DiagNote diagDone = {};  // quella dello spento appena finito, da scrivere nel registro
 
@@ -1620,6 +1619,7 @@ void releaseBus() {
     gpio_hold_dis(static_cast<gpio_num_t>(pin));
     digitalWrite(pin, HIGH);
   }
+  if (b.sd.miso >= 0) gpio_hold_dis(static_cast<gpio_num_t>(b.sd.miso));  // holdMiso, dalla diagnosi
 }
 
 // Sonno profondo, da cui esce solo con il power (o con il timer del bianco). Non torna.
@@ -1636,7 +1636,7 @@ void releaseBus() {
     diagNote.magic = stage == kOffShown && prefs.getBool("diag", CAMTAG_OFF_DIAG_DEFAULT) ? kDiagMagic : 0;
     diagNote.step = 0;
     diagNote.ok = 0;
-    diagNote.sd[0] = kSdAsIs;
+    diagNote.miso[0] = kMisoFloat;
   }
   prefs.putUChar("off", stage);
   // Se l'orologio è ripartito (è mancata l'alimentazione) il conto ricomincia.
@@ -1664,38 +1664,26 @@ void releaseBus() {
   freeink::PowerManager::deepSleepUntilPowerButton();
 }
 
-// Riporta la microSD allo stato di partenza (CMD0, "idle"), da cui la riprende la
-// prossima accensione. Prima la lascia finire quello che stava facendo (finché tiene
-// occupata la linea), dopo le dà i clock che le servono per fermarsi. Rende la sua
-// risposta: 1 = a riposo, 0xFF = non ha risposto.
-uint8_t sdGoIdle() {
-  const int8_t cs = BoardConfig::ACTIVE.sd.cs;
-  if (cs < 0) return 0xFF;
-  SPI.beginTransaction(SPISettings(400000, MSBFIRST, SPI_MODE0));
-  digitalWrite(cs, HIGH);
-  for (int i = 0; i < 10; i++) SPI.transfer(0xFF);
-  digitalWrite(cs, LOW);
-  for (const uint32_t t0 = millis(); SPI.transfer(0xFF) != 0xFF && millis() - t0 < 300;) {
-  }
-  for (const uint8_t b : {0x40, 0x00, 0x00, 0x00, 0x00, 0x95}) SPI.transfer(b);
-  uint8_t r1 = 0xFF;
-  for (int i = 0; i < 10 && ((r1 = SPI.transfer(0xFF)) & 0x80); i++) {
-  }
-  digitalWrite(cs, HIGH);
-  for (int i = 0; i < 10; i++) SPI.transfer(0xFF);
-  SPI.endTransaction();
-  LOGF("[camtag] microSD a riposo: risposta 0x%02X\n", r1);
-  return r1;
+// MISO della microSD: con la microSD non selezionata nessuno lo pilota, e da spento
+// resterebbe in aria (holdBus non lo tiene, è un ingresso). Qui lo tiene alto con il
+// pull-up; releaseBus lo libera all'avvio.
+void holdMiso() {
+  const int8_t pin = BoardConfig::ACTIVE.sd.miso;
+  if (pin < 0) return;
+  const auto g = static_cast<gpio_num_t>(pin);
+  gpio_hold_dis(g);
+  pinMode(pin, INPUT_PULLUP);
+  gpio_hold_en(g);
 }
 
-// Periferiche a dormire (IMU, pannello, microSD), poi sonno profondo. `sdIdle`: manda
-// anche la microSD a riposo; per ora lo fa solo la diagnosi, un tratto sì e uno no.
-[[noreturn]] void sleepAll(uint8_t stage, bool sdIdle = false) {
+// Periferiche a dormire (IMU, pannello, microSD), poi sonno profondo. `misoUp`: tiene
+// alto MISO della microSD; per ora lo fa solo la diagnosi, un tratto sì e uno no.
+[[noreturn]] void sleepAll(uint8_t stage, bool misoUp = false) {
   imu.sleep();
   display->deepSleep();
   SdMan.shutdown();
-  const uint8_t sd = sdIdle ? sdGoIdle() : kSdAsIs;
-  if (diagNote.magic == kDiagMagic && diagNote.step <= kDiagSteps) diagNote.sd[diagNote.step] = sd;
+  if (misoUp) holdMiso();
+  if (diagNote.magic == kDiagMagic && diagNote.step <= kDiagSteps) diagNote.miso[diagNote.step] = misoUp ? kMisoUp : kMisoFloat;
   xSemaphoreTake(adcLock, portMAX_DELAY);  // keyScan non legge più l'ADC
   input.prepareForDeepSleep();
   sleepOff(stage);
@@ -2099,7 +2087,7 @@ void setup() {
   sdReady = SdMan.begin();
 
   if (freshOff) sleepAll(kOffShown);
-  if (diagWake) sleepAll(kOffShown, diagNote.step & 1);  // tratti dispari: microSD a riposo
+  if (diagWake) sleepAll(kOffShown, diagNote.step & 1);  // tratti dispari: MISO tenuto alto
   if (blank) powerOff(Off::Blank);
   // Batteria scarica: resta spento con l'avviso, senza ridisegnarlo se c'è già.
   if (batteryEmpty()) {
@@ -2112,17 +2100,17 @@ void setup() {
   prefs.putUChar("off", 0);
   keysLocked = prefs.getBool("keylock", false);  // il lucchetto può essere ancora a schermo
   logBattery(battery::kBoot, static_cast<int>(reset) * 100 + static_cast<int>(wake));
-  // Diagnosi da spento: una riga D per tratto, info = 100000 + tratto * 1000 + quello
-  // che si è fatto alla microSD prima (kSdAsIs o la risposta a CMD0). L'ultimo tratto è
-  // quello letto a questa accensione.
+  // Diagnosi da spento: una riga D per tratto, info = 200000 + tratto * 1000 + quello
+  // che si è fatto a MISO prima (kMisoFloat o kMisoUp). L'ultimo tratto è quello letto
+  // a questa accensione.
   for (uint8_t i = 0; i <= diagDone.step && i <= kDiagSteps && diagDone.magic == kDiagMagic && sdReady; i++) {
     const bool last = i == diagDone.step;
     battery::Counters c;
     c.offMaOk = last ? offMaOk : (diagDone.ok >> i) & 1;
     c.offMa = last ? offMa : diagDone.ma[i];
-    battery::log(battery::kDiag, 100000 + i * 1000 + diagDone.sd[i], lastBattery, c);
-    LOGF("[camtag] diagnosi da spento %u: %d mA%s, microSD 0x%02X\n", i, c.offMa, c.offMaOk ? "" : " (non letta)",
-         diagDone.sd[i]);
+    battery::log(battery::kDiag, 200000 + i * 1000 + diagDone.miso[i], lastBattery, c);
+    LOGF("[camtag] diagnosi da spento %u: %d mA%s, MISO %s\n", i, c.offMa, c.offMaOk ? "" : " (non letta)",
+         diagDone.miso[i] == kMisoUp ? "alto" : "in aria");
   }
 
   if (sdReady) {

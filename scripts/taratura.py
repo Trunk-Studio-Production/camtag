@@ -38,7 +38,7 @@ sull'X3 dopo averlo salvato; `--leggi` rifà i conti su un file già salvato
 (anche quello scaricato via Bluetooth con "Registro batteria" nel configuratore web);
 `--bianco N` porta a N secondi l'attesa prima del bianco da spento, per provarla
 (0 rimette i tre giorni); `--diagnosi 1` accende la diagnosi da spento (dieci tratti da
-un minuto: l'X3 si sveglia da solo e manda la microSD a riposo un tratto sì e uno no).
+un minuto: l'X3 si sveglia da solo e tiene alto MISO della microSD un tratto sì e uno no).
 
 `usb` prova il cavo collegato con l'X3 a riposo: fa staccare e riattaccare il cavo
 N volte (10), misura dopo quanto compare la porta e legge dall'X3 perché si è
@@ -892,7 +892,7 @@ BATT_BLANK = ('offma', 'touchma')
 # Diagnosi da spento della 0.5.6 (righe D dopo la riga A dell'accensione): cosa è stato
 # fatto prima di ogni tratto da un minuto. L'ultimo tratto, con tutto rimesso a dormire,
 # è la lettura normale dell'accensione. Dalla 0.5.7 le righe D dicono solo cosa si è
-# fatto alla microSD (info da 100000 in su).
+# fatto alla microSD (info da 100000 in su), dalla 0.5.8 a MISO (da 200000 in su).
 DIAG_STEPS = ("com'era", 'dopo un risveglio a vuoto', 'tutto riavviato e rimesso a dormire', 'IMU lasciato sveglio',
               'pannello fuori dal sonno profondo', 'microSD lasciata accesa')
 RESETS = {1: 'alimentazione tornata', 3: 'riavvio del firmware', 4: 'errore del firmware', 8: 'sonno profondo',
@@ -1025,12 +1025,19 @@ def battery_report(rows, gauge=None):
             diag, groups = b.get('diag', []), {}
             for d in diag:
                 ma = '?' if d['offma'] is None else f'{-d["offma"]} mA'
+                if d['info'] >= 200000:
+                    # Dalla 0.5.8: prima di ogni tratto MISO della microSD è lasciato in aria o tenuto alto.
+                    step, up = divmod(d['info'] - 200000, 1000)
+                    what = 'MISO alto' if up == 1 else 'MISO in aria'
+                    groups.setdefault(what, []).append(ma.replace(' mA', ''))
+                    notes.append(f'   diagnosi {step + 1}, {what}: {B}{ma}{X}{DIM}')
+                    continue
                 if d['info'] >= 100000:
                     # Dalla 0.5.7: prima di ogni tratto la microSD è lasciata com'è o mandata a riposo (CMD0).
                     step, sd = divmod(d['info'] - 100000, 1000)
                     what = ("microSD com'è" if sd == 254 else 'microSD a riposo' if sd == 1 else
                             'microSD a riposo, ma non ha risposto' if sd == 255 else f'microSD a riposo, risposta 0x{sd:02X}')
-                    groups.setdefault("com'è" if sd == 254 else 'a riposo', []).append(ma.replace(' mA', ''))
+                    groups.setdefault("microSD com'è" if sd == 254 else 'microSD a riposo', []).append(ma.replace(' mA', ''))
                     notes.append(f'   diagnosi {step + 1}, {what}: {B}{ma}{X}{DIM}')
                     continue
                 # 0.5.6: una periferica lasciata sveglia per tratto, e lo stato dell'IMU al risveglio
@@ -1043,7 +1050,7 @@ def battery_report(rows, gauge=None):
             if diag and diag[0]['info'] < 100000 and b['offma'] is not None:
                 notes.append(f'   diagnosi {len(diag) + 1}, alla fine con tutto a dormire: {B}{-b["offma"]} mA{X}{DIM}')
             if groups:
-                notes.append('   ' + ' · '.join(f'microSD {k}: {B}{", ".join(v)} mA{X}{DIM}' for k, v in groups.items()))
+                notes.append('   ' + ' · '.join(f'{k}: {B}{", ".join(v)} mA{X}{DIM}' for k, v in groups.items()))
             kind = 'spento'
         else:
             awake, rest = b['awake'] - a['awake'], b['rest'] - a['rest']
