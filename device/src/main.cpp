@@ -435,10 +435,8 @@ int16_t offMa = 0, touchMa = 0;
 // ogni kDiagStepS; ogni volta legge dal gauge il consumo del tratto appena finito,
 // riavvia tutto e lo rimette a dormire, un tratto mandando la microSD a riposo
 // (sdGoIdle) e uno no. Le letture passano il sonno profondo qui e vanno nel registro
-// (righe D) alla prossima accensione.
-#ifndef CAMTAG_OFF_DIAG_DEFAULT
-#define CAMTAG_OFF_DIAG_DEFAULT 0
-#endif
+// (righe D) alla prossima accensione. CAMTAG_OFF_DIAG_DEFAULT (Version.h) la accende di
+// partenza, per una build di prova da installare senza cavo.
 constexpr uint32_t kDiagStepS = 60;
 constexpr uint8_t kDiagSteps = 9;      // letture al risveglio; la decima è quella dell'accensione
 constexpr uint8_t kSdAsIs = 0xFE;      // microSD lasciata com'è; se no la risposta a CMD0 (1 = a riposo)

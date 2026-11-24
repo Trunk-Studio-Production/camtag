@@ -376,7 +376,10 @@ tensione, come controllo.
   `taratura.py batteria --diagnosi 1`) e resta in NVS; di partenza è spenta.
   Per un firmware che la ha già accesa, da installare via Bluetooth senza cavo:
   `PLATFORMIO_BUILD_FLAGS="-DCAMTAG_OFF_DIAG_DEFAULT=1" ../.venv/bin/pio run -e x3`
-  (senza `-v`, che fa fallire l'ultimo passo). Un tocco breve durante la
+  (senza `-v`, che fa fallire l'ultimo passo). Quella build porta `-diag` in
+  coda alla versione (`0.5.7-diag`, `Version.h`): lo si legge sulla schermata
+  Bluetooth dell'X3 e nel configuratore web, che la tratta come più vecchia
+  della pubblicata. Un tocco breve durante la
   diagnosi fa ripartire il minuto in corso; accendendo prima della fine nel
   registro vanno i tratti fatti. Sotto il minuto da spento la lettura non
   vale (il gauge non ha ancora misurato: −12, −28, −33 mA dopo pochi secondi).

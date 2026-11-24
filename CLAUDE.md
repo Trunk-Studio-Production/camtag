@@ -523,7 +523,7 @@ la posizione naturale è `Canvas::ROT_270`).
   il consumo da spento in 2-3 minuti: provato (24/11/2026), su cinque
   spegnimenti senza tocchi tre a −2 mA e due a −5, quindi il tocco non c'entra.
   La diagnosi da spento (0.5.6: `diag=1` dalla seriale o build con
-  `CAMTAG_OFF_DIAG_DEFAULT=1`, righe `D` del registro) ha escluso IMU e pannello:
+  `CAMTAG_OFF_DIAG_DEFAULT=1`, che porta `-diag` in coda alla versione; righe `D` del registro) ha escluso IMU e pannello:
   resta la microSD, che `SdMan.shutdown()` su queste schede non ferma e che da
   spento resta alimentata. La 0.5.7 prova il rimedio (`sdGoIdle`, CMD0, un
   tratto sì e uno no): **da provare**, poi metterlo in `sleepAll` per tutti e
