@@ -214,6 +214,10 @@ guida passo per passo, mostra dal vivo tasti, versi, card e stato dei filtri
   ma nessun timer può svegliarlo: per questo lo spento tiene GPIO13 alto fino
   al passaggio al bianco e lo abbassa solo dopo (`sleepOff`, che non usa
   `powerDownRailsForSleep` finché serve il timer). A riposo GPIO13 non si tocca.
+  In quei tre giorni le periferiche restano alimentate: i comandi del bus vanno
+  tenuti fermi (`holdBus`, liberati all'avvio da `releaseBus`), e un tocco breve
+  del power deve tornare a dormire **prima** di `selectXteinkDevice()`, la cui
+  sonda dà un impulso di RESET al pannello e lo toglie dal sonno profondo.
 - Nel sonno leggero il framework isola i pin: le uscite che devono restare
   ferme vanno escluse (`keepOutputsInRest`).
 - Dopo ogni aggiornamento il pannello va spento (`displayBuffer(…, true)`) e,
@@ -506,7 +510,20 @@ la posizione naturale è `Canvas::ROT_270`).
   Misurati (21-22/11/2026, 39 h di registro): 25 mA da sveglio, 2,1 mA a
   riposo (12,6 giorni), 1,8 mA a riposo con i tasti bloccati (14,9 giorni),
   circa 10 mA con un uso vero; nessun riavvio da solo né risveglio inutile.
-  Manca solo lo spento nei primi tre giorni. Le domande aperte
-  sono in fondo a `docs/batteria.md`.
+  Spento prima del bianco (22-24/11/2026, 24 h, 0.5.2): da 1,3 a 5 mA, più del
+  riposo. La 0.5.3 toglie le due cause trovate nel codice e conta i tocchi brevi
+  del power (colonna `tocchi`), ma la prima misura (24/11/2026, 2,1 h con un
+  tocco) dà ancora 5,3 mA: **causa da trovare**. La 0.5.5 legge il gauge in
+  cima a `setup()` (`wakeCurrent`, con i pin dell'X3 perché lì il profilo attivo
+  è ancora l'X4; colonne `spento_mA` e `tocco_mA`) per avere
+  il consumo da spento in 2-3 minuti: provato (24/11/2026), su cinque
+  spegnimenti senza tocchi tre a −2 mA e due a −5, quindi il tocco non c'entra.
+  La diagnosi da spento (0.5.6: `diag=1` dalla seriale o build con
+  `CAMTAG_OFF_DIAG_DEFAULT=1`, righe `D` del registro) ha escluso IMU e pannello:
+  resta la microSD, che `SdMan.shutdown()` su queste schede non ferma e che da
+  spento resta alimentata. La 0.5.7 prova il rimedio (`sdGoIdle`, CMD0, un
+  tratto sì e uno no): **da provare**, poi metterlo in `sleepAll` per tutti e
+  decidere `OFF_BLANK_S` (il meglio
+  possibile resta 1,3 mA). Tutto in fondo a `docs/batteria.md`.
 - Schermata filtri: provata sull'X3 (bilancieri, indicazioni, riordino,
   modifica, ombra tolta dal mezzo refresh, blocco che ferma tutto).

@@ -30,14 +30,28 @@ struct Counters {
   uint32_t restS = 0;
   uint32_t screen = 0;
   uint32_t keys = 0;
+  // Solo nella riga di avvio: tocchi brevi del power durante lo spento appena finito.
+  uint32_t touches = 0;
+  // Solo nella riga di avvio dopo uno spento: la corrente che il gauge aveva in memoria
+  // al risveglio (wakeCurrent), cioè il consumo da spento; e la stessa lettura fatta al
+  // primo tocco breve, prima che qualcosa potesse cambiare. Senza lettura la colonna
+  // resta vuota.
+  bool offMaOk = false, touchMaOk = false;
+  int16_t offMa = 0, touchMa = 0;
 };
 
-enum Event : char { kBoot = 'A', kSample = 'P', kOff = 'S' };
+// kDiag: un tratto della diagnosi da spento (docs/batteria.md), scritto all'accensione.
+enum Event : char { kBoot = 'A', kSample = 'P', kOff = 'S', kDiag = 'D' };
 
 void begin();
 bool read(Reading& out);
 // Solo la corrente: + in carica. false se non c'è il gauge.
 bool current(int16_t& ma);
+// Da chiamare per prima cosa in setup() dopo un sonno profondo: il gauge aggiorna la
+// corrente ogni secondo (ogni 20 s quando è in SLEEP), quindi appena sveglio ha ancora
+// la lettura fatta mentre il chip dormiva. Apre e richiude il bus I2C, con i pin
+// dell'X3: a quel punto il dispositivo non è ancora stato riconosciuto.
+bool wakeCurrent(int16_t& ma);
 
 // Secondi di un orologio che attraversa sonno e riavvii (riparte solo togliendo la
 // batteria): serve a misurare quanto è durato lo spento.
