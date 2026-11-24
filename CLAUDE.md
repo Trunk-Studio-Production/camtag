@@ -77,6 +77,10 @@ costruttori di lenti e filtri nei dati vanno bene.
   Niente `confirm()`/`alert()` del browser: alcuni browser per iPhone con Web
   Bluetooth non rendono la risposta. Si usano `ask(msg, sì)` e `say(msg)`
   (finestra `#askDlg`), e `bleAsk` dentro la finestra Bluetooth.
+  Chiudere la finestra Bluetooth (✕ o Esc) non ferma un trasferimento, lo ferma solo
+  "Annulla": il pulsante Bluetooth mostra la percentuale, poi ✓ o ⚠ se finisce a
+  finestra chiusa, e la riapre com'è (`bleBtnLabel`, `bleUnseen`); una domanda o la
+  conferma sui tasti dell'X3 la riaprono da sole (`bleShow`).
   BLE Link non apre nuove finestre: i link `target="_blank"` passano da un click
   globale che, se `window.open` non dà una finestra e la pagina resta in primo piano
   (Bluefy apre la scheda ma dà null), apre il link nella stessa scheda.

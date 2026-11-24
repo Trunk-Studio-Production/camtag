@@ -3400,6 +3400,14 @@ function bleSupportNote() {
 }
 
 let bleRun = null;  // trasferimento in corso: { cancel() }
+// Chiudere la finestra non ferma un trasferimento (lo ferma solo "Annulla"): va avanti,
+// il pulsante Bluetooth dice a che punto è e la riapre com'è. Se finisce a finestra
+// chiusa (`bleUnseen`) il pulsante lo segna, e riaprendo si legge com'è andata.
+let bleBusy = false, bleProgress = null, bleFailed = false, bleUnseen = false;
+function bleBtnLabel() {
+  $('#bleBtn').textContent = 'Bluetooth' + (bleBusy ? (bleProgress === null ? ' …' : ` ${Math.min(99, Math.round(bleProgress * 100))}%`)
+    : bleUnseen ? (bleFailed ? ' ⚠' : ' ✓') : '');
+}
 
 // Confronto di versioni "1.2.3": negativo se a è più vecchia di b.
 function fwCompare(a, b) {
@@ -3436,6 +3444,15 @@ function bleUi(msg, { detail = '', progress = null, error = false, busy = false 
   $('#bleMsg').hidden = false;
   $('#bleAttn').hidden = true;
   clearInterval(bleAttnTimer);
+  if (!busy && bleBusy && !$('#bleDlg').open) bleUnseen = true;
+  bleBusy = busy; bleProgress = progress; bleFailed = error;
+  bleBtnLabel();
+}
+// Quello che chiede una risposta (una domanda, la conferma sui tasti dell'X3) riapre la finestra.
+function bleShow() {
+  bleUnseen = false;
+  bleBtnLabel();
+  if (!$('#bleDlg').open) $('#bleDlg').showModal();
 }
 
 // Riquadro "Conferma sull'X3" al posto del messaggio, con il tempo che resta:
@@ -3443,6 +3460,7 @@ function bleUi(msg, { detail = '', progress = null, error = false, busy = false 
 let bleAttnTimer = 0;
 function bleAttention(version, secs) {
   bleUi('', { busy: true });
+  bleShow();
   const left = h('span', { class: 'left' });
   const end = Date.now() + secs * 1000;
   const tick = () => { left.textContent = t('{} s per confermare', Math.max(0, Math.ceil((end - Date.now()) / 1000))); };
@@ -3503,6 +3521,7 @@ const say = msg => ask(msg);
 // per iPhone con Web Bluetooth mostrano il confirm ma non rendono la risposta.
 function bleAsk(msg, detail, yes) {
   bleUi(msg, { detail });
+  bleShow();
   bleActs(false);
   $('#bleYes').textContent = yes;
   $('#bleYes').hidden = $('#bleNo').hidden = false;
@@ -3854,6 +3873,7 @@ async function checkBuild() {
 checkBuild();
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkBuild(); });
 $('#bleBtn').onclick = () => {
+  if (bleRun || bleUnseen) { bleShow(); return; }  // in corso, o finito a finestra chiusa: si riapre com'è
   $('#bleFw').hidden = true;
   const note = bleSupportNote();
   if (note) {
@@ -3886,8 +3906,7 @@ $('#bleCancel').onclick = () => { if (bleRun) bleRun.cancel(); };
 // Chiudere la finestra durante una domanda (bleAsk) vale come "Annulla".
 const bleAskNo = () => { if (!$('#bleNo').hidden) $('#bleNo').click(); };
 $('#bleDlg').addEventListener('close', bleAskNo);
-$('#bleClose').onclick = () => { bleAskNo(); if (bleRun) bleRun.cancel(); else $('#bleDlg').close(); };
-$('#bleDlg').addEventListener('cancel', e => { if (bleRun) { e.preventDefault(); bleRun.cancel(); } });
+$('#bleClose').onclick = () => $('#bleDlg').close();  // anche con Esc: un trasferimento in corso va avanti
 // Il file di progetto porta con sé le modifiche delle sue lenti, per essere completo su un altro computer.
 // Stesso progetto a meno dell'ora di invio (savedAt): chiavi in ordine, così non
 // conta l'ordine in cui sono state scritte.
