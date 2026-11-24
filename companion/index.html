@@ -303,11 +303,13 @@
   #bleDlg .acts button, #askDlg .acts button { white-space: nowrap; }
   #askDlg { width: min(380px, calc(100vw - 32px)); }
   #askMsg { margin: 0; }
-  #bleDlg .usb { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
-  #bleDlg .usb p { margin: 0; }
+  /* Sotto le azioni di tutti i giorni (importa, invia), in blocchi a parte: aggiornamento e prima installazione. */
+  #bleDlg .usb { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+  #bleDlg .usb[hidden] { display: none; }
+  #bleDlg .usb p { margin: 0 auto 0 0; }
   #bleDlg .usb b { display: block; font-weight: 600; }
   #bleDlg .usb span { display: block; font-size: 12px; color: var(--muted); }
-  #bleDlg .usb .btn { flex: none; }
+  #bleDlg .usb .btn, #bleDlg .usb button { flex: none; white-space: nowrap; }
   #bleDlg .credits { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
   #bleDlg .credits a { color: inherit; }
   /* Feedback: discreto, in fondo all'editor. */
@@ -461,14 +463,18 @@
   <p id="bleCopyRow" hidden><button id="bleCopy" class="small" title="Copia l'errore con le versioni e il browser, da incollare in una segnalazione">Copia il messaggio</button></p>
   <p class="hint" id="bleFw" hidden></p>
   <div class="acts">
-    <button id="bleFwBtn" title="Installa sull'X3 il firmware di questo configuratore web">Aggiorna firmware</button>
-    <input type="file" id="bleFwFile" accept=".bin" hidden>
     <button id="bleBatt" class="dev-only" title="Scarica il registro dei consumi che l'X3 tiene sulla microSD">Registro batteria</button>
     <button id="bleGet" title="Riprende il progetto salvato sull'X3 insieme alle card">Importa dall'X3</button>
     <button id="bleStart" class="primary">Invia le card</button>
     <button id="bleCancel" hidden>Annulla</button>
     <button id="bleNo" hidden>Annulla</button>
     <button id="bleYes" class="primary" hidden></button>
+  </div>
+  <div class="usb" id="bleFwRow">
+    <p><b>Aggiornamento</b><span>X3 che ha già CamTag, via Bluetooth</span></p>
+    <input type="file" id="bleFwFile" accept=".bin" hidden>
+    <button id="bleFwBtn" title="Installa sull'X3 il firmware di questo configuratore web">Aggiorna firmware</button>
+    <button id="bleFwPick" class="dev-only" title="Scegli dal computer un file .bin da installare sull'X3 al posto del firmware pubblicato">Firmware da file…</button>
   </div>
   <div class="usb">
     <p><b>Prima installazione</b><span>X3 nuovo o da ripristinare, con il cavo USB</span></p>
@@ -2237,7 +2243,6 @@ view = ui.view === 'port' ? 'port' : 'land';
 // Mostra le funzioni per chi prova il firmware (registro batteria, .bin da file).
 { const d = new URLSearchParams(location.search).get('dev'); if (d !== null) { ui.dev = d !== '0'; saveUi(); const u = new URL(location.href); u.searchParams.delete('dev'); history.replaceState(null, '', u); } }
 document.body.classList.toggle('devmode', !!ui.dev);
-if (ui.dev) $('#bleFwBtn').title = t("Installa sull'X3 il firmware di questo configuratore web. Con Maiusc premuto scegli un file .bin");
 document.querySelectorAll('#devPrev [data-dp]').forEach(i => {
   i.checked = !!devPrev()[i.dataset.dp];
   i.onchange = () => { ui.devPrev = { ...ui.devPrev, [i.dataset.dp]: i.checked }; saveUi(); drawPreview(); };
@@ -3358,7 +3363,7 @@ const BLE = {
   oldVersions: [2, 3],  // ancora accettati: la 2 senza KEEP (si manda tutto), la 3 senza FIRMWARE
   firmwareFrom: 4,      // da qui l'X3 si aggiorna via Bluetooth (FIRMWARE), anche con un protocollo diverso
   // Il firmware compilato da GitHub Actions con questo configuratore web (stesso commit,
-  // .github/workflows/pages.yml). In locale non c'è: si sceglie un .bin con Maiusc.
+  // .github/workflows/pages.yml). In locale non c'è: si sceglie un .bin con "Firmware da file…".
   firmwareUrl: 'firmware/camtag.bin',
   confirmMs: 65000,     // FIRMWARE: tempo per la conferma sui tasti dell'X3 (lui rifiuta dopo 60 s)
   // Byte in volo non ancora confermati (il dispositivo ne tiene 16 KB). Non alzarla:
@@ -3414,8 +3419,15 @@ let bleRun = null;  // trasferimento in corso: { cancel() }
 // chiusa (`bleUnseen`) il pulsante lo segna, e riaprendo si legge com'è andata.
 let bleBusy = false, bleProgress = null, bleFailed = false, bleUnseen = false;
 function bleBtnLabel() {
-  $('#bleBtn').textContent = 'Bluetooth' + (bleBusy ? (bleProgress === null ? ' …' : ` ${Math.min(99, Math.round(bleProgress * 100))}%`)
-    : bleUnseen ? (bleFailed ? ' ⚠' : ' ✓') : '');
+  const b = $('#bleBtn');
+  const state = bleBusy ? (bleProgress === null ? '…' : `${Math.min(99, Math.round(bleProgress * 100))}%`)
+    : bleUnseen ? (bleFailed ? '⚠' : '✓') : '';
+  // Sul telefono la barra è piena: lo stato prende il posto del nome, e il pulsante
+  // resta largo com'era, così non spinge fuori gli altri.
+  const narrow = matchMedia('(max-width: 699px)').matches;
+  if (!state || !narrow) b.style.minWidth = '';
+  else if (!b.style.minWidth) b.style.minWidth = `${b.offsetWidth}px`;
+  b.textContent = !state ? 'Bluetooth' : narrow ? state : `Bluetooth ${state}`;
 }
 
 // Confronto di versioni "1.2.3": negativo se a è più vecchia di b.
@@ -3804,7 +3816,7 @@ async function bleGet() {
 }
 
 // Aggiornamento del firmware (FIRMWARE, docs/bluetooth.md). Il .bin è quello
-// pubblicato con questo configuratore web, o un file scelto (Maiusc + clic).
+// pubblicato con questo configuratore web, o un file scelto ("Firmware da file…", in modalità sviluppatore).
 // Prima di mandarlo controlla che sia un'immagine ESP32-C3 con il marchio
 // CAMTAG_FW=<versione> (device/src/Version.h); l'X3 chiede conferma sui tasti.
 function firmwareVersionOf(bytes) {
@@ -3821,7 +3833,7 @@ async function bleFirmware(file) {
     else {
       bleUi(t('Scarico il firmware {}…', FW_VERSION), { busy: true, progress: 0 });
       const r = await fetch(BLE.firmwareUrl, { cache: 'no-cache' }).catch(() => null);
-      if (!r || !r.ok) throw new Error(t('Il firmware non è in questa copia del configuratore web: c\'è solo in quella pubblicata su GitHub Pages. Per un file .bin tieni premuto Maiusc mentre premi "Aggiorna firmware".'));
+      if (!r || !r.ok) throw new Error(t('Il firmware non è in questa copia del configuratore web: c\'è solo in quella pubblicata su GitHub Pages. Per un file .bin: modalità sviluppatore (?dev), poi "Firmware da file…".'));
       bytes = new Uint8Array(await r.arrayBuffer());
     }
     const version = firmwareVersionOf(bytes);
@@ -3912,12 +3924,13 @@ $('#bleBtn').onclick = () => {
 $('#bleStart').onclick = () => { bleSend(); };
 $('#bleGet').onclick = () => { bleGet(); };
 $('#bleBatt').onclick = () => { bleBattery(); };
-function bleActs(show) { for (const id of ['#bleStart', '#bleGet', '#bleBatt', '#bleFwBtn']) $(id).hidden = !show; }
-// In modalità sviluppatore, con Maiusc si sceglie un .bin. Lo si manda con il clic dopo:
+function bleActs(show) { for (const id of ['#bleStart', '#bleGet', '#bleBatt', '#bleFwRow']) $(id).hidden = !show; }
+// In modalità sviluppatore "Firmware da file…" sceglie un .bin. Lo si manda con il clic dopo:
 // il browser chiede il dispositivo solo subito dopo un clic, e la scelta del file
 // può durare di più.
 let bleFwChosen = null;
-$('#bleFwBtn').onclick = e => { if (e.shiftKey && ui.dev) $('#bleFwFile').click(); else bleFirmware(bleFwChosen); };
+$('#bleFwBtn').onclick = () => { bleFirmware(bleFwChosen); };
+$('#bleFwPick').onclick = () => { $('#bleFwFile').click(); };
 $('#bleFwFile').onchange = async e => {
   const f = e.target.files[0];
   e.target.value = '';

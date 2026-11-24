@@ -65,8 +65,8 @@ costruttori di lenti e filtri nei dati vanno bene.
   nel localStorage `camtag.ui.v1`: sono del browser, non entrano in `project.json`.
   **Modalità sviluppatore**: `?dev` accende `ui.dev` (resta nel localStorage,
   `?dev=0` la spegne) e la classe `devmode` sul body mostra gli elementi
-  `.dev-only`; oggi "Registro batteria", il `.bin` scelto con Maiusc su
-  "Aggiorna firmware" Maiusc su "Scarica .bmp" (l'anteprima con quello che
+  `.dev-only`; oggi "Registro batteria", "Firmware da file…" (un `.bin`
+  scelto dal computer, che poi "Aggiorna firmware" installa), Maiusc su "Scarica .bmp" (l'anteprima con quello che
   disegna l'X3, es. `off-overlay.p.bmp`) e le spunte sotto l'anteprima (`ui.devPrev`:
   capovolto, batteria scarica, in carica, USB, tasti bloccati; `drawStatusPreview`). Le funzioni che servono solo a chi prova il firmware
   vanno lì. Lo zip delle card si scarica dal menu Progetto. Il testo delle note
@@ -79,10 +79,14 @@ costruttori di lenti e filtri nei dati vanno bene.
   Niente `confirm()`/`alert()` del browser: alcuni browser per iPhone con Web
   Bluetooth non rendono la risposta. Si usano `ask(msg, sì)` e `say(msg)`
   (finestra `#askDlg`), e `bleAsk` dentro la finestra Bluetooth.
+  La finestra Bluetooth ha in alto le azioni di tutti i giorni (importa, invia) e sotto,
+  in blocchi a parte (`.usb`), "Aggiornamento" (`#bleFwRow`, via Bluetooth) e "Prima
+  installazione" (USB): gli aggiornamenti non sono cosa di tutti i giorni.
   Chiudere la finestra Bluetooth (✕ o Esc) non ferma un trasferimento, lo ferma solo
-  "Annulla": il pulsante Bluetooth mostra la percentuale, poi ✓ o ⚠ se finisce a
-  finestra chiusa, e la riapre com'è (`bleBtnLabel`, `bleUnseen`); una domanda o la
-  conferma sui tasti dell'X3 la riaprono da sole (`bleShow`).
+  "Annulla": il pulsante Bluetooth mostra la percentuale (sul telefono al posto del
+  nome, perché la barra è piena), poi ✓ o ⚠ se finisce a finestra chiusa, e la riapre
+  com'è (`bleBtnLabel`, `bleUnseen`); una domanda o la conferma sui tasti dell'X3 la
+  riaprono da sole (`bleShow`).
   BLE Link non apre nuove finestre: i link `target="_blank"` passano da un click
   globale che, se `window.open` non dà una finestra e la pagina resta in primo piano
   (Bluefy apre la scheda ma dà null), apre il link nella stessa scheda.
