@@ -102,6 +102,105 @@ telefono o del computer e andrebbe persa, a metà dei dati bloccherebbe le
 scritture del browser. Dal Mac con Brave (Chromium): 21-29 KB/s, 1,1 MB in 40-55 s. Altri
 dispositivi Bluetooth in uso sul Mac (mouse, tastiera) rallentano.
 
+**Collegamenti lentissimi dal Mac (24/11/2026): dipende dal Mac, non dall'X3.**
+Ogni tanto, dal Mac con Brave, ogni scambio dura 3-15 s invece di 30-60 ms
+(0,3 KB/s, `HELLO` dopo 48 s), per periodi da mezzo minuto a un paio di minuti;
+poi torna veloce da solo, anche senza scollegarsi. Un collegamento che cade in
+uno di questi periodi spesso finisce in timeout (sull'X3 `scollegato, motivo
+0x208`). Per ora: "Annulla", aspettare un minuto e riprovare, tenendo fermo il
+mouse Bluetooth durante l'invio.
+
+Cosa succede: il controller Bluetooth del Mac smette di servire il collegamento
+dell'X3 e lo tiene vivo con un solo scambio allo scadere di una soglia, che
+`bluetoothd` imposta al 75% del timeout di supervisione (`connection threshold
+to 200 events with interval 12`: 200 eventi da 15 ms, 3,0 s; a 45 ms sono 66
+eventi, sempre 3 s). Nei periodi lenti le attese sono multipli esatti di 3,03 s.
+Intanto il Mac serve gli altri suoi dispositivi (qui un mouse MX Master 3 in LE
+a 7,5 ms e una Magic Keyboard classica a 15 ms) e le sue scansioni.
+
+Prove fatte (firmware di prova con comandi per cambiare a collegamento aperto
+intervallo e letture dei tasti, pagina che cronometra `HELLO`, registro
+`/usr/bin/log show --info --predicate 'process == "bluetoothd"'`):
+
+- **Spegnere il mouse sblocca**: in un collegamento lento dall'inizio, il Mac
+  registra lo scollegamento del mouse alle 14:47:02.393 e la risposta a `HELLO`
+  arriva alle 14:47:02.546; da lì 22-49 ms per scambio. Con il mouse in movimento
+  al momento del collegamento i lenti sono 6 su 22, con il mouse fermo 5 su 60.
+- Il mouse non è l'unica causa: un lento è ricomparso per 21 s a mouse spento,
+  mentre il Mac cercava di ricollegarlo, e con la tastiera spenta ne sono usciti
+  3 su 13 (con la tastiera accesa 1 su 40).
+- **Non è l'X3**: con keyScan fermo e il power letto ogni 50 ms un lento resta
+  lento; lento e veloce si alternano senza uscire dalla ricezione; tra 0.5.2 e
+  0.5.5 non cambia nulla di ciò che gira in ricezione (il confronto diretto non
+  è stato fatto: prima delle 12:53 erano veloci 6 su 6, compatibile con il caso).
+- **Non è l'intervallo**: capita a 15, 16,25 e 45 ms, e uno stesso periodo lento
+  attraversa più cambi di intervallo. Il Mac concede 16,25 e 25 ms (non 17,5 né
+  20, e niente sotto i 15), ma a 16,25 ms uno scambio dura di solito 49 ms invece
+  di 30: non conviene.
+- Richiedere di nuovo i parametri dall'X3 a lento in corso non è un rimedio: a
+  volte dopo 2-3 richieste torna veloce, ma con gli stessi tempi con cui passa
+  da solo; due richieste sono state respinte con esito 0x22a (collisione con
+  un'operazione del Mac) e in un caso il lento è cominciato proprio lì.
+- Uguali nei lenti e nei veloci: MTU 517, PHY 2M, segnale (−49/−58 dBm), rumore,
+  statistiche radio di mouse e tastiera, nessun audio Bluetooth, Wi-Fi a 5 GHz.
+
+Nel registro del Mac un lento si riconosce così: dopo `LE Connection Parameters
+Updated` passano 3 s, invece di 20 ms, prima di `Finding all characteristics`.
+
+Il configuratore web se ne accorge: se dopo 4 s (`BLE.slowMs`) `HELLO` non ha
+ancora risposto, o se durante un invio gli `ACK` mancano da altrettanto
+(`link.watchSlow`: il lento può cominciare a collegamento già aperto), sotto il
+messaggio spiega che il collegamento è lento e cosa fare, e un successivo "non
+risponde" diventa "Il collegamento era troppo lento" (`link.slow`,
+`link.slowHint`). Non rimedia: avvisa.
+
+**Il configuratore usato non c'entra (24/11, 16:35).** Il dubbio era nato da
+sei invii del firmware di fila lenti o falliti dal configuratore web in locale,
+con in mezzo l'unico dal sito pubblicato andato bene. Rifatti a turno con la
+seriale dell'X3 registrata: locale veloce (0.5.7 in 65 s), **sito lento** (caduto
+dopo 24 KB in 70 s, "Il dispositivo non risponde"), locale veloce (41 s). Il
+sito non ha l'avviso del collegamento lento, quindi nemmeno quello c'entra.
+Sulla seriale, nel lento, l'X3 fa tutto come nel veloce: legge i tasti con 1 ms
+di ritardo, ridisegna l'avanzamento ogni 9,1 s, risponde subito. È il canale
+che non passa, nei due versi: `ASK` parte dall'X3 alle 16:36:28,2 e il Mac la
+riceve alle 16:36:31,5; i dati arrivano all'X3 8 KB ogni 19 s; finisce con
+`scollegato, motivo 0x208`. Quel lento è cominciato 2-4 s dopo il passaggio a
+15 ms, a collegamento fermo in attesa della conferma, non all'inizio dei dati.
+Da questi registri non si distingue chi dei due salta gli eventi radio: per
+quello valgono le prove sopra (il mouse spento che sblocca in 0,15 s).
+
+**Dopo il riavvio del Mac (24/11, 17:02): uguale.** 3 lenti su 38 collegamenti
+con `scripts/ble-prova.html` (il 3°, il 5° e il 37°), contro 2 su 15 e 1 su 40
+prima del riavvio: non era uno stato passeggero del Bluetooth del Mac. Guardati
+nello stesso registro ed esclusi: il Wi-Fi (è a 5 GHz, canale 52) e il rumore
+radio delle porte USB (`Desense Detection`: fondo tra -97 e -101 dBm, stato
+`Off`, uguale nei lenti e nei veloci).
+
+La pagina di prova si fermava sempre verso la fine con "Bluetooth Device is no
+longer in range": è il browser, non l'X3. Chrome e Brave dimenticano un
+dispositivo circa 3 minuti dopo la scelta (40 collegamenti durano 3 minuti);
+ora la pagina chiede di sceglierlo di nuovo e riprende il conto. Il
+configuratore web non ne risente: fa scegliere l'X3 a ogni operazione.
+
+**Da iPhone non capita (24/11, 17:15-17:30).** Stesso X3 (0.5.7), stessa pagina
+di prova aperta in BLE Link dall'indirizzo del Mac in rete: **0 lenti su 80** in
+due giri da 40, il più tardo con `HELLO` 1,3 s dopo il collegamento. Dal Mac,
+nello stesso pomeriggio, 6 su 93 con la stessa pagina: con quella frequenza 80
+veloci di fila capitano per caso una volta su duecento. Dall'iPhone non c'è un
+registro: vale solo il tempo misurato dalla pagina. BLE Link apre la pagina
+anche da un indirizzo http della rete locale, Bluefy no. L'indagine si ferma qui:
+l'uso sul set passa dal telefono, e dal Mac basta riprovare.
+
+Ancora da capire: se è di questo Mac o dei Mac in genere (da un altro portatile
+mai visto, ma mai contato) e quanto pesa il mouse. Che sia cominciato il 24/11
+non è dimostrato: il registro del Mac parte dal 23/11 pomeriggio, e con un lento
+ogni 10-20 collegamenti quattro veloci di fila sono normali. Prove che restano:
+- lo stesso conto da un altro computer, con lo stesso X3;
+- un timeout di supervisione corto chiesto dall'X3. Nel lento passa uno scambio
+  ogni 0,75 × timeout (3 s con i 4 s di oggi, a 15 come a 45 ms): con 0,5 s
+  sarebbe uno ogni 0,4 s, cioè un invio lento ma che arriva in fondo. Da vedere
+  se il Mac lo concede e se regge a distanza.
+
 Con `GET` i ruoli si scambiano: il dispositivo manda pacchetti di MTU − 3 byte
 (al massimo 512) e non tiene più di 8 KB non confermati; il client risponde
 `ACK <byte ricevuti>` ogni 2 KB e alla fine, poi controlla il CRC. Quando l'ACK

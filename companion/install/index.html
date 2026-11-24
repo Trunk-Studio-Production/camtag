@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
+<script>
+  // Copia non pubblicata (questo computer o la rete locale): accento blu invece del
+  // lime, per non scambiarla con il sito. `?sito` la mostra con i colori del sito.
+  if (/^(localhost$|127\.|\[::1\]$|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)|\.local$|^$/.test(location.hostname) && !/[?&]sito\b/.test(location.search)) document.documentElement.classList.add('local');
+</script>
 <meta name="theme-color" content="#121212">
 <title>CamTag Install</title>
 <style>
@@ -17,6 +22,7 @@
     --accent: #bbff00; --accent-ink: #161a00; --accent-soft: #314107;
     --r-s: 6px; --r-l: 14px;
   }
+  :root.local { --accent: #4da6ff; --accent-ink: #00162e; --accent-soft: #0c2f55; }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   body { margin: 0; background: var(--bg); color: var(--ink);

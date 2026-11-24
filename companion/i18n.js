@@ -434,6 +434,8 @@ const I18N_EN = {
   'Il dispositivo non risponde. Riprova.': 'The device does not respond. Try again.',
   'Errore del dispositivo: {}': 'Device error: {}',
   'Mi collego a {}…': 'Connecting to {}…',
+  'Il collegamento è lento. Capita quando il computer dà la precedenza ai suoi altri dispositivi Bluetooth (mouse, tastiera, cuffie): aspetta, oppure premi Annulla e riprova tra un minuto tenendo fermo il mouse.': 'The connection is slow. This happens when the computer gives priority to its other Bluetooth devices (mouse, keyboard, headphones): wait, or press Cancel and try again in a minute, keeping the mouse still.',
+  'Il collegamento era troppo lento. Riprova tra un minuto, tenendo fermo il mouse Bluetooth.': 'The connection was too slow. Try again in a minute, keeping the Bluetooth mouse still.',
   'Il dispositivo non è un CamTag.': 'The device is not a CamTag.',
   "Il firmware dell'X3 ({}) non parla con questo configuratore web, fatto per la {}: aggiornali insieme.": 'The X3 firmware ({}) cannot talk to this web configurator, made for {}: update them together.',
   'Preparo le card…': 'Preparing the cards…',

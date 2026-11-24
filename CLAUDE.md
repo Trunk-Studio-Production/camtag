@@ -50,7 +50,9 @@ costruttori di lenti e filtri nei dati vanno bene.
   e i vecchi indirizzi sotto `companion/` rimandano lì. Ha un
   **simulatore** (`simPress`/`renderSim`, solo da computer: sotto 700 px è nascosto) con tasti, rotazione, blocco e power:
   è la specifica di comportamento per il firmware, e i due devono restare allineati.
-  Un solo tema colore, scuro (variabili su `:root`). Il logo CAMTAG è sempre
+  Un solo tema colore, scuro (variabili su `:root`); le copie non pubblicate
+  (localhost o rete locale, anche `install/`) hanno l'accento blu invece del lime per non
+  scambiarle con il sito (`:root.local`; `?sito` rimette il lime, e `telefono.mjs` lo usa). Il logo CAMTAG è sempre
   Inter 800 con spaziatura 0,08 em e la T nel verde `--accent` (`.logo-t`), come in `install/` (l'interfaccia resta nel font di sistema).
   Barra e anteprima restano fisse mentre l'editor scorre: tre colonne da 1100 px,
   due da 700 (striscia delle schermate e anteprima a sinistra), sotto i 700
@@ -501,6 +503,15 @@ grafica della 0.5.2 (logo, linguette, schermata di spento; 23/11/2026). Tasti, a
 `kImuSwapXY`, `kImuSignX`, `kImuSignY`, `kQuarterTurns` in `device/src/main.cpp`:
 la posizione naturale è `Canvas::ROT_270`).
 
+- Bluetooth dal Mac: ogni tanto il Mac serve l'X3 un solo scambio ogni 3 s, per
+  un minuto o due (prove del 24/11/2026 in `docs/bluetooth.md`: indicano il Mac e
+  i suoi altri dispositivi Bluetooth; non dipende dal firmware né dal
+  configuratore, locale o pubblicato). Il configuratore web lo dice dopo 4 s
+  senza risposta a `HELLO` o senza `ACK` in un invio (`BLE.slowMs`). Riavviare
+  il Mac non cambia nulla (3 lenti su 38); da iPhone con BLE Link 0 su 80, e
+  l'indagine è ferma lì (nota nei README). Si
+  conta con `scripts/ble-prova.html`; restano da provare un altro computer e un
+  timeout di supervisione più corto chiesto dall'X3.
 - Cavo USB collegato a riposo (0.4.2): provato sull'X3 con `taratura.py usb`
   (22/11/2026, batteria piena, attraverso hub: 9 su 10 entro 10 s, porta in
   2,6-6,7 s, nessuna lettura sbagliata). Un hub senza computer si legge come un computer: lì

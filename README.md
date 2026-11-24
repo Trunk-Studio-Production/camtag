@@ -153,6 +153,11 @@ Requirements:
   **[Bluefy](https://apps.apple.com/app/id1492822055)**, both tested (sending,
   "Import from X3" and firmware update).
 
+From a Mac the connection sometimes starts, or turns, extremely slow (one
+exchange every 3 seconds): the web configurator says so, and trying again a
+minute later is usually enough. It has never happened from an iPhone. What is
+known so far is under [To verify on hardware](#to-verify-on-hardware).
+
 The protocol is described in [`docs/bluetooth.md`](docs/bluetooth.md).
 
 ### Automatic rotation
@@ -349,7 +354,8 @@ python3 -m http.server 8766
 
 Then open http://localhost:8766/companion/. Bluetooth works this way too: the
 browser gives it only to pages served over HTTPS or from `localhost`, not to
-another address over `http://`.
+another address over `http://`. A local copy has a blue accent instead of lime,
+so it is not mistaken for the published site.
 
 ### Firmware
 
@@ -474,8 +480,18 @@ orientation and the card on screen, and waits for the X3 if it turns off:
       first time and shows how many files it received; "Import from X3"
       brings the project back into the browser and leaves the cards as they are
 - [x] Receive speed from the Mac: 98 files, 1.1 MB in about 40 s (was 100 s)
-      by requesting the 15 ms interval right after the MTU exchange;
-      Bluetooth mouse and keyboard in use on the Mac slow it down
+      by requesting the 15 ms interval right after the MTU exchange
+- [ ] Very slow connections from the Mac, cause not found: on a Mac Studio
+      about one connection in 15 is served one exchange every 3 s for a minute
+      or two, and a firmware update that hits one fails. Counted with
+      `scripts/ble-prova.html` (it works with the normal firmware): 6 slow out
+      of 93 from the Mac, 0 out of 80 from an iPhone with BLE Link, same X3.
+      Ruled out: firmware version, the X3 reading its keys, local or published
+      configurator, a Mac restart, Wi-Fi, USB noise, the Bluetooth keyboard. A
+      Bluetooth mouse in use makes it more frequent. Still to try: another
+      computer, and a shorter supervision timeout requested by the X3. The
+      full story is in [`docs/bluetooth.md`](docs/bluetooth.md), "Collegamenti
+      lentissimi dal Mac" (in Italian)
 - [x] Firmware update over Bluetooth: 864 KB in 26 s; the new firmware boots
       on trial and confirms itself, otherwise the bootloader rolls back
 - [x] Battery log downloaded over Bluetooth ("Battery log" button, in developer mode)

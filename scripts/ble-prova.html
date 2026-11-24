@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="it">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CamTag: prova dei collegamenti Bluetooth</title>
+<!--
+  Conta i collegamenti Bluetooth lenti tra questo computer e l'X3 (docs/bluetooth.md,
+  "Collegamenti lentissimi dal Mac"). Funziona con il firmware normale.
+
+  Dalla radice del repo:  python3 -m http.server 8766
+  poi in Chrome, Brave o Edge:  http://localhost:8766/scripts/ble-prova.html
+  X3 in ricezione (X tenuto premuto), "Scegli l'X3 e comincia".
+  Da iPhone serve BLE Link e la pagina aperta dall'indirizzo del computer in rete,
+  per esempio http://192.168.1.5:8770/ con `python3 -m http.server 8770` lanciato in
+  una cartella che contiene solo questo file. Bluefy un indirizzo http della rete
+  locale non lo accetta (provato il 24/11/2026).
+
+  A ogni giro si collega, manda HELLO, aspetta la risposta e si scollega. Veloce: la
+  risposta arriva 1-3 s dopo l'inizio. Lento: non arriva entro l'attesa massima (un
+  lento lasciato stare risponde dopo circa 48 s).
+
+  Chrome e Brave dimenticano l'X3 circa 3 minuti dopo che lo si è scelto ("Bluetooth
+  Device is no longer in range"): l'X3 non c'entra, è ancora in ricezione. La pagina
+  allora si ferma e chiede di sceglierlo di nuovo ("Continua"), poi riprende il conto.
+-->
+<style>
+  :root { color-scheme: dark; }
+  body { background: #111; color: #ddd; font: 15px/1.45 -apple-system, system-ui, sans-serif; margin: 24px auto; max-width: 860px; padding: 0 16px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p { margin: 6px 0; color: #aaa; }
+  button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid #444; background: #222; color: #eee; cursor: pointer; }
+  button:disabled { opacity: .4; cursor: default; }
+  #go, #more { background: #2f7de1; border-color: #2f7de1; color: #fff; font-weight: 700; }
+  input { font: inherit; background: #1a1a1a; color: #eee; border: 1px solid #444; border-radius: 6px; padding: 6px; width: 64px; }
+  #tag { width: 220px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 14px 0; }
+  #alert { display: none; background: #2f7de1; color: #fff; border-radius: 14px; padding: 22px 26px; margin: 18px 0; box-shadow: 0 0 0 4px #17447f; }
+  #alert.on { display: block; }
+  #alert .msg { font-size: 34px; font-weight: 800; line-height: 1.15; }
+  #alert .sub { font-size: 18px; font-weight: 500; margin-top: 6px; }
+  #sum { white-space: pre-wrap; font-family: ui-monospace, Menlo, monospace; background: #1a1a1a; padding: 10px; border-radius: 8px; margin-top: 12px; }
+  table { border-collapse: collapse; width: 100%; margin-top: 12px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #2a2a2a; }
+  .slow { color: #ff8a65; font-weight: 600; }
+  .fast { color: #7ad67a; }
+  .err { color: #e06c75; }
+</style>
+<h1>Prova dei collegamenti Bluetooth</h1>
+<p>Metti l'X3 in ricezione (X tenuto premuto) e avvia. Intanto usa il computer come al solito, mouse compreso: è così che i lenti escono.</p>
+<div class="row">
+  <label>Collegamenti <input id="n" type="number" value="40" min="1" max="500"></label>
+  <label>Attesa massima (s) <input id="to" type="number" value="12" min="5" max="120"></label>
+  <label>Nota <input id="tag" placeholder="es. dopo il riavvio del Mac"></label>
+  <button id="go">Scegli l'X3 e comincia</button>
+  <button id="more" hidden>Continua</button>
+  <button id="stop" disabled>Ferma</button>
+</div>
+<div id="alert"><div class="msg" id="aMsg"></div><div class="sub" id="aSub"></div></div>
+<div id="sum">—</div>
+<table><thead><tr><th>#</th><th>ora</th><th>nota</th><th>firmware</th><th>collegato (s)</th><th>HELLO (s)</th><th>esito</th></tr></thead><tbody id="rows"></tbody></table>
+<script>
+const FILTERS = { filters: [{ services: ['c4a70001-1b2e-4f3a-9d6e-3a7c5e0b2f10'] }, { namePrefix: 'CAMTAG' }], optionalServices: ['c4a70001-1b2e-4f3a-9d6e-3a7c5e0b2f10'] };
+const SVC = 'c4a70001-1b2e-4f3a-9d6e-3a7c5e0b2f10', CTRL = 'c4a70002-1b2e-4f3a-9d6e-3a7c5e0b2f10';
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const results = [];
+let stopping = false;
+const PHONE = /iPhone|iPad|Android/.test(navigator.userAgent);
+
+const timeout = (p, ms, what) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('tempo scaduto: ' + what)), ms))]);
+
+function alertBox(msg, sub) {
+  $('alert').classList.add('on');
+  $('aMsg').textContent = msg; $('aSub').textContent = sub || '';
+}
+
+// Un collegamento: `slow` vale true (lento), false (veloce) o null (non si è collegato).
+async function once(device, maxMs, tag) {
+  const r = { at: new Date().toTimeString().slice(0, 8), tag };
+  const t0 = performance.now();
+  const left = () => Math.max(1000, maxMs - (performance.now() - t0));
+  try {
+    const server = await timeout(device.gatt.connect(), left(), 'collegamento');
+    r.connS = (performance.now() - t0) / 1000;
+    const svc = await timeout(server.getPrimaryService(SVC), left(), 'servizio');
+    const c = await timeout(svc.getCharacteristic(CTRL), left(), 'caratteristica');
+    const got = new Promise(res => c.addEventListener('characteristicvaluechanged', e => res(new TextDecoder().decode(e.target.value)), { once: true }));
+    await timeout(c.startNotifications(), left(), 'notifiche');
+    const hello = new TextEncoder().encode('HELLO');
+    await timeout(c.writeValueWithResponse ? c.writeValueWithResponse(hello) : c.writeValue(hello), left(), 'scrittura');
+    const line = await timeout(got, left(), 'risposta');
+    r.helloS = (performance.now() - t0) / 1000;
+    r.fw = (/FW (\S+)/.exec(line) || [])[1] || '?';
+    r.slow = r.helloS - r.connS > 5;
+  } catch (e) {
+    r.err = String(e.message || e);
+    r.slow = r.connS !== undefined ? true : null;
+  }
+  try { if (device.gatt.connected) device.gatt.disconnect(); } catch (e) {}
+  return r;
+}
+
+function show() {
+  $('rows').innerHTML = results.map((r, i) => `<tr><td>${i + 1}</td><td>${r.at}</td><td>${r.tag}</td><td>${r.fw || ''}</td><td>${r.connS !== undefined ? r.connS.toFixed(2) : ''}</td><td>${r.helloS !== undefined ? r.helloS.toFixed(2) : ''}</td><td class="${r.slow ? 'slow' : r.slow === false ? 'fast' : 'err'}">${r.slow ? 'LENTO' : r.slow === false ? 'veloce' : r.err}</td></tr>`).join('');
+  const by = {};
+  for (const r of results) {
+    const b = by[r.tag] = by[r.tag] || { n: 0, slow: 0, miss: 0 };
+    if (r.slow === null) b.miss++; else { b.n++; if (r.slow) b.slow++; }
+  }
+  $('sum').textContent = Object.keys(by).map(k => `[${k || 'senza nota'}] ${by[k].slow} lenti su ${by[k].n}` + (by[k].miss ? `, ${by[k].miss} non collegati` : '')).join('\n') || '—';
+}
+
+// Aspetta il clic su "Continua" (o su "Ferma") e fa scegliere di nuovo l'X3.
+function again() {
+  return new Promise(res => {
+    $('more').hidden = false;
+    const end = d => { $('more').hidden = true; $('more').onclick = null; clearInterval(iv); res(d); };
+    const iv = setInterval(() => { if (stopping) end(null); }, 200);
+    $('more').onclick = async () => {
+      try { end(await navigator.bluetooth.requestDevice(FILTERS)); }
+      catch (e) { alertBox('Nessun X3 scelto', 'Premi di nuovo "Continua".'); }
+    };
+  });
+}
+
+$('go').onclick = async () => {
+  let device;
+  try {
+    device = await navigator.bluetooth.requestDevice(FILTERS);
+  } catch (e) { alertBox('Nessun X3 scelto', String(e.message || e)); return; }
+  stopping = false;
+  $('go').disabled = true; $('stop').disabled = false;
+  const n = +$('n').value, maxMs = +$('to').value * 1000, tag = $('tag').value.trim();
+  let done = 0, misses = 0, slow = 0;
+  while (done < n && !stopping && misses <= 10) {
+    if (misses >= 2) alertBox('Tieni X sull\'X3', 'Non lo trovo: rimettilo in ricezione. Riprovo da sola.');
+    else alertBox(PHONE ? 'Lascia questa pagina aperta' : 'Usa pure il computer', `Collegamento ${done + 1} di ${n}. Lenti finora: ${slow}.`);
+    const r = await once(device, maxMs, tag);
+    if (r.slow === null && /no longer in range/i.test(r.err)) {
+      // Il browser ha dimenticato l'X3 (3 minuti dalla scelta): serve un altro clic.
+      alertBox('Premi "Continua" e scegli di nuovo l\'X3', `Il browser lo dimentica ogni 3 minuti: l\'X3 è a posto. Fatti finora: ${done} di ${n}.`);
+      device = await again();
+      if (!device) break;
+      continue;
+    }
+    results.push(r);
+    show();
+    if (r.slow === null) misses++; else { misses = 0; done++; if (r.slow) slow++; }
+    await sleep(2500);  // l'X3 ridisegna e ricomincia l'advertising
+  }
+  alertBox(stopping ? 'Fermata' : done < n ? 'Interrotta: l\'X3 non si trova più' : 'Finito', `${slow} lenti su ${done}.` + (done < n && !stopping ? ' Ricarica la pagina e riparti.' : ''));
+  $('go').disabled = false; $('stop').disabled = true;
+};
+$('stop').onclick = () => { stopping = true; };
+</script>
+</html>

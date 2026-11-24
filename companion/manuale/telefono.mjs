@@ -4,7 +4,7 @@
 // Bluetooth non serve: gli stati della finestra si disegnano con bleUi().
 //
 // Uso, dalla radice del repo con il server acceso (python3 -m http.server 8766):
-//   node companion/manuale/telefono.mjs [http://localhost:8766/companion/]
+//   node companion/manuale/telefono.mjs [http://localhost:8766/companion/?sito]
 // CHROME=/percorso/del/browser per usarne un altro (Chromium, Edge, Brave).
 import { spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs';
@@ -13,7 +13,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const url = process.argv[2] || 'http://localhost:8766/companion/';
+// `?sito`: in locale il configuratore ha l'accento blu, le schermate vogliono i colori del sito.
+const url = process.argv[2] || 'http://localhost:8766/companion/?sito';
 const chrome = process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const OUT = { it: join(here), en: join(here, '..', 'manual') };
 // Telefono di misura comune, a densità 2: abbastanza nitido, file leggeri.
