@@ -396,12 +396,36 @@ tensione, come controllo.
   `sleepAll` per tutti. Righe `D`: `info` = 200000 + (tratto − 1) × 1000 + 1
   se MISO è tenuto alto, + 0 se in aria (quelle da 100000 sono della 0.5.7).
 
+  **Provato sull'X3 (24/11/2026, 0.5.8-diag): MISO non c'entra.** Spento di
+  887 s, senza tocchi, dieci tratti letti:
+
+  | Tratto | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+  |---|---|---|---|---|---|---|---|---|---|---|
+  | MISO alto | no | sì | no | sì | no | sì | no | sì | no | sì |
+  | mA | 2 | 5 | 5 | 2 | 2 | 5 | 2 | 5 | 5 | 2 |
+
+  Con MISO alto 3 tratti su 5 a 5 mA, in aria 2 su 5. Finora nessuna delle cose
+  cambiate (IMU, pannello, stato della microSD, MISO) sposta le probabilità: a
+  ogni riaddormentamento esce 2 o 5 più o meno a metà. Ogni lettura è una sola
+  misura del gauge (l'ultima del tratto), e con cinque tratti per lato solo un
+  effetto netto si vede.
+
+  **Prova di tutti i pin (0.5.9)**: nei tratti pari `holdFreePins` ferma
+  insieme tutti i pin che da spento nessuno tiene (oltre a quelli di
+  `holdBus`): MISO (GPIO7), BUSY del pannello (GPIO6), SDA e SCL (GPIO20 e 0)
+  e GPIO9, su con il pull-up, e spegne la USB (pad e resistenze, GPIO18 e 19
+  con l'ingresso spento), come a riposo. I numeri sono quelli dell'X3
+  (`kFreePins`), e `setup()` li libera per primi, prima di leggere il gauge.
+  Se nei pari il 5 sparisce si restringe un pin alla volta; se resta, i pin
+  del chip non c'entrano. Righe `D`: `info` = 300000 + (tratto − 1) × 1000 +
+  1 se i pin sono fermi, + 0 se no.
+
   La diagnosi si accende e si spegne dalla seriale (`diag=1`, `diag=0`, cioè
   `taratura.py batteria --diagnosi 1`) e resta in NVS; di partenza è spenta.
   Per un firmware che la ha già accesa, da installare via Bluetooth senza cavo:
   `PLATFORMIO_BUILD_FLAGS="-DCAMTAG_OFF_DIAG_DEFAULT=1" ../.venv/bin/pio run -e x3`
   (senza `-v`, che fa fallire l'ultimo passo). Quella build porta `-diag` in
-  coda alla versione (`0.5.8-diag`, `Version.h`): lo si legge sulla schermata
+  coda alla versione (`0.5.9-diag`, `Version.h`): lo si legge sulla schermata
   Bluetooth dell'X3 e nel configuratore web, che la tratta come più vecchia
   della pubblicata. Un tocco breve durante la
   diagnosi fa ripartire il minuto in corso; accendendo prima della fine nel

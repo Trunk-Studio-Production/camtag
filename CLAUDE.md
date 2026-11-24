@@ -547,8 +547,10 @@ la posizione naturale è `Canvas::ROT_270`).
   restava la microSD, ma la 0.5.7 (`sdGoIdle`, CMD0, un tratto sì e uno no;
   provata il 24/11/2026) dà 5 mA anche con la microSD a riposo: non è il suo
   stato. La 0.5.8 prova MISO della microSD (GPIO7), che `holdBus` non tiene e
-  da spento resta in aria: `holdMiso` lo tiene alto un tratto sì e uno no,
-  **da provare**. Poi decidere `OFF_BLANK_S` (il meglio
+  da spento resta in aria: provata (24/11/2026), **non c'entra** nemmeno
+  lui (5 mA in 3 tratti su 5 con MISO alto). La 0.5.9 ferma insieme tutti i
+  pin liberi (`holdFreePins`: MISO, BUSY, I2C, GPIO9, USB spenta), un tratto sì e
+  uno no: **da provare**. Poi decidere `OFF_BLANK_S` (il meglio
   possibile resta 1,3 mA). Tutto in fondo a `docs/batteria.md`.
 - Schermata filtri: provata sull'X3 (bilancieri, indicazioni, riordino,
   modifica, ombra tolta dal mezzo refresh, blocco che ferma tutto).

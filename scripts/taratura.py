@@ -38,7 +38,7 @@ sull'X3 dopo averlo salvato; `--leggi` rifà i conti su un file già salvato
 (anche quello scaricato via Bluetooth con "Registro batteria" nel configuratore web);
 `--bianco N` porta a N secondi l'attesa prima del bianco da spento, per provarla
 (0 rimette i tre giorni); `--diagnosi 1` accende la diagnosi da spento (dieci tratti da
-un minuto: l'X3 si sveglia da solo e tiene alto MISO della microSD un tratto sì e uno no).
+un minuto: l'X3 si sveglia da solo e ferma i pin liberi un tratto sì e uno no).
 
 `usb` prova il cavo collegato con l'X3 a riposo: fa staccare e riattaccare il cavo
 N volte (10), misura dopo quanto compare la porta e legge dall'X3 perché si è
@@ -892,7 +892,7 @@ BATT_BLANK = ('offma', 'touchma')
 # Diagnosi da spento della 0.5.6 (righe D dopo la riga A dell'accensione): cosa è stato
 # fatto prima di ogni tratto da un minuto. L'ultimo tratto, con tutto rimesso a dormire,
 # è la lettura normale dell'accensione. Dalla 0.5.7 le righe D dicono solo cosa si è
-# fatto alla microSD (info da 100000 in su), dalla 0.5.8 a MISO (da 200000 in su).
+# fatto alla microSD (info da 100000 in su), dalla 0.5.8 a MISO (da 200000 in su), dalla 0.5.9 ai pin liberi (da 300000).
 DIAG_STEPS = ("com'era", 'dopo un risveglio a vuoto', 'tutto riavviato e rimesso a dormire', 'IMU lasciato sveglio',
               'pannello fuori dal sonno profondo', 'microSD lasciata accesa')
 RESETS = {1: 'alimentazione tornata', 3: 'riavvio del firmware', 4: 'errore del firmware', 8: 'sonno profondo',
@@ -1025,6 +1025,13 @@ def battery_report(rows, gauge=None):
             diag, groups = b.get('diag', []), {}
             for d in diag:
                 ma = '?' if d['offma'] is None else f'{-d["offma"]} mA'
+                if d['info'] >= 300000:
+                    # Dalla 0.5.9: prima di ogni tratto i pin liberi sono lasciati com'erano o fermati tutti.
+                    step, held = divmod(d['info'] - 300000, 1000)
+                    what = 'pin fermi' if held == 1 else "pin com'erano"
+                    groups.setdefault(what, []).append(ma.replace(' mA', ''))
+                    notes.append(f'   diagnosi {step + 1}, {what}: {B}{ma}{X}{DIM}')
+                    continue
                 if d['info'] >= 200000:
                     # Dalla 0.5.8: prima di ogni tratto MISO della microSD è lasciato in aria o tenuto alto.
                     step, up = divmod(d['info'] - 200000, 1000)

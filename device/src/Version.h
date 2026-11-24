@@ -13,7 +13,7 @@
 #else
 #define CAMTAG_FW_SUFFIX ""
 #endif
-#define CAMTAG_FW_VERSION "0.5.8" CAMTAG_FW_SUFFIX
+#define CAMTAG_FW_VERSION "0.5.9" CAMTAG_FW_SUFFIX
 // Nel binario come "CAMTAG_FW=<versione>": il configuratore web lo cerca nel .bin
 // prima di mandarlo all'X3 (aggiornamento via Bluetooth, docs/bluetooth.md).
 #define CAMTAG_FW_TAG "CAMTAG_FW=" CAMTAG_FW_VERSION
