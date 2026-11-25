@@ -542,8 +542,8 @@ la posizione naturale è `Canvas::ROT_270`).
   Spento prima del bianco nel sonno profondo (fino alla 0.5.11): a caso 1,3 o
   5 mA a ogni spegnimento; sei diagnosi sull'X3 (24/11/2026: IMU, pannello,
   microSD anche tolta, MISO, pin liberi, CS della flash) non hanno trovato la
-  causa. La 0.6.0 lo fa nel sonno leggero (`offRest`): **da provare** sull'X3
-  (accensione, tocchi brevi, bianco con `--bianco`, consumo di una notte), poi
-  decidere `OFF_BLANK_S`. Tutto in fondo a `docs/batteria.md`.
+  causa. La 0.6.0 lo fa nel sonno leggero (`offRest`): provata una notte
+  (25/11/2026: 1,8 mA stabili, tocchi brevi e riaccensione ok); `OFF_BLANK_S`
+  resta 72 h (25/11). Resta da provare il bianco con `--bianco`. Tutto in fondo a `docs/batteria.md`.
 - Schermata filtri: provata sull'X3 (bilancieri, indicazioni, riordino,
   modifica, ombra tolta dal mezzo refresh, blocco che ferma tutto).

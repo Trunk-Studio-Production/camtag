@@ -9,8 +9,8 @@ registro (21-24/11/2026): 25 mA da sveglio, 2,1 mA a riposo (1,8 mA con i
 tasti bloccati), circa 10 mA con un uso vero. Da spento, prima del bianco, il
 sonno profondo dava **a caso 1,3 o 5 mA** a ogni spegnimento; sei prove non hanno
 trovato da cosa dipende (vedi in fondo). Dalla 0.6.0 lo spento prima del bianco è
-quindi un **sonno leggero** come il riposo (`offRest`), che non ha mai dato 5:
-consumo da misurare sull'X3.
+quindi un **sonno leggero** come il riposo (`offRest`): **1,8 mA stabili**
+(notte del 24-25/11, 11,3 h), mai 5.
 
 ## Gli stati
 
@@ -513,9 +513,15 @@ tensione, come controllo.
   "Schermata di spento"), con il power e il timer come soli risvegli. Atteso un
   po' meno dei 1,8 mA del riposo con i tasti bloccati, perché non si sveglia ogni
   secondo per il verso: a 1,8 mA le 72 h prima del bianco costano 130 mAh (20%),
-  contro i 94 dello spento migliore e i 350 di quello peggiore. **Da misurare
-  sull'X3**: una notte da spento, poi `taratura.py batteria --leggi`. Se il
-  consumo è stabile, decidere `OFF_BLANK_S` (24 h costerebbero circa 43 mAh).
+  contro i 94 dello spento migliore e i 350 di quello peggiore.
+
+  **Misurato (0.6.0, notte del 24-25/11/2026)**: 11,3 h da spento, 20 mAh,
+  **1,8 mA**; tutte le 136 righe `P` da spento tra −1 e −2 mA, nessun 5. Tre
+  tocchi brevi del power prima della notte: tornato spento ogni volta, poi
+  riacceso con il power tenuto. Come il riposo con i tasti bloccati: il verso
+  non pesava. `OFF_BLANK_S` resta 72 h (130 mAh, il 20%; 24 h
+  sarebbero circa 43 mAh): la schermata di spento dura un fine settimana. Resta
+  da provare il passaggio al bianco (`--bianco`).
 - **Consumi: misurati** (registro del 20-22/11/2026 letto via Bluetooth, 39 h,
   tratti in carica esclusi):
 
